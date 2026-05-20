@@ -36,6 +36,7 @@ router.post("/trigger", requireAuth, async (req, res) => {
     vehicle_id: z.string().optional(),
     villa_id:   z.string().optional(),
     plate:      z.string().optional(),
+    confidence: z.number().min(0).max(100).optional(),
   });
   const body = schema.safeParse(req.body);
   const params = body.success ? body.data : {};
@@ -63,6 +64,35 @@ router.post("/ocr", requireAuth, async (req, res) => {
   const params = body.success ? body.data : {};
   const result = await simulator.triggerOcr(params);
   res.json(result);
+});
+
+// POST /mock/deny  — simulate a denied access event
+router.post("/deny", requireAuth, async (req, res) => {
+  const schema = z.object({
+    plate:  z.string().optional(),
+    reason: z.enum(["blacklisted", "unregistered", "no_reservation", "outside_window"]).optional(),
+  });
+  const body = schema.safeParse(req.body);
+  const params = body.success ? body.data : {};
+  try {
+    const result = await simulator.simulateDenied(params);
+    res.json({ success: true, ...result });
+  } catch (err: any) {
+    res.status(500).json({ detail: err.message });
+  }
+});
+
+// POST /mock/dirty  — simulate a dirty/obscured plate
+router.post("/dirty", requireAuth, async (req, res) => {
+  const schema = z.object({ plate: z.string().optional() });
+  const body = schema.safeParse(req.body);
+  const params = body.success ? body.data : {};
+  try {
+    const result = await simulator.simulateDirtyPlate(params);
+    res.json({ success: true, ...result });
+  } catch (err: any) {
+    res.status(500).json({ detail: err.message });
+  }
 });
 
 // GET /mock/snapshot  — generate a preview SVG snapshot (inline, no DB)

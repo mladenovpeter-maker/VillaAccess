@@ -75,6 +75,17 @@ function applyOcrError(plate: string, errorRate: number): string {
   return chars.join("");
 }
 
+/** Heavy OCR garbling — simulates a dirty/obscured plate (40–70% character noise). */
+function garblePlate(plate: string, rate: number): string {
+  const noise = ["*", "?", "8", "0", "1", "B", "S", "~", "#", "X", "Z"];
+  return plate.split("").map((ch) => {
+    if (ch === " ") return ch;
+    return Math.random() < rate
+      ? noise[Math.floor(Math.random() * noise.length)]
+      : ch;
+  }).join("");
+}
+
 // ── Singleton Simulator ────────────────────────────────────────────────────────
 
 class MockSimulator {
@@ -110,8 +121,129 @@ class MockSimulator {
     return this.status;
   }
 
-  async triggerOnce(params: { vehicle_id?: string; villa_id?: string; plate?: string } = {}) {
+  async triggerOnce(params: { vehicle_id?: string; villa_id?: string; plate?: string; confidence?: number } = {}) {
     return this.tick(params);
+  }
+
+  // ── Denied Access ────────────────────────────────────────────────────────────
+
+  async simulateDenied(params: {
+    plate?: string;
+    reason?: "blacklisted" | "unregistered" | "no_reservation" | "outside_window";
+  } = {}) {
+    const DENY_REASONS = ["blacklisted", "unregistered", "no_reservation", "outside_window"] as const;
+    const reason = params.reason ?? DENY_REASONS[Math.floor(Math.random() * DENY_REASONS.length)];
+
+    // Pick a plate — prefer a known blacklisted vehicle from DB, else invent one
+    let plate = params.plate;
+    let vehicleId: string | null = null;
+    if (!plate) {
+      if (reason === "blacklisted") {
+        const bl = await db.select().from(vehiclesTable).where(eq(vehiclesTable.status, "blacklisted" as any)).limit(5);
+        if (bl.length > 0) {
+          const v = bl[Math.floor(Math.random() * bl.length)];
+          plate = v.license_plate;
+          vehicleId = v.id;
+        }
+      }
+      if (!plate) plate = randomUnknownPlate();
+    }
+
+    const confidence = 72 + Math.random() * 24;
+
+    // Get a camera for the snapshot
+    const cams = await db.select({ id: camerasTable.id, name: camerasTable.name, villa_id: camerasTable.villa_id })
+      .from(camerasTable).limit(8);
+    const camera = cams.length > 0 ? cams[Math.floor(Math.random() * cams.length)] : MOCK_CAMERAS[0];
+
+    const snapshotUrl = await saveMockSnapshot({
+      plate,
+      cameraName: camera.name,
+      confidence: Math.round(confidence * 10) / 10,
+      detected: true,
+    });
+
+    await db.insert(accessEventsTable).values({
+      event_type: "denied",
+      status: "denied",
+      license_plate: plate,
+      vehicle_id: vehicleId,
+      villa_id: (camera as any).villa_id ?? null,
+      camera_id: (camera as any).id ?? null,
+      snapshot_url: snapshotUrl,
+      confidence_score: confidence / 100,
+      notes: `[MOCK] Access denied — reason: ${reason}`,
+    });
+
+    void eventBus.publish({
+      event_type: "access.denied",
+      severity: "warning",
+      vehicle_id: vehicleId,
+      villa_id: (camera as any).villa_id ?? null,
+      source: "mock",
+      payload: { plate, reason, confidence: Math.round(confidence * 10) / 10, mock: true },
+    });
+
+    this.eventsFired++;
+    this.lastEventAt = new Date().toISOString();
+    return { plate, reason, confidence: Math.round(confidence * 10) / 10, snapshot_url: snapshotUrl };
+  }
+
+  // ── Dirty Plate ──────────────────────────────────────────────────────────────
+
+  async simulateDirtyPlate(params: { plate?: string } = {}) {
+    const realPlate = params.plate ?? randomUnknownPlate();
+    // Dirty confidence: 10–40%
+    const confidence = 10 + Math.random() * 30;
+    // Garble 40–65% of characters
+    const garbleRate = 0.40 + Math.random() * 0.25;
+    const garbledPlate = garblePlate(realPlate, garbleRate);
+
+    const cams = await db.select({ id: camerasTable.id, name: camerasTable.name, villa_id: camerasTable.villa_id })
+      .from(camerasTable).limit(8);
+    const camera = cams.length > 0 ? cams[Math.floor(Math.random() * cams.length)] : MOCK_CAMERAS[0];
+
+    const snapshotUrl = await saveMockSnapshot({
+      plate: garbledPlate,
+      cameraName: camera.name,
+      confidence: Math.round(confidence * 10) / 10,
+      detected: true,
+    });
+
+    await db.insert(accessEventsTable).values({
+      event_type: "entry",
+      status: "pending",
+      license_plate: garbledPlate,
+      villa_id: (camera as any).villa_id ?? null,
+      camera_id: (camera as any).id ?? null,
+      snapshot_url: snapshotUrl,
+      confidence_score: confidence / 100,
+      notes: `[MOCK] Dirty/obscured plate — OCR unreliable (garble rate ${Math.round(garbleRate * 100)}%)`,
+    });
+
+    void eventBus.publish({
+      event_type: "ai.ocr_scan",
+      severity: "warning",
+      source: "mock",
+      payload: {
+        raw_plate: realPlate,
+        corrected_plate: garbledPlate,
+        confidence: Math.round(confidence * 10) / 10,
+        quality: "poor",
+        reason: "dirty_plate",
+        garble_rate: Math.round(garbleRate * 100),
+        mock: true,
+      },
+    });
+
+    this.eventsFired++;
+    this.lastEventAt = new Date().toISOString();
+    return {
+      garbled_plate: garbledPlate,
+      real_plate: realPlate,
+      confidence: Math.round(confidence * 10) / 10,
+      snapshot_url: snapshotUrl,
+    };
   }
 
   async triggerGate(villaId: string) {
@@ -140,7 +272,7 @@ class MockSimulator {
     return { plate: corrected, raw_plate: plate, confidence };
   }
 
-  private async tick(params: { vehicle_id?: string; villa_id?: string; plate?: string } = {}) {
+  private async tick(params: { vehicle_id?: string; villa_id?: string; plate?: string; confidence?: number } = {}) {
     try {
       const now = new Date();
 
@@ -215,7 +347,9 @@ class MockSimulator {
       }
 
       // 3. Confidence + OCR error simulation
-      const rawConfidence  = 75 + Math.random() * 24;
+      const rawConfidence  = params.confidence !== undefined
+        ? params.confidence
+        : 75 + Math.random() * 24;
       const confidence     = Math.round(rawConfidence * 10) / 10;
       const ocrPlate       = applyOcrError(detectedPlate, this.config.error_rate);
 
