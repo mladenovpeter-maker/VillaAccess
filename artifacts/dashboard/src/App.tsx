@@ -11,6 +11,7 @@ import ReservationsPage from "@/pages/reservations";
 import VehiclesPage from "@/pages/vehicles";
 import AccessControlPage from "@/pages/access";
 import CamerasPage from "@/pages/cameras";
+import EntrancesPage from "@/pages/entrances";
 import LogsPage from "@/pages/logs";
 import EventsPage from "@/pages/events";
 import MockPage from "@/pages/mock";
@@ -44,6 +45,7 @@ function Router() {
       <Route path="/vehicles" component={() => <ProtectedRoute component={VehiclesPage} />} />
       <Route path="/access" component={() => <ProtectedRoute component={AccessControlPage} />} />
       <Route path="/cameras" component={() => <ProtectedRoute component={CamerasPage} />} />
+      <Route path="/entrances" component={() => <ProtectedRoute component={EntrancesPage} />} />
       <Route path="/logs" component={() => <ProtectedRoute component={LogsPage} />} />
       <Route path="/events" component={() => <ProtectedRoute component={EventsPage} />} />
       <Route path="/mock" component={() => <ProtectedRoute component={MockPage} />} />

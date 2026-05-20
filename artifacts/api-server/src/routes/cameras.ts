@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { camerasTable } from "@workspace/db";
+import { camerasTable, entrancesTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { requireAuth } from "./auth";
 import { createAdapter } from "../lib/cameras/factory";
@@ -16,7 +16,7 @@ function serializeCamera(c: typeof camerasTable.$inferSelect) {
     name: c.name,
     ip_address: c.ip_address,
     rtsp_url: c.rtsp_url,
-    villa_id: c.villa_id,
+    entrance_id: c.entrance_id,
     model: c.model,
     protocol: c.protocol,
     http_port: c.http_port,
@@ -69,7 +69,7 @@ router.get("/:id", requireAuth, async (req, res) => {
 
 router.post("/", requireAuth, async (req, res) => {
   const {
-    name, ip_address, rtsp_url, villa_id, model,
+    name, ip_address, rtsp_url, entrance_id, model,
     protocol, http_port, username, password,
     channel_no, use_access_control, gate_no, door_no,
   } = req.body;
@@ -79,13 +79,20 @@ router.post("/", requireAuth, async (req, res) => {
     return;
   }
 
+  // Validate entrance if provided
+  if (entrance_id) {
+    const ent = await db.select({ id: entrancesTable.id }).from(entrancesTable)
+      .where(eq(entrancesTable.id, entrance_id)).limit(1);
+    if (!ent[0]) { res.status(400).json({ detail: "Entrance not found" }); return; }
+  }
+
   const [c] = await db
     .insert(camerasTable)
     .values({
       name,
       ip_address,
       rtsp_url: rtsp_url ?? null,
-      villa_id: villa_id ?? null,
+      entrance_id: entrance_id ?? null,
       model: model ?? null,
       protocol: protocol ?? "hikvision",
       http_port: http_port ?? 80,
@@ -108,7 +115,7 @@ router.patch("/:id", requireAuth, async (req, res) => {
   if (!c) { res.status(404).json({ detail: "Camera not found" }); return; }
 
   const allowed = [
-    "name", "ip_address", "rtsp_url", "villa_id", "model",
+    "name", "ip_address", "rtsp_url", "entrance_id", "model",
     "protocol", "http_port", "username", "password",
     "channel_no", "use_access_control", "gate_no", "door_no",
   ];
@@ -140,8 +147,6 @@ router.delete("/:id", requireAuth, async (req, res) => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 // GET /cameras/:id/snapshot
-// Fetches a live JPEG from the physical camera via ISAPI, stores it locally,
-// and updates snapshot_url + last_snapshot in the DB.
 
 router.get("/:id/snapshot", requireAuth, async (req, res) => {
   const c = await loadCamera(req.params.id);
@@ -171,7 +176,6 @@ router.get("/:id/snapshot", requireAuth, async (req, res) => {
     void eventBus.publish({
       event_type: "ai.snapshot_uploaded",
       camera_id: c.id,
-      villa_id: c.villa_id ?? undefined,
       source: "camera",
       payload: { snapshot_url: result.snapshot_url, mime_type: result.mime_type, file_size_bytes: result.file_size_bytes },
     });
@@ -181,7 +185,6 @@ router.get("/:id/snapshot", requireAuth, async (req, res) => {
 });
 
 // GET /cameras/:id/status
-// Pings the camera, retrieves device info, updates DB status + latency.
 
 router.get("/:id/status", requireAuth, async (req, res) => {
   const c = await loadCamera(req.params.id);
@@ -207,8 +210,7 @@ router.get("/:id/status", requireAuth, async (req, res) => {
   res.json({ camera_id: c.id, camera_name: c.name, ...result });
 });
 
-// POST /cameras/:id/gate
-// Triggers the gate relay (I/O output) or AccessControl gate door.
+// POST /cameras/:id/gate — triggers the gate relay
 
 router.post("/:id/gate", requireAuth, async (req: any, res) => {
   const c = await loadCamera(req.params.id);
@@ -221,10 +223,9 @@ router.post("/:id/gate", requireAuth, async (req: any, res) => {
     event_type: result.success ? "gate.opened" : "gate.failed",
     severity: result.success ? "info" : "error",
     camera_id: c.id,
-    villa_id: c.villa_id ?? undefined,
     operator_id: req.user?.id,
     source: "dashboard",
-    payload: { ...result, camera_name: c.name },
+    payload: { ...result, camera_name: c.name, entrance_id: c.entrance_id },
   });
 
   res.json({
@@ -235,8 +236,7 @@ router.post("/:id/gate", requireAuth, async (req: any, res) => {
   });
 });
 
-// POST /cameras/:id/door
-// Triggers the door relay (I/O output) or AccessControl side door.
+// POST /cameras/:id/door — triggers the door relay
 
 router.post("/:id/door", requireAuth, async (req: any, res) => {
   const c = await loadCamera(req.params.id);
@@ -249,10 +249,9 @@ router.post("/:id/door", requireAuth, async (req: any, res) => {
     event_type: result.success ? "gate.door_opened" : "gate.door_failed",
     severity: result.success ? "info" : "error",
     camera_id: c.id,
-    villa_id: c.villa_id ?? undefined,
     operator_id: req.user?.id,
     source: "dashboard",
-    payload: { ...result, camera_name: c.name },
+    payload: { ...result, camera_name: c.name, entrance_id: c.entrance_id },
   });
 
   res.json({

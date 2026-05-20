@@ -1,7 +1,7 @@
 import { pgTable, text, timestamp, pgEnum, real } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
-import { villasTable } from "./villas";
+import { entrancesTable } from "./entrances";
 import { camerasTable } from "./cameras";
 
 export const eventTypeEnum = pgEnum("event_type", ["entry", "exit", "denied", "manual_open", "override"]);
@@ -15,7 +15,9 @@ export const accessEventsTable = pgTable("access_events", {
   confidence_score: real("confidence_score"),
   vehicle_id: text("vehicle_id"),
   license_plate: text("license_plate"),
-  villa_id: text("villa_id").references(() => villasTable.id, { onDelete: "set null" }),
+  // Access happened at this shared entrance
+  entrance_id: text("entrance_id").references(() => entrancesTable.id, { onDelete: "set null" }),
+  // Which camera triggered the event
   camera_id: text("camera_id").references(() => camerasTable.id, { onDelete: "set null" }),
   snapshot_url: text("snapshot_url"),
   notes: text("notes"),

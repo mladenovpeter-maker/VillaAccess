@@ -1,5 +1,5 @@
 import { db } from "@workspace/db";
-import { vehiclesTable, camerasTable, villasTable, accessEventsTable } from "@workspace/db";
+import { vehiclesTable, camerasTable, entrancesTable, accessEventsTable } from "@workspace/db";
 import { ne, eq, sql } from "drizzle-orm";
 import { eventBus } from "../events";
 import { saveMockSnapshot } from "./snapshot-generator";
@@ -30,12 +30,12 @@ const DEFAULT_CONFIG: SimulatorConfig = {
   detection_mode: "all",
 };
 
-// ── Mock data fallbacks (when DB has no cameras/vehicles) ──────────────────────
+// ── Mock data fallbacks (when DB has no cameras/entrances) ─────────────────────
 
 const MOCK_CAMERAS = [
-  { id: null, name: "CAM-01 Gate A", villa_id: null, villaName: "Villa Sunrise" },
-  { id: null, name: "CAM-02 Gate B", villa_id: null, villaName: "Villa Sunset" },
-  { id: null, name: "CAM-03 Entry",  villa_id: null, villaName: "Villa Ocean View" },
+  { id: null, name: "CAM-01 Gate A", entrance_id: null, entranceName: "Main Entrance" },
+  { id: null, name: "CAM-02 Gate B", entrance_id: null, entranceName: "Service Entrance" },
+  { id: null, name: "CAM-03 Entry",  entrance_id: null, entranceName: "Main Entrance" },
 ];
 
 const MOCK_VEHICLE_POOL = [
@@ -121,7 +121,7 @@ class MockSimulator {
     return this.status;
   }
 
-  async triggerOnce(params: { vehicle_id?: string; villa_id?: string; plate?: string; confidence?: number } = {}) {
+  async triggerOnce(params: { vehicle_id?: string; entrance_id?: string; plate?: string; confidence?: number } = {}) {
     return this.tick(params);
   }
 
@@ -134,7 +134,6 @@ class MockSimulator {
     const DENY_REASONS = ["blacklisted", "unregistered", "no_reservation", "outside_window"] as const;
     const reason = params.reason ?? DENY_REASONS[Math.floor(Math.random() * DENY_REASONS.length)];
 
-    // Pick a plate — prefer a known blacklisted vehicle from DB, else invent one
     let plate = params.plate;
     let vehicleId: string | null = null;
     if (!plate) {
@@ -151,8 +150,8 @@ class MockSimulator {
 
     const confidence = 72 + Math.random() * 24;
 
-    // Get a camera for the snapshot
-    const cams = await db.select({ id: camerasTable.id, name: camerasTable.name, villa_id: camerasTable.villa_id })
+    const cams = await db
+      .select({ id: camerasTable.id, name: camerasTable.name, entrance_id: camerasTable.entrance_id })
       .from(camerasTable).limit(8);
     const camera = cams.length > 0 ? cams[Math.floor(Math.random() * cams.length)] : MOCK_CAMERAS[0];
 
@@ -164,24 +163,24 @@ class MockSimulator {
     });
 
     await db.insert(accessEventsTable).values({
-      event_type: "denied",
-      status: "denied",
-      license_plate: plate,
-      vehicle_id: vehicleId,
-      villa_id: (camera as any).villa_id ?? null,
-      camera_id: (camera as any).id ?? null,
-      snapshot_url: snapshotUrl,
+      event_type:       "denied",
+      status:           "denied",
+      license_plate:    plate,
+      vehicle_id:       vehicleId,
+      entrance_id:      (camera as any).entrance_id ?? null,
+      camera_id:        (camera as any).id ?? null,
+      snapshot_url:     snapshotUrl,
       confidence_score: confidence / 100,
-      notes: `[MOCK] Access denied — reason: ${reason}`,
+      notes:            `[MOCK] Access denied — reason: ${reason}`,
     });
 
     void eventBus.publish({
       event_type: "access.denied",
-      severity: "warning",
+      severity:   "warning",
       vehicle_id: vehicleId,
-      villa_id: (camera as any).villa_id ?? null,
-      source: "mock",
-      payload: { plate, reason, confidence: Math.round(confidence * 10) / 10, mock: true },
+      entrance_id: (camera as any).entrance_id ?? null,
+      source:     "mock",
+      payload:    { plate, reason, confidence: Math.round(confidence * 10) / 10, mock: true },
     });
 
     this.eventsFired++;
@@ -192,47 +191,46 @@ class MockSimulator {
   // ── Dirty Plate ──────────────────────────────────────────────────────────────
 
   async simulateDirtyPlate(params: { plate?: string } = {}) {
-    const realPlate = params.plate ?? randomUnknownPlate();
-    // Dirty confidence: 10–40%
-    const confidence = 10 + Math.random() * 30;
-    // Garble 40–65% of characters
-    const garbleRate = 0.40 + Math.random() * 0.25;
+    const realPlate   = params.plate ?? randomUnknownPlate();
+    const confidence  = 10 + Math.random() * 30;
+    const garbleRate  = 0.40 + Math.random() * 0.25;
     const garbledPlate = garblePlate(realPlate, garbleRate);
 
-    const cams = await db.select({ id: camerasTable.id, name: camerasTable.name, villa_id: camerasTable.villa_id })
+    const cams = await db
+      .select({ id: camerasTable.id, name: camerasTable.name, entrance_id: camerasTable.entrance_id })
       .from(camerasTable).limit(8);
     const camera = cams.length > 0 ? cams[Math.floor(Math.random() * cams.length)] : MOCK_CAMERAS[0];
 
     const snapshotUrl = await saveMockSnapshot({
-      plate: garbledPlate,
+      plate:      garbledPlate,
       cameraName: camera.name,
       confidence: Math.round(confidence * 10) / 10,
-      detected: true,
+      detected:   true,
     });
 
     await db.insert(accessEventsTable).values({
-      event_type: "entry",
-      status: "pending",
-      license_plate: garbledPlate,
-      villa_id: (camera as any).villa_id ?? null,
-      camera_id: (camera as any).id ?? null,
-      snapshot_url: snapshotUrl,
+      event_type:       "entry",
+      status:           "pending",
+      license_plate:    garbledPlate,
+      entrance_id:      (camera as any).entrance_id ?? null,
+      camera_id:        (camera as any).id ?? null,
+      snapshot_url:     snapshotUrl,
       confidence_score: confidence / 100,
-      notes: `[MOCK] Dirty/obscured plate — OCR unreliable (garble rate ${Math.round(garbleRate * 100)}%)`,
+      notes:            `[MOCK] Dirty/obscured plate — OCR unreliable (garble rate ${Math.round(garbleRate * 100)}%)`,
     });
 
     void eventBus.publish({
       event_type: "ai.ocr_scan",
-      severity: "warning",
-      source: "mock",
+      severity:   "warning",
+      source:     "mock",
       payload: {
-        raw_plate: realPlate,
+        raw_plate:       realPlate,
         corrected_plate: garbledPlate,
-        confidence: Math.round(confidence * 10) / 10,
-        quality: "poor",
-        reason: "dirty_plate",
-        garble_rate: Math.round(garbleRate * 100),
-        mock: true,
+        confidence:      Math.round(confidence * 10) / 10,
+        quality:         "poor",
+        reason:          "dirty_plate",
+        garble_rate:     Math.round(garbleRate * 100),
+        mock:            true,
       },
     });
 
@@ -240,21 +238,21 @@ class MockSimulator {
     this.lastEventAt = new Date().toISOString();
     return {
       garbled_plate: garbledPlate,
-      real_plate: realPlate,
-      confidence: Math.round(confidence * 10) / 10,
-      snapshot_url: snapshotUrl,
+      real_plate:    realPlate,
+      confidence:    Math.round(confidence * 10) / 10,
+      snapshot_url:  snapshotUrl,
     };
   }
 
-  async triggerGate(villaId: string) {
+  async triggerGate(entranceId: string) {
     void eventBus.publish({
-      event_type: "gate.opened",
-      severity:   "info",
-      villa_id:   villaId,
-      source:     "mock",
-      payload:    { trigger: "manual_mock", auto: false, mock: true },
+      event_type:  "gate.opened",
+      severity:    "info",
+      entrance_id: entranceId,
+      source:      "mock",
+      payload:     { trigger: "manual_mock", auto: false, mock: true },
     });
-    return { success: true, villa_id: villaId };
+    return { success: true, entrance_id: entranceId };
   }
 
   async triggerOcr(params: { plate?: string; camera_id?: string } = {}) {
@@ -272,25 +270,25 @@ class MockSimulator {
     return { plate: corrected, raw_plate: plate, confidence };
   }
 
-  private async tick(params: { vehicle_id?: string; villa_id?: string; plate?: string; confidence?: number } = {}) {
+  private async tick(params: { vehicle_id?: string; entrance_id?: string; plate?: string; confidence?: number } = {}) {
     try {
       const now = new Date();
 
-      // 1. Get real cameras from DB or fall back to mock list
+      // 1. Get real cameras from DB, join entrance name
       const dbCameras = await db
         .select({
-          id:        camerasTable.id,
-          name:      camerasTable.name,
-          villa_id:  camerasTable.villa_id,
-          villaName: villasTable.name,
+          id:           camerasTable.id,
+          name:         camerasTable.name,
+          entrance_id:  camerasTable.entrance_id,
+          entranceName: entrancesTable.name,
         })
         .from(camerasTable)
-        .leftJoin(villasTable, eq(camerasTable.villa_id, villasTable.id))
+        .leftJoin(entrancesTable, eq(camerasTable.entrance_id, entrancesTable.id))
         .limit(16);
 
       const cameras = dbCameras.length > 0 ? dbCameras : MOCK_CAMERAS;
-      const camera  = params.villa_id
-        ? (cameras.find((c) => c.villa_id === params.villa_id) ?? cameras[0])
+      const camera  = params.entrance_id
+        ? (cameras.find((c) => c.entrance_id === params.entrance_id) ?? cameras[0])
         : cameras[Math.floor(Math.random() * cameras.length)];
 
       // 2. Determine vehicle
@@ -317,13 +315,11 @@ class MockSimulator {
           (this.config.detection_mode === "all" && this.config.include_unknown && Math.random() < 0.25);
 
         if (useUnknown) {
-          // Invent a plate from mock pool or random
           const mock = MOCK_VEHICLE_POOL[Math.floor(Math.random() * MOCK_VEHICLE_POOL.length)];
           detectedPlate = randomUnknownPlate();
           vehicleMake  = mock.make;
           vehicleModel = mock.model;
         } else {
-          // Pick a known vehicle from DB
           const knownVehicles = await db
             .select()
             .from(vehiclesTable)
@@ -337,7 +333,6 @@ class MockSimulator {
             vehicleModel = v.model;
             detectedPlate = v.license_plate;
           } else {
-            // Fall back to mock vehicle pool
             const mock = MOCK_VEHICLE_POOL[Math.floor(Math.random() * MOCK_VEHICLE_POOL.length)];
             detectedPlate = mock.plate;
             vehicleMake  = mock.make;
@@ -347,17 +342,17 @@ class MockSimulator {
       }
 
       // 3. Confidence + OCR error simulation
-      const rawConfidence  = params.confidence !== undefined
+      const rawConfidence = params.confidence !== undefined
         ? params.confidence
         : 75 + Math.random() * 24;
-      const confidence     = Math.round(rawConfidence * 10) / 10;
-      const ocrPlate       = applyOcrError(detectedPlate, this.config.error_rate);
+      const confidence  = Math.round(rawConfidence * 10) / 10;
+      const ocrPlate    = applyOcrError(detectedPlate, this.config.error_rate);
 
       // 4. Generate mock snapshot
       const snapshotUrl = await saveMockSnapshot({
         plate:      ocrPlate,
         cameraName: camera.name,
-        villaName:  (camera as any).villaName ?? "",
+        villaName:  (camera as any).entranceName ?? "",
         confidence,
         detected:   true,
       });
@@ -368,7 +363,7 @@ class MockSimulator {
         status:           "allowed",
         license_plate:    ocrPlate,
         vehicle_id:       vehicleId,
-        villa_id:         camera.villa_id ?? null,
+        entrance_id:      (camera as any).entrance_id ?? null,
         camera_id:        (camera as any).id ?? null,
         snapshot_url:     snapshotUrl,
         confidence_score: confidence / 100,
@@ -377,31 +372,31 @@ class MockSimulator {
 
       // 6. Emit domain events
       void eventBus.publish({
-        event_type: "vehicle.detected",
-        severity:   "info",
-        vehicle_id: vehicleId,
-        villa_id:   camera.villa_id ?? null,
-        camera_id:  (camera as any).id ?? null,
-        source:     "mock",
+        event_type:  "vehicle.detected",
+        severity:    "info",
+        vehicle_id:  vehicleId,
+        entrance_id: (camera as any).entrance_id ?? null,
+        camera_id:   (camera as any).id ?? null,
+        source:      "mock",
         payload: {
-          plate:        ocrPlate,
-          raw_plate:    detectedPlate,
+          plate:       ocrPlate,
+          raw_plate:   detectedPlate,
           confidence,
-          camera_name:  camera.name,
-          make:         vehicleMake,
-          model:        vehicleModel,
-          mock:         true,
+          camera_name: camera.name,
+          make:        vehicleMake,
+          model:       vehicleModel,
+          mock:        true,
         },
       });
 
       // 7. Auto gate-open
-      if (this.config.auto_open_gate && camera.villa_id) {
+      if (this.config.auto_open_gate && (camera as any).entrance_id) {
         void eventBus.publish({
-          event_type: "gate.opened",
-          severity:   "info",
-          villa_id:   camera.villa_id,
-          source:     "mock",
-          payload:    { trigger: "auto_detection", plate: ocrPlate, mock: true },
+          event_type:  "gate.opened",
+          severity:    "info",
+          entrance_id: (camera as any).entrance_id,
+          source:      "mock",
+          payload:     { trigger: "auto_detection", plate: ocrPlate, mock: true },
         });
       }
 

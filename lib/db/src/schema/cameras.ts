@@ -9,7 +9,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
-import { villasTable } from "./villas";
+import { entrancesTable } from "./entrances";
 
 export const cameraStatusEnum = pgEnum("camera_status", [
   "online",
@@ -24,19 +24,24 @@ export const cameraProtocolEnum = pgEnum("camera_protocol", [
   "rtsp",
 ]);
 
+/**
+ * Cameras — ANPR / surveillance cameras assigned to a shared Entrance.
+ * Cameras are NOT tied to individual villas.
+ */
 export const camerasTable = pgTable(
   "cameras",
   {
-    id: text("id")
-      .primaryKey()
-      .$defaultFn(() => crypto.randomUUID()),
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
 
     name: text("name").notNull(),
     ip_address: text("ip_address").notNull(),
     rtsp_url: text("rtsp_url"),
-    villa_id: text("villa_id").references(() => villasTable.id, {
+
+    // ── Location — cameras belong to an Entrance, not a Villa ────────────
+    entrance_id: text("entrance_id").references(() => entrancesTable.id, {
       onDelete: "set null",
     }),
+
     model: text("model"),
 
     // ── Integration protocol ─────────────────────────────────────────────
@@ -45,9 +50,9 @@ export const camerasTable = pgTable(
 
     // ── Credentials (⚠ encrypt at rest in production) ────────────────────
     username: text("username").notNull().default("admin"),
-    password: text("password"),               // null = not yet configured
+    password: text("password"),
 
-    // ── Stream & access-control config ───────────────────────────────────
+    // ── Stream & relay config ────────────────────────────────────────────
     channel_no: integer("channel_no").notNull().default(1),
     use_access_control: boolean("use_access_control").notNull().default(false),
     gate_no: integer("gate_no").notNull().default(1),
@@ -59,13 +64,13 @@ export const camerasTable = pgTable(
     snapshot_url: text("snapshot_url"),
     last_status_check: timestamp("last_status_check"),
     last_status_latency_ms: integer("last_status_latency_ms"),
-    device_info: text("device_info"),         // JSON blob of DeviceInfo
+    device_info: text("device_info"),
 
     created_at: timestamp("created_at").defaultNow().notNull(),
     updated_at: timestamp("updated_at").defaultNow().notNull(),
   },
   (t) => [
-    index("cameras_villa_idx").on(t.villa_id),
+    index("cameras_entrance_idx").on(t.entrance_id),
     index("cameras_status_idx").on(t.status),
     index("cameras_protocol_idx").on(t.protocol),
   ],

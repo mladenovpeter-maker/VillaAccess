@@ -6,7 +6,6 @@ import {
   index,
 } from "drizzle-orm/pg-core";
 import { vehiclesTable } from "./vehicles";
-import { villasTable } from "./villas";
 import { camerasTable } from "./cameras";
 
 /**
@@ -34,26 +33,25 @@ export const domainEventsTable = pgTable(
       .primaryKey()
       .$defaultFn(() => crypto.randomUUID()),
 
-    event_type: text("event_type").notNull(),   // e.g. 'gate.opened'
-    category: text("category").notNull(),        // 'gate' | 'vehicle' | 'access' | 'ai' | 'reservation'
-    severity: text("severity").notNull().default("info"), // 'info' | 'warning' | 'error' | 'critical'
-    payload: jsonb("payload"),                   // event-specific structured data (nullable)
+    event_type: text("event_type").notNull(),
+    category: text("category").notNull(),
+    severity: text("severity").notNull().default("info"),
+    payload: jsonb("payload"),
 
     // ── Denormalized foreign refs (nullable, all SET NULL on delete) ─────────
     vehicle_id: text("vehicle_id").references(() => vehiclesTable.id, {
       onDelete: "set null",
     }),
-    villa_id: text("villa_id").references(() => villasTable.id, {
-      onDelete: "set null",
-    }),
+    // Soft reference — entrance may not exist for older events; no FK by design
+    entrance_id: text("entrance_id"),
     camera_id: text("camera_id").references(() => camerasTable.id, {
       onDelete: "set null",
     }),
-    reservation_id: text("reservation_id"),      // soft ref — no FK to avoid circular deps
-    operator_id: text("operator_id"),            // user id of operator (if human-triggered)
+    reservation_id: text("reservation_id"),
+    operator_id: text("operator_id"),
 
     // ── Source metadata ───────────────────────────────────────────────────────
-    source: text("source").notNull().default("api"), // 'dashboard' | 'camera' | 'ai_worker' | 'api'
+    source: text("source").notNull().default("api"),
     ip_address: text("ip_address"),
 
     created_at: timestamp("created_at").defaultNow().notNull(),
@@ -63,7 +61,7 @@ export const domainEventsTable = pgTable(
     index("domain_events_event_type_idx").on(t.event_type),
     index("domain_events_severity_idx").on(t.severity),
     index("domain_events_vehicle_idx").on(t.vehicle_id),
-    index("domain_events_villa_idx").on(t.villa_id),
+    index("domain_events_entrance_idx").on(t.entrance_id),
     index("domain_events_camera_idx").on(t.camera_id),
     index("domain_events_created_idx").on(t.created_at),
     index("domain_events_source_idx").on(t.source),

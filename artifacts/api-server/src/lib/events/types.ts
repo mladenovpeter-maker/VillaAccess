@@ -2,7 +2,7 @@
 
 export type EventCategory = "vehicle" | "gate" | "access" | "ai" | "reservation";
 export type EventSeverity  = "info" | "warning" | "error" | "critical";
-export type EventSource    = "dashboard" | "camera" | "ai_worker" | "api";
+export type EventSource    = "dashboard" | "camera" | "ai_worker" | "api" | "mock";
 
 export type EventType =
   // ── Vehicle ────────────────────────────────────────────────────────────────
@@ -28,6 +28,7 @@ export type EventType =
   | "ai.confidence_low"          // recognition below threshold
   | "ai.fingerprint_updated"     // AI fingerprint/embedding stored
   | "ai.recognition_complete"    // full AI pipeline finished
+  | "ai.ocr_scan"                // raw OCR scan (simulator / AI worker)
   // ── Reservation ────────────────────────────────────────────────────────────
   | "reservation.created"
   | "reservation.updated"
@@ -58,6 +59,7 @@ export const EVENT_CATEGORY_MAP: Record<EventType, EventCategory> = {
   "ai.confidence_low":         "ai",
   "ai.fingerprint_updated":    "ai",
   "ai.recognition_complete":   "ai",
+  "ai.ocr_scan":               "ai",
   "reservation.created":       "reservation",
   "reservation.updated":       "reservation",
   "reservation.checked_in":    "reservation",
@@ -83,7 +85,7 @@ export interface VehiclePayload {
   make?: string;
   model?: string;
   confidence_score?: number;
-  reason?: string;    // for blacklist events
+  reason?: string;
 }
 
 export interface AccessPayload {
@@ -117,12 +119,12 @@ export interface DomainEventInput {
   payload?: Record<string, unknown>;
   // optional refs
   vehicle_id?:    string | null;
-  villa_id?:      string | null;
+  entrance_id?:   string | null;   // shared entrance where event occurred
   camera_id?:     string | null;
   reservation_id?: string | null;
   operator_id?:   string | null;
   // metadata
-  source?: EventSource;
+  source?: EventSource | string;
   ip_address?: string | null;
 }
 

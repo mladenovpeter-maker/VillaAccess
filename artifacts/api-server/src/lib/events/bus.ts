@@ -31,7 +31,7 @@ class EventBus extends EventEmitter {
 
   async publish(input: DomainEventInput): Promise<DomainEvent> {
     const category: EventCategory =
-      EVENT_CATEGORY_MAP[input.event_type] ?? "access";
+      EVENT_CATEGORY_MAP[input.event_type as keyof typeof EVENT_CATEGORY_MAP] ?? "access";
 
     const event: DomainEvent = {
       id: crypto.randomUUID(),
@@ -98,11 +98,11 @@ class EventBus extends EventEmitter {
       category: event.category,
       severity: event.severity,
       payload: (event.payload ?? null) as any,
-      vehicle_id: event.vehicle_id ?? null,
-      villa_id: event.villa_id ?? null,
-      camera_id: event.camera_id ?? null,
+      vehicle_id:    event.vehicle_id ?? null,
+      entrance_id:   event.entrance_id ?? null,
+      camera_id:     event.camera_id ?? null,
       reservation_id: event.reservation_id ?? null,
-      operator_id: event.operator_id ?? null,
+      operator_id:   event.operator_id ?? null,
       source: event.source ?? "api",
       ip_address: event.ip_address ?? null,
     });

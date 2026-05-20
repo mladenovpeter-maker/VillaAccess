@@ -33,10 +33,10 @@ router.post("/stop", requireAuth, (_req, res) => {
 // POST /mock/trigger  — fire one simulated detection
 router.post("/trigger", requireAuth, async (req, res) => {
   const schema = z.object({
-    vehicle_id: z.string().optional(),
-    villa_id:   z.string().optional(),
-    plate:      z.string().optional(),
-    confidence: z.number().min(0).max(100).optional(),
+    vehicle_id:  z.string().optional(),
+    entrance_id: z.string().optional(),
+    plate:       z.string().optional(),
+    confidence:  z.number().min(0).max(100).optional(),
   });
   const body = schema.safeParse(req.body);
   const params = body.success ? body.data : {};
@@ -45,12 +45,12 @@ router.post("/trigger", requireAuth, async (req, res) => {
   res.json({ success: true, ...result });
 });
 
-// POST /mock/gate  — simulate gate open for a villa
+// POST /mock/gate  — simulate gate open at an entrance
 router.post("/gate", requireAuth, async (req, res) => {
-  const schema = z.object({ villa_id: z.string() });
+  const schema = z.object({ entrance_id: z.string().optional() });
   const body = schema.safeParse(req.body);
-  if (!body.success) { res.status(400).json({ detail: "villa_id is required" }); return; }
-  const result = await simulator.triggerGate(body.data.villa_id);
+  const entranceId = body.success && body.data.entrance_id ? body.data.entrance_id : "mock-entrance";
+  const result = await simulator.triggerGate(entranceId);
   res.json(result);
 });
 
@@ -117,7 +117,6 @@ router.get("/snapshot", requireAuth, async (req, res) => {
 router.get("/vehicles", requireAuth, async (_req, res) => {
   const { db } = await import("@workspace/db");
   const { vehiclesTable } = await import("@workspace/db");
-  const { ne } = await import("drizzle-orm");
 
   const dbVehicles = await db
     .select({ id: vehiclesTable.id, license_plate: vehiclesTable.license_plate, make: vehiclesTable.make, model: vehiclesTable.model, status: vehiclesTable.status })

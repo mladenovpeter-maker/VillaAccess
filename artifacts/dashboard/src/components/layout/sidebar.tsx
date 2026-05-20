@@ -13,6 +13,7 @@ import {
   Menu,
   X,
   Building2,
+  DoorOpen,
   FlaskConical,
 } from "lucide-react";
 import { useState } from "react";
@@ -23,6 +24,7 @@ const navItems = [
   { href: "/reservations", label: "Reservations", icon: CalendarDays },
   { href: "/vehicles", label: "Vehicles", icon: Car },
   { href: "/access", label: "Access Control", icon: ShieldCheck },
+  { href: "/entrances", label: "Entrances", icon: DoorOpen },
   { href: "/cameras", label: "Cameras", icon: Camera },
   { href: "/events", label: "Event Stream", icon: Activity },
   { href: "/logs", label: "Logs", icon: ScrollText },

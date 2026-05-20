@@ -1,78 +1,96 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { villasTable, camerasTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { villasTable, reservationsTable } from "@workspace/db";
+import { eq, sql } from "drizzle-orm";
 import { requireAuth } from "./auth";
 import { z } from "zod";
 
 const router = Router();
 
-async function villaWithCameras(villa: typeof villasTable.$inferSelect) {
-  const cameras = await db.select({ id: camerasTable.id }).from(camerasTable).where(eq(camerasTable.villa_id, villa.id));
+async function enrichVilla(villa: typeof villasTable.$inferSelect) {
+  const [{ active }] = await db
+    .select({ active: sql<number>`count(*)::int` })
+    .from(reservationsTable)
+    .where(eq(reservationsTable.villa_id, villa.id));
+
   return {
     id: villa.id,
     name: villa.name,
-    gate_id: villa.gate_id,
-    door_id: villa.door_id,
-    camera_ids: cameras.map((c) => c.id),
+    description: villa.description,
+    location: villa.location,
     status: villa.status,
+    active_reservations: active,
+    created_at: villa.created_at,
+    updated_at: villa.updated_at,
   };
 }
 
+// ─── GET /villas ──────────────────────────────────────────────────────────────
+
 router.get("/", requireAuth, async (_req, res) => {
   const rows = await db.select().from(villasTable).orderBy(villasTable.name);
-  const result = await Promise.all(rows.map(villaWithCameras));
+  const result = await Promise.all(rows.map(enrichVilla));
   res.json(result);
 });
 
-router.post("/", requireAuth, async (req, res) => {
-  const schema = z.object({
-    name: z.string(),
-    gate_id: z.string(),
-    door_id: z.string(),
-    camera_ids: z.array(z.string()).optional(),
-    status: z.enum(["active", "inactive", "maintenance"]).optional(),
-  });
-  const body = schema.safeParse(req.body);
-  if (!body.success) { res.status(400).json({ detail: "Invalid request" }); return; }
-
-  const [villa] = await db.insert(villasTable).values({
-    name: body.data.name,
-    gate_id: body.data.gate_id,
-    door_id: body.data.door_id,
-    status: body.data.status ?? "active",
-  }).returning();
-
-  res.status(201).json(await villaWithCameras(villa));
-});
+// ─── GET /villas/:id ──────────────────────────────────────────────────────────
 
 router.get("/:id", requireAuth, async (req, res) => {
   const rows = await db.select().from(villasTable).where(eq(villasTable.id, req.params.id)).limit(1);
   if (!rows[0]) { res.status(404).json({ detail: "Not found" }); return; }
-  res.json(await villaWithCameras(rows[0]));
+  res.json(await enrichVilla(rows[0]));
 });
 
-router.put("/:id", requireAuth, async (req, res) => {
-  const schema = z.object({
-    name: z.string(),
-    gate_id: z.string(),
-    door_id: z.string(),
-    camera_ids: z.array(z.string()).optional(),
-    status: z.enum(["active", "inactive", "maintenance"]).optional(),
-  });
-  const body = schema.safeParse(req.body);
+// ─── POST /villas ─────────────────────────────────────────────────────────────
+
+const villaSchema = z.object({
+  name:        z.string().min(1),
+  description: z.string().optional(),
+  location:    z.string().optional(),
+  status:      z.enum(["active", "inactive", "maintenance"]).optional(),
+});
+
+router.post("/", requireAuth, async (req, res) => {
+  const body = villaSchema.safeParse(req.body);
   if (!body.success) { res.status(400).json({ detail: "Invalid request" }); return; }
 
-  const rows = await db.update(villasTable).set({
-    name: body.data.name,
-    gate_id: body.data.gate_id,
-    door_id: body.data.door_id,
-    status: body.data.status ?? "active",
-    updated_at: new Date(),
+  const [villa] = await db.insert(villasTable).values({
+    name:        body.data.name,
+    description: body.data.description ?? null,
+    location:    body.data.location ?? null,
+    status:      body.data.status ?? "active",
+  }).returning();
+
+  res.status(201).json(await enrichVilla(villa));
+});
+
+// ─── PUT /villas/:id ──────────────────────────────────────────────────────────
+
+router.put("/:id", requireAuth, async (req, res) => {
+  const rows = await db.select().from(villasTable).where(eq(villasTable.id, req.params.id)).limit(1);
+  if (!rows[0]) { res.status(404).json({ detail: "Not found" }); return; }
+
+  const body = villaSchema.safeParse(req.body);
+  if (!body.success) { res.status(400).json({ detail: "Invalid request" }); return; }
+
+  const [updated] = await db.update(villasTable).set({
+    name:        body.data.name,
+    description: body.data.description ?? null,
+    location:    body.data.location ?? null,
+    status:      body.data.status ?? rows[0].status,
+    updated_at:  new Date(),
   }).where(eq(villasTable.id, req.params.id)).returning();
 
+  res.json(await enrichVilla(updated));
+});
+
+// ─── DELETE /villas/:id ───────────────────────────────────────────────────────
+
+router.delete("/:id", requireAuth, async (req, res) => {
+  const rows = await db.select().from(villasTable).where(eq(villasTable.id, req.params.id)).limit(1);
   if (!rows[0]) { res.status(404).json({ detail: "Not found" }); return; }
-  res.json(await villaWithCameras(rows[0]));
+  await db.delete(villasTable).where(eq(villasTable.id, req.params.id));
+  res.status(204).send();
 });
 
 export { router as villasRouter };
