@@ -4,8 +4,8 @@ import path from "path";
 import { promises as fs } from "fs";
 import * as crypto from "crypto";
 import { db } from "@workspace/db";
-import { vehiclesTable, vehicleSnapshotsTable } from "@workspace/db";
-import { eq, and } from "drizzle-orm";
+import { vehiclesTable, vehicleSnapshotsTable, accessEventsTable, entrancesTable } from "@workspace/db";
+import { eq, and, sql, like, desc } from "drizzle-orm";
 import { requireAuth } from "./auth";
 import { z } from "zod";
 import { eventBus } from "../lib/events";
@@ -330,6 +330,79 @@ router.delete("/:id", requireAuth, async (req, res) => {
   }
 
   res.status(204).send();
+});
+
+// ─── GET /snapshots — paginated gallery ──────────────────────────────────────
+
+router.get("/", requireAuth, async (req, res) => {
+  const {
+    page = "1",
+    page_size = "24",
+    plate,
+    event_status,
+    vehicle_id,
+    camera_id,
+  } = req.query as Record<string, string>;
+
+  const pageNum = Math.max(1, parseInt(page));
+  const pageSizeNum = Math.min(100, Math.max(1, parseInt(page_size)));
+  const offset = (pageNum - 1) * pageSizeNum;
+
+  // Build conditions on vehicle_snapshots
+  const conditions: any[] = [];
+  if (vehicle_id) conditions.push(eq(vehicleSnapshotsTable.vehicle_id, vehicle_id));
+  if (camera_id) conditions.push(eq(vehicleSnapshotsTable.camera_id, camera_id));
+
+  // Join vehicles for plate filter
+  const plateFilter = plate ? plate.trim().toUpperCase() : null;
+
+  const rows = await db
+    .select({
+      id: vehicleSnapshotsTable.id,
+      vehicle_id: vehicleSnapshotsTable.vehicle_id,
+      access_event_id: vehicleSnapshotsTable.access_event_id,
+      camera_id: vehicleSnapshotsTable.camera_id,
+      snapshot_url: vehicleSnapshotsTable.snapshot_url,
+      thumbnail_url: vehicleSnapshotsTable.thumbnail_url,
+      confidence_score: vehicleSnapshotsTable.confidence_score,
+      ocr_text: vehicleSnapshotsTable.ocr_text,
+      ai_annotations: vehicleSnapshotsTable.ai_annotations,
+      is_primary: vehicleSnapshotsTable.is_primary,
+      captured_at: vehicleSnapshotsTable.captured_at,
+      vehicle_plate: vehiclesTable.license_plate,
+      vehicle_status: vehiclesTable.status,
+      event_status: accessEventsTable.status,
+      entrance_name: entrancesTable.name,
+    })
+    .from(vehicleSnapshotsTable)
+    .leftJoin(vehiclesTable, eq(vehicleSnapshotsTable.vehicle_id, vehiclesTable.id))
+    .leftJoin(accessEventsTable, eq(vehicleSnapshotsTable.access_event_id, accessEventsTable.id))
+    .leftJoin(entrancesTable, eq(accessEventsTable.entrance_id, entrancesTable.id))
+    .where(conditions.length ? and(...conditions) : undefined)
+    .orderBy(desc(vehicleSnapshotsTable.captured_at))
+    .limit(pageSizeNum + 1000) // fetch extra to allow in-memory plate filter — acceptable for gallery sizes
+    .offset(0);
+
+  // In-memory filter for plate (case-insensitive) and event_status
+  let filtered = rows;
+  if (plateFilter) {
+    filtered = filtered.filter((r) =>
+      r.vehicle_plate?.includes(plateFilter) || r.ocr_text?.toUpperCase().includes(plateFilter)
+    );
+  }
+  if (event_status) {
+    filtered = filtered.filter((r) => r.event_status === event_status);
+  }
+
+  const total = filtered.length;
+  const items = filtered.slice(offset, offset + pageSizeNum);
+
+  res.json({
+    items,
+    total,
+    page: pageNum,
+    page_size: pageSizeNum,
+  });
 });
 
 export { router as snapshotsRouter };

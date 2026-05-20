@@ -15,6 +15,12 @@ import EntrancesPage from "@/pages/entrances";
 import LogsPage from "@/pages/logs";
 import EventsPage from "@/pages/events";
 import MockPage from "@/pages/mock";
+import DiagnosticsPage from "@/pages/diagnostics";
+import SettingsPage from "@/pages/settings";
+import GalleryPage from "@/pages/gallery";
+import HealthPage from "@/pages/health";
+import TimelinePage from "@/pages/timeline";
+import ExportPage from "@/pages/export";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -49,6 +55,12 @@ function Router() {
       <Route path="/logs" component={() => <ProtectedRoute component={LogsPage} />} />
       <Route path="/events" component={() => <ProtectedRoute component={EventsPage} />} />
       <Route path="/mock" component={() => <ProtectedRoute component={MockPage} />} />
+      <Route path="/diagnostics" component={() => <ProtectedRoute component={DiagnosticsPage} />} />
+      <Route path="/settings" component={() => <ProtectedRoute component={SettingsPage} />} />
+      <Route path="/gallery" component={() => <ProtectedRoute component={GalleryPage} />} />
+      <Route path="/health" component={() => <ProtectedRoute component={HealthPage} />} />
+      <Route path="/timeline" component={() => <ProtectedRoute component={TimelinePage} />} />
+      <Route path="/export" component={() => <ProtectedRoute component={ExportPage} />} />
       <Route component={NotFound} />
     </Switch>
   );

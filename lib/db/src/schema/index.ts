@@ -11,3 +11,4 @@ export * from "./temp_credentials";
 export * from "./logs";
 export * from "./refresh_tokens";
 export * from "./events";
+export * from "./settings";

@@ -13,6 +13,9 @@ import { logsRouter } from "./logs";
 import { snapshotsRouter } from "./snapshots";
 import { eventsRouter } from "./events";
 import { mockRouter } from "./mock";
+import { settingsRouter } from "./settings";
+import { diagnosticsRouter } from "./diagnostics";
+import { exportRouter } from "./export";
 
 const router: IRouter = Router();
 
@@ -30,5 +33,8 @@ router.use("/logs", logsRouter);
 router.use("/snapshots", snapshotsRouter);
 router.use("/events", eventsRouter);
 router.use("/mock", mockRouter);
+router.use("/settings", settingsRouter);
+router.use("/diagnostics", diagnosticsRouter);
+router.use("/export", exportRouter);
 
 export default router;

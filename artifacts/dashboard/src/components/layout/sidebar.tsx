@@ -15,6 +15,12 @@ import {
   Building2,
   DoorOpen,
   FlaskConical,
+  Stethoscope,
+  Settings2,
+  Images,
+  HeartPulse,
+  GitCommitHorizontal,
+  Download,
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -32,10 +38,19 @@ export function Sidebar() {
     { href: "/reservations", label: t("nav.reservations"), icon: CalendarDays },
     { href: "/vehicles", label: t("nav.vehicles"), icon: Car },
     { href: "/access", label: t("nav.access"), icon: ShieldCheck },
+    { href: "/timeline", label: t("nav.timeline"), icon: GitCommitHorizontal },
     { href: "/entrances", label: t("nav.entrances"), icon: DoorOpen },
     { href: "/cameras", label: t("nav.cameras"), icon: Camera },
+    { href: "/gallery", label: t("nav.gallery"), icon: Images },
     { href: "/events", label: t("nav.events"), icon: Activity },
     { href: "/logs", label: t("nav.logs"), icon: ScrollText },
+  ];
+
+  const toolItems = [
+    { href: "/diagnostics", label: t("nav.diagnostics"), icon: Stethoscope },
+    { href: "/health", label: t("nav.health"), icon: HeartPulse },
+    { href: "/export", label: t("nav.export"), icon: Download },
+    { href: "/settings", label: t("nav.settings"), icon: Settings2 },
   ];
 
   const devItems = [
@@ -82,6 +97,31 @@ export function Sidebar() {
         <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-0.5">
           {navItems.map(({ href, label, icon: Icon }) => {
             const active = href === "/" ? location === "/" : location.startsWith(href);
+            return (
+              <Link key={href} href={href} onClick={() => setOpen(false)}>
+                <div
+                  className={cn(
+                    "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer",
+                    active
+                      ? "bg-primary/15 text-primary"
+                      : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                  )}
+                >
+                  <Icon className="w-4 h-4 shrink-0" />
+                  {label}
+                </div>
+              </Link>
+            );
+          })}
+
+          {/* Tools section */}
+          <div className="pt-3 pb-1">
+            <p className="px-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">
+              {t("nav.tools")}
+            </p>
+          </div>
+          {toolItems.map(({ href, label, icon: Icon }) => {
+            const active = location.startsWith(href);
             return (
               <Link key={href} href={href} onClick={() => setOpen(false)}>
                 <div
