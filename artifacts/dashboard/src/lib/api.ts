@@ -145,6 +145,8 @@ export const api = {
     request<T>(path, { method: "POST", body: JSON.stringify(body) }),
   put: <T>(path: string, body: unknown) =>
     request<T>(path, { method: "PUT", body: JSON.stringify(body) }),
+  patch: <T>(path: string, body: unknown) =>
+    request<T>(path, { method: "PATCH", body: JSON.stringify(body) }),
   delete: <T>(path: string) => request<T>(path, { method: "DELETE" }),
 };
 
@@ -218,10 +220,22 @@ export const vehiclesApi = {
   update: (id: string, body: Partial<Vehicle>) =>
     api.put<Vehicle>(`/vehicles/${id}`, body),
   delete: (id: string) => api.delete(`/vehicles/${id}`),
-  events: (id: string) =>
-    api.get<{ items: AccessEvent[]; total: number }>(
-      `/vehicles/${id}/events`
+  events: (id: string, page = 1, page_size = 20) =>
+    api.get<PaginatedEvents>(
+      `/vehicles/${id}/events?page=${page}&page_size=${page_size}`
     ),
+  snapshots: (id: string, page = 1, page_size = 20) =>
+    api.get<PaginatedSnapshots>(
+      `/vehicles/${id}/snapshots?page=${page}&page_size=${page_size}`
+    ),
+  addSnapshot: (id: string, body: Partial<VehicleSnapshot> & { snapshot_url: string }) =>
+    api.post<VehicleSnapshot>(`/vehicles/${id}/snapshots`, body),
+  blacklist: (id: string, reason: string) =>
+    api.patch<Vehicle>(`/vehicles/${id}/blacklist`, { reason }),
+  unblacklist: (id: string) =>
+    api.patch<Vehicle>(`/vehicles/${id}/unblacklist`, {}),
+  updateFingerprint: (id: string, fingerprint: AiFingerprint & { ocr_candidates: string[] }) =>
+    api.patch(`/vehicles/${id}/fingerprint`, fingerprint),
 };
 
 export const accessApi = {
@@ -305,20 +319,61 @@ export interface Reservation {
   pin_code: string | null;
 }
 
+export interface AiFingerprint {
+  embedding: number[];
+  model_version: string;
+  extracted_at: string;
+  plate_confidence: number;
+  vehicle_confidence: number;
+  ocr_candidates: string[];
+  color_histogram?: number[];
+}
+
 export interface Vehicle {
   id: string;
   license_plate: string;
+  plate_region: string | null;
   make: string | null;
   model: string | null;
   color: string | null;
   vehicle_type: string | null;
+  owner_name: string | null;
+  ai_fingerprint: AiFingerprint | null;
   confidence_score: number | null;
   status: string;
-  snapshot_url: string | null;
+  blacklist_reason: string | null;
+  blacklisted_at: string | null;
+  blacklisted_by: string | null;
   first_seen: string | null;
   last_seen: string | null;
   total_visits: number;
+  snapshot_url: string | null;
+  thumbnail_url: string | null;
   notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface VehicleSnapshot {
+  id: string;
+  vehicle_id: string;
+  access_event_id: string | null;
+  camera_id: string | null;
+  snapshot_url: string;
+  thumbnail_url: string | null;
+  plate_crop_url: string | null;
+  confidence_score: number | null;
+  ocr_text: string | null;
+  ai_annotations: Record<string, unknown> | null;
+  is_primary: boolean;
+  captured_at: string;
+}
+
+export interface PaginatedSnapshots {
+  items: VehicleSnapshot[];
+  total: number;
+  page: number;
+  page_size: number;
 }
 
 export interface AccessEvent {
