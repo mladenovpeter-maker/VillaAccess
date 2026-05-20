@@ -1,0 +1,613 @@
+PROJECT OVERVIEW
+
+Build a fully local-first AI-powered smart access control and vehicle recognition platform for vacation rental villas using Hikvision IP cameras, Linux server infrastructure, OCR, AI vehicle analytics, reservation logic, and gate/barrier control.
+
+The goal is to completely replace HikCentral Professional with a custom modern platform.
+
+The entire system should initially be WEB-BASED only.
+
+All management must happen through a secure web dashboard with:
+
+- login
+
+- username/password authentication
+
+- secure sessions/tokens
+
+- role-based access later
+
+- responsive mobile-friendly UI
+
+In the future, the same backend APIs and business logic should support:
+
+- React Native mobile app
+
+or
+
+- mobile wrappers
+
+but for now EVERYTHING must work through the web dashboard.
+
+====================================================
+
+MAIN SYSTEM GOALS
+
+====================================================
+
+The system must:
+
+- Detect vehicles entering/exiting the property
+
+- Read license plates using OCR
+
+- Perform vehicle analytics:
+
+  - color recognition
+
+  - make/model recognition
+
+  - SUV/sedan/van classification
+
+  - vehicle fingerprint embeddings
+
+- Work FULLY OFFLINE locally
+
+- Control gates/barriers using relay/alarm outputs
+
+- Integrate with Hikvision IP cameras through:
+
+  - RTSP
+
+  - ISAPI
+
+  - ONVIF if needed
+
+- Integrate with Hikvision video intercom/access terminals
+
+- Replace HikCentral completely
+
+- Provide a modern web dashboard for administrators
+
+====================================================
+
+SYSTEM SCALE
+
+====================================================
+
+- 4 IP cameras total
+
+- 4 Hikvision video intercom/access terminals
+
+- 8 rental villas
+
+- around 16 vehicles
+
+- around 100-300 vehicle events per day
+
+This is NOT a high-frequency traffic system.
+
+The architecture should optimize for:
+
+- event-based processing
+
+- snapshots
+
+- lightweight AI inference
+
+NOT continuous heavy video analysis.
+
+====================================================
+
+SERVER HARDWARE
+
+====================================================
+
+DEVELOPMENT:
+
+- Hetzner VPS
+
+- Ubuntu Server 24.04 LTS
+
+PRODUCTION:
+
+- HP EliteDesk 800 G5 Tiny
+
+- Intel i7-9700
+
+- 16GB or 32GB RAM
+
+- 500GB+ NVMe SSD
+
+- Ubuntu Server 24.04 LTS
+
+====================================================
+
+CAMERA REQUIREMENTS
+
+====================================================
+
+Use Hikvision IP cameras with:
+
+- RTSP
+
+- ISAPI
+
+- AcuSense
+
+- Smart Hybrid Light
+
+- preferably Alarm Output / Relay Output
+
+Some cameras may have:
+
+- NO/NC dry contact outputs
+
+- alarm outputs
+
+- relay trigger outputs
+
+The platform must support:
+
+- direct relay triggering through camera APIs
+
+or
+
+- external relay controllers if needed later.
+
+====================================================
+
+IMPORTANT ARCHITECTURE REQUIREMENTS
+
+====================================================
+
+The entire platform must be built as a FULLY CONTAINERIZED Docker stack.
+
+ALL services must run inside Docker containers.
+
+Use:
+
+- Docker
+
+- docker-compose
+
+as the main orchestration layer.
+
+The architecture MUST be portable between:
+
+- Hetzner VPS development server
+
+- local HP EliteDesk production server
+
+The system must support EASY MIGRATION between servers.
+
+Development workflow:
+
+Replit → GitHub → Linux Server
+
+Code must:
+
+- be committed to GitHub
+
+- be deployable through git pull
+
+- start with:
+
+docker compose up -d
+
+DO NOT rely on:
+
+- manual local installs
+
+- globally installed Python packages
+
+- non-containerized services
+
+- OS-specific dependencies
+
+Every component must be isolated and containerized:
+
+- FastAPI backend
+
+- PostgreSQL
+
+- React frontend
+
+- Redis
+
+- AI/OCR services
+
+- background workers
+
+The system must be:
+
+- production-ready
+
+- portable
+
+- reproducible
+
+- scalable
+
+====================================================
+
+ARCHITECTURE
+
+====================================================
+
+IP Camera
+
+   ↓ RTSP
+
+Linux Server
+
+   ├── FastAPI backend
+
+   ├── PostgreSQL database
+
+   ├── OCR engine
+
+   ├── Vehicle analytics
+
+   ├── Reservation logic
+
+   ├── Hikvision API integration
+
+   ├── Gate control logic
+
+   ├── AI confidence engine
+
+   └── React web dashboard
+
+====================================================
+
+WEB DASHBOARD REQUIREMENTS
+
+====================================================
+
+The entire system should be controllable through a secure web dashboard.
+
+Main dashboard features:
+
+1. Authentication
+
+- login screen
+
+- username/password
+
+- secure authentication
+
+- protected routes
+
+- JWT/session support
+
+2. Dashboard Home
+
+- live snapshots
+
+- OPEN GATE button
+
+- OPEN DOOR button
+
+- recent activity
+
+- manual override
+
+3. Reservations
+
+- guest management
+
+- check-in/check-out
+
+- assigned vehicles
+
+- temporary access windows
+
+4. Vehicle Management
+
+- license plates
+
+- vehicle color
+
+- make/model
+
+- snapshots
+
+- AI fingerprints
+
+- confidence scores
+
+5. Access Control
+
+- remote gate opening
+
+- remote door opening
+
+- relay control
+
+- temporary credentials
+
+- PIN generation
+
+6. Logs
+
+- access logs
+
+- denied attempts
+
+- timestamps
+
+- snapshots
+
+- override history
+
+7. Future Mobile Compatibility
+
+The backend APIs and architecture should later support:
+
+- React Native mobile app
+
+without major backend rewrites.
+
+====================================================
+
+OCR + AI REQUIREMENTS
+
+====================================================
+
+The system must NOT rely only on plate OCR.
+
+It must use multi-factor vehicle identity:
+
+- partial OCR
+
+- vehicle make/model
+
+- vehicle color
+
+- vehicle type
+
+- embeddings/fingerprints
+
+- historical matching
+
+Example:
+
+Plate should be:
+
+CB2020HR
+
+But OCR only sees:
+
+C?20?0?R
+
+The AI should still recognize:
+
+- Gray Mercedes GLE SUV
+
+- Similar vehicle fingerprint
+
+- Previous known visits
+
+And decide to open the gate if confidence score is high enough.
+
+====================================================
+
+AI CONFIDENCE ENGINE
+
+====================================================
+
+The system should calculate trust/confidence scores.
+
+Example logic:
+
+>90% confidence:
+
+- open automatically
+
+70-90% confidence:
+
+- ask admin confirmation
+
+<70% confidence:
+
+- deny access
+
+====================================================
+
+LOCAL AI REQUIREMENTS
+
+====================================================
+
+ALL AI processing must work LOCALLY.
+
+The system must continue functioning even if internet is unavailable.
+
+Do NOT use cloud AI APIs for realtime processing.
+
+AI inference should run locally on the Linux server.
+
+Use lightweight local models.
+
+====================================================
+
+SOFTWARE STACK
+
+====================================================
+
+Backend:
+
+- Python
+
+- FastAPI
+
+Database:
+
+- PostgreSQL
+
+Frontend:
+
+- React or Next.js
+
+AI:
+
+- PaddleOCR
+
+- YOLOv8
+
+- OpenCV
+
+- CLIP embeddings
+
+- ONNX runtime
+
+Containerization:
+
+- Docker
+
+- docker-compose
+
+Remote access:
+
+- Tailscale VPN
+
+Version control:
+
+- GitHub
+
+====================================================
+
+IMPORTANT OPTIMIZATION REQUIREMENTS
+
+====================================================
+
+Optimize for:
+
+- snapshots
+
+- event-based processing
+
+- lightweight inference
+
+Do NOT optimize for:
+
+- continuous heavy realtime AI video analysis
+
+- full recording processing
+
+Store:
+
+- snapshots
+
+- metadata
+
+- logs
+
+instead of full video recordings.
+
+====================================================
+
+DEVELOPMENT ROADMAP
+
+====================================================
+
+Phase 1:
+
+- Docker architecture
+
+- docker-compose setup
+
+- FastAPI backend
+
+- PostgreSQL
+
+- GitHub workflow
+
+- authentication system
+
+Phase 2:
+
+- React dashboard
+
+- login page
+
+- reservations
+
+- OPEN GATE endpoint
+
+- OPEN DOOR endpoint
+
+Phase 3:
+
+- Hikvision API integration
+
+- RTSP ingestion
+
+- snapshot pipeline
+
+Phase 4:
+
+- OCR integration
+
+- vehicle database
+
+- reservation validation
+
+Phase 5:
+
+- AI vehicle fingerprinting
+
+- confidence engine
+
+- make/model recognition
+
+- color recognition
+
+Phase 6:
+
+- logs
+
+- notifications
+
+- manual override workflows
+
+- production deployment
+
+====================================================
+
+GENERATE
+
+====================================================
+
+Generate:
+
+- complete project structure
+
+- Docker architecture
+
+- docker-compose.yml
+
+- backend services
+
+- frontend structure
+
+- API routes
+
+- database schema
+
+- authentication system
+
+- OCR pipeline
+
+- AI pipeline
+
+- Hikvision integration layer
+
+- relay/gate control architecture
+
+- deployment strategy
+
+- GitHub workflow
+
+- environment variable structure
+
+- production deployment instructions

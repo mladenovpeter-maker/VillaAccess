@@ -1,22 +1,499 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
-  version: 0.1.0
-  description: API specification
+  version: 1.0.0
+  description: Villa Access Control Platform API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
-    description: Health operations
+  - name: auth
+  - name: dashboard
+  - name: villas
+  - name: reservations
+  - name: vehicles
+  - name: access
+  - name: cameras
+  - name: logs
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    HealthStatus:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+
+    LoginRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+
+    AuthResult:
+      type: object
+      required: [access_token, token_type, user]
+      properties:
+        access_token:
+          type: string
+        token_type:
+          type: string
+        user:
+          $ref: '#/components/schemas/User'
+
+    User:
+      type: object
+      required: [id, username, role]
+      properties:
+        id:
+          type: string
+        username:
+          type: string
+        role:
+          type: string
+          enum: [admin, operator, viewer]
+        full_name:
+          type: string
+          nullable: true
+
+    DashboardStats:
+      type: object
+      required: [total_villas, active_reservations, total_vehicles, events_today, gates_online, cameras_online, denied_attempts_today, auto_opens_today]
+      properties:
+        total_villas:
+          type: integer
+        active_reservations:
+          type: integer
+        total_vehicles:
+          type: integer
+        events_today:
+          type: integer
+        gates_online:
+          type: integer
+        cameras_online:
+          type: integer
+        denied_attempts_today:
+          type: integer
+        auto_opens_today:
+          type: integer
+
+    AccessEvent:
+      type: object
+      required: [id, timestamp, event_type, status]
+      properties:
+        id:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        event_type:
+          type: string
+          enum: [entry, exit, denied, manual_open, override]
+        status:
+          type: string
+          enum: [allowed, denied, manual, pending]
+        confidence_score:
+          type: number
+          nullable: true
+        vehicle_id:
+          type: string
+          nullable: true
+        license_plate:
+          type: string
+          nullable: true
+        villa_id:
+          type: string
+          nullable: true
+        camera_id:
+          type: string
+          nullable: true
+        snapshot_url:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        vehicle:
+          $ref: '#/components/schemas/Vehicle'
+          nullable: true
+        villa:
+          $ref: '#/components/schemas/Villa'
+          nullable: true
+
+    PaginatedAccessEvents:
+      type: object
+      required: [items, total, page, page_size]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/AccessEvent'
+        total:
+          type: integer
+        page:
+          type: integer
+        page_size:
+          type: integer
+
+    Villa:
+      type: object
+      required: [id, name, gate_id, door_id, status]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        gate_id:
+          type: string
+        door_id:
+          type: string
+        camera_ids:
+          type: array
+          items:
+            type: string
+        status:
+          type: string
+          enum: [active, inactive, maintenance]
+
+    VillaInput:
+      type: object
+      required: [name, gate_id, door_id]
+      properties:
+        name:
+          type: string
+        gate_id:
+          type: string
+        door_id:
+          type: string
+        camera_ids:
+          type: array
+          items:
+            type: string
+        status:
+          type: string
+          enum: [active, inactive, maintenance]
+
+    Reservation:
+      type: object
+      required: [id, guest_name, villa_id, check_in, check_out, status]
+      properties:
+        id:
+          type: string
+        guest_name:
+          type: string
+        guest_phone:
+          type: string
+          nullable: true
+        guest_email:
+          type: string
+          nullable: true
+        villa_id:
+          type: string
+        check_in:
+          type: string
+          format: date-time
+        check_out:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum: [upcoming, active, completed, cancelled]
+        vehicle_ids:
+          type: array
+          items:
+            type: string
+        notes:
+          type: string
+          nullable: true
+        pin_code:
+          type: string
+          nullable: true
+        villa:
+          $ref: '#/components/schemas/Villa'
+          nullable: true
+        vehicles:
+          type: array
+          items:
+            $ref: '#/components/schemas/Vehicle'
+
+    ReservationInput:
+      type: object
+      required: [guest_name, villa_id, check_in, check_out]
+      properties:
+        guest_name:
+          type: string
+        guest_phone:
+          type: string
+          nullable: true
+        guest_email:
+          type: string
+          nullable: true
+        villa_id:
+          type: string
+        check_in:
+          type: string
+          format: date-time
+        check_out:
+          type: string
+          format: date-time
+        vehicle_ids:
+          type: array
+          items:
+            type: string
+        notes:
+          type: string
+          nullable: true
+
+    Vehicle:
+      type: object
+      required: [id, license_plate, status, total_visits]
+      properties:
+        id:
+          type: string
+        license_plate:
+          type: string
+        make:
+          type: string
+          nullable: true
+        model:
+          type: string
+          nullable: true
+        color:
+          type: string
+          nullable: true
+        vehicle_type:
+          type: string
+          enum: [sedan, suv, van, truck, motorcycle, other]
+          nullable: true
+        confidence_score:
+          type: number
+          nullable: true
+        status:
+          type: string
+          enum: [known, unknown, blacklisted]
+        snapshot_url:
+          type: string
+          nullable: true
+        first_seen:
+          type: string
+          format: date-time
+          nullable: true
+        last_seen:
+          type: string
+          format: date-time
+          nullable: true
+        total_visits:
+          type: integer
+        notes:
+          type: string
+          nullable: true
+
+    VehicleInput:
+      type: object
+      required: [license_plate]
+      properties:
+        license_plate:
+          type: string
+        make:
+          type: string
+          nullable: true
+        model:
+          type: string
+          nullable: true
+        color:
+          type: string
+          nullable: true
+        vehicle_type:
+          type: string
+          enum: [sedan, suv, van, truck, motorcycle, other]
+          nullable: true
+        status:
+          type: string
+          enum: [known, unknown, blacklisted]
+        notes:
+          type: string
+          nullable: true
+
+    Camera:
+      type: object
+      required: [id, name, ip_address, status]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        ip_address:
+          type: string
+        rtsp_url:
+          type: string
+          nullable: true
+        villa_id:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [online, offline, error]
+        last_snapshot:
+          type: string
+          format: date-time
+          nullable: true
+        snapshot_url:
+          type: string
+          nullable: true
+        model:
+          type: string
+          nullable: true
+
+    GateAction:
+      type: object
+      required: [id, villa_id, action_type, triggered_by, timestamp, success]
+      properties:
+        id:
+          type: string
+        villa_id:
+          type: string
+        action_type:
+          type: string
+          enum: [open_gate, open_door, close_gate, close_door]
+        triggered_by:
+          type: string
+          enum: [ai_auto, manual, schedule, api]
+        operator_id:
+          type: string
+          nullable: true
+        timestamp:
+          type: string
+          format: date-time
+        success:
+          type: boolean
+        notes:
+          type: string
+          nullable: true
+
+    OpenGateRequest:
+      type: object
+      required: [villa_id]
+      properties:
+        villa_id:
+          type: string
+        duration_seconds:
+          type: integer
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+
+    OpenDoorRequest:
+      type: object
+      required: [villa_id]
+      properties:
+        villa_id:
+          type: string
+        duration_seconds:
+          type: integer
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+
+    TempCredential:
+      type: object
+      required: [id, reservation_id, pin_code, valid_from, valid_until, status]
+      properties:
+        id:
+          type: string
+        reservation_id:
+          type: string
+        pin_code:
+          type: string
+        valid_from:
+          type: string
+          format: date-time
+        valid_until:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum: [active, expired, revoked]
+
+    TempCredentialRequest:
+      type: object
+      required: [reservation_id]
+      properties:
+        reservation_id:
+          type: string
+        duration_hours:
+          type: integer
+
+    LogEntry:
+      type: object
+      required: [id, timestamp, log_type, message]
+      properties:
+        id:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        log_type:
+          type: string
+          enum: [access, denied, override, system, ai]
+        message:
+          type: string
+        vehicle_id:
+          type: string
+          nullable: true
+        villa_id:
+          type: string
+          nullable: true
+        operator_id:
+          type: string
+          nullable: true
+        snapshot_url:
+          type: string
+          nullable: true
+        confidence_score:
+          type: number
+          nullable: true
+
+    PaginatedLogs:
+      type: object
+      required: [items, total, page, page_size]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/LogEntry'
+        total:
+          type: integer
+        page:
+          type: integer
+        page_size:
+          type: integer
+
+    Error:
+      type: object
+      required: [detail]
+      properties:
+        detail:
+          type: string
+
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,13 +501,624 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
-components:
-  schemas:
-    HealthStatus:
-      type: object
-      properties:
-        status:
-          type: string
-      required:
-        - status
 
+  /auth/login:
+    post:
+      operationId: login
+      tags: [auth]
+      summary: Login with username and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResult'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/me:
+    get:
+      operationId: getMe
+      tags: [auth]
+      summary: Get current user
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+
+  /auth/logout:
+    post:
+      operationId: authLogout
+      tags: [auth]
+      summary: Logout
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Logged out
+
+  /dashboard/stats:
+    get:
+      operationId: getDashboardStats
+      tags: [dashboard]
+      summary: Get dashboard summary statistics
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Dashboard statistics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardStats'
+
+  /dashboard/recent-events:
+    get:
+      operationId: getRecentEvents
+      tags: [dashboard]
+      summary: Get recent access events for the dashboard feed
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: Recent events list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AccessEvent'
+
+  /villas:
+    get:
+      operationId: getVillas
+      tags: [villas]
+      summary: List all villas
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of villas
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Villa'
+    post:
+      operationId: createVilla
+      tags: [villas]
+      summary: Create a new villa
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VillaInput'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Villa'
+
+  /villas/{id}:
+    get:
+      operationId: getVilla
+      tags: [villas]
+      summary: Get a villa by ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Villa
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Villa'
+    put:
+      operationId: updateVilla
+      tags: [villas]
+      summary: Update a villa
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VillaInput'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Villa'
+
+  /reservations:
+    get:
+      operationId: getReservations
+      tags: [reservations]
+      summary: List reservations
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [upcoming, active, completed, cancelled]
+        - name: villa_id
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: page_size
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: Reservations list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Reservation'
+    post:
+      operationId: createReservation
+      tags: [reservations]
+      summary: Create a reservation
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReservationInput'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Reservation'
+
+  /reservations/{id}:
+    get:
+      operationId: getReservation
+      tags: [reservations]
+      summary: Get a reservation by ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Reservation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Reservation'
+    put:
+      operationId: updateReservation
+      tags: [reservations]
+      summary: Update a reservation
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReservationInput'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Reservation'
+    delete:
+      operationId: deleteReservation
+      tags: [reservations]
+      summary: Delete a reservation
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Deleted
+
+  /vehicles:
+    get:
+      operationId: getVehicles
+      tags: [vehicles]
+      summary: List vehicles
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [known, unknown, blacklisted]
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: page_size
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: Vehicles list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Vehicle'
+    post:
+      operationId: createVehicle
+      tags: [vehicles]
+      summary: Register a new vehicle
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VehicleInput'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Vehicle'
+
+  /vehicles/{id}:
+    get:
+      operationId: getVehicle
+      tags: [vehicles]
+      summary: Get a vehicle by ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Vehicle
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Vehicle'
+    put:
+      operationId: updateVehicle
+      tags: [vehicles]
+      summary: Update a vehicle
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VehicleInput'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Vehicle'
+    delete:
+      operationId: deleteVehicle
+      tags: [vehicles]
+      summary: Delete a vehicle
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Deleted
+
+  /vehicles/{id}/events:
+    get:
+      operationId: listVehicleEvents
+      tags: [vehicles]
+      summary: Get access events for a specific vehicle
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Vehicle access events
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedAccessEvents'
+
+  /access/events:
+    get:
+      operationId: getAccessEvents
+      tags: [access]
+      summary: Get all access events with filters
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [allowed, denied, manual, pending]
+        - name: villa_id
+          in: query
+          schema:
+            type: string
+        - name: event_type
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: page_size
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: Access events
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedAccessEvents'
+
+  /access/open-gate:
+    post:
+      operationId: openGate
+      tags: [access]
+      summary: Manually open a gate for a villa
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OpenGateRequest'
+      responses:
+        '200':
+          description: Gate opened
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GateAction'
+
+  /access/open-door:
+    post:
+      operationId: openDoor
+      tags: [access]
+      summary: Manually open a door/intercom for a villa
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OpenDoorRequest'
+      responses:
+        '200':
+          description: Door opened
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GateAction'
+
+  /access/temp-credentials:
+    get:
+      operationId: getTempCredentials
+      tags: [access]
+      summary: List temporary credentials
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: reservation_id
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Credentials list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TempCredential'
+    post:
+      operationId: generateTempCredential
+      tags: [access]
+      summary: Generate temporary PIN credentials for a reservation
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TempCredentialRequest'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TempCredential'
+
+  /cameras:
+    get:
+      operationId: getCameras
+      tags: [cameras]
+      summary: List all cameras
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Cameras list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Camera'
+
+  /cameras/{id}/snapshot:
+    get:
+      operationId: getCameraSnapshot
+      tags: [cameras]
+      summary: Get latest snapshot info from a camera
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Camera snapshot
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Camera'
+
+  /logs:
+    get:
+      operationId: getLogs
+      tags: [logs]
+      summary: Get system logs
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: log_type
+          in: query
+          schema:
+            type: string
+            enum: [access, denied, override, system, ai]
+        - name: villa_id
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: page_size
+          in: query
+          schema:
+            type: integer
+            default: 50
+      responses:
+        '200':
+          description: Logs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedLogs'

@@ -1,0 +1,108 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: villa_access
+      POSTGRES_USER: villa_user
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme_in_production}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U villa_user -d villa_access"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: .
+      dockerfile: docker/backend/Dockerfile
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://villa_user:${POSTGRES_PASSWORD:-changeme_in_production}@postgres:5432/villa_access
+      REDIS_URL: redis://redis:6379
+      NODE_ENV: production
+      PORT: 5000
+      JWT_SECRET: ${JWT_SECRET:-change_this_secret_in_production}
+    ports:
+      - "5000:5000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - snapshots_data:/app/snapshots
+
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/frontend/Dockerfile
+    restart: unless-stopped
+    environment:
+      VITE_API_URL: http://backend:5000
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+
+  ai-worker:
+    build:
+      context: .
+      dockerfile: docker/ai-worker/Dockerfile
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://villa_user:${POSTGRES_PASSWORD:-changeme_in_production}@postgres:5432/villa_access
+      REDIS_URL: redis://redis:6379
+      SNAPSHOTS_DIR: /app/snapshots
+      AI_CONFIDENCE_HIGH: 90
+      AI_CONFIDENCE_MEDIUM: 70
+    volumes:
+      - snapshots_data:/app/snapshots
+      - ai_models:/app/models
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+
+  nginx:
+    image: nginx:alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./docker/nginx/certs:/etc/nginx/certs:ro
+    depends_on:
+      - frontend
+      - backend
+
+volumes:
+  postgres_data:
+  redis_data:
+  snapshots_data:
+  ai_models:
