@@ -4,6 +4,7 @@ import { camerasTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { requireAuth } from "./auth";
 import { createAdapter } from "../lib/cameras/factory";
+import { eventBus } from "../lib/events";
 
 const router = Router();
 
@@ -166,6 +167,16 @@ router.get("/:id/snapshot", requireAuth, async (req, res) => {
       .where(eq(camerasTable.id, c.id));
   }
 
+  if (result.success && result.snapshot_url) {
+    void eventBus.publish({
+      event_type: "ai.snapshot_uploaded",
+      camera_id: c.id,
+      villa_id: c.villa_id ?? undefined,
+      source: "camera",
+      payload: { snapshot_url: result.snapshot_url, mime_type: result.mime_type, file_size_bytes: result.file_size_bytes },
+    });
+  }
+
   res.json({ camera_id: c.id, camera_name: c.name, ...result });
 });
 
@@ -206,6 +217,16 @@ router.post("/:id/gate", requireAuth, async (req: any, res) => {
   const adapter = createAdapter(c);
   const result = await adapter.open_gate();
 
+  void eventBus.publish({
+    event_type: result.success ? "gate.opened" : "gate.failed",
+    severity: result.success ? "info" : "error",
+    camera_id: c.id,
+    villa_id: c.villa_id ?? undefined,
+    operator_id: req.user?.id,
+    source: "dashboard",
+    payload: { ...result, camera_name: c.name },
+  });
+
   res.json({
     camera_id: c.id,
     camera_name: c.name,
@@ -223,6 +244,16 @@ router.post("/:id/door", requireAuth, async (req: any, res) => {
 
   const adapter = createAdapter(c);
   const result = await adapter.open_door();
+
+  void eventBus.publish({
+    event_type: result.success ? "gate.door_opened" : "gate.door_failed",
+    severity: result.success ? "info" : "error",
+    camera_id: c.id,
+    villa_id: c.villa_id ?? undefined,
+    operator_id: req.user?.id,
+    source: "dashboard",
+    payload: { ...result, camera_name: c.name },
+  });
 
   res.json({
     camera_id: c.id,

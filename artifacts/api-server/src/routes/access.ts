@@ -4,6 +4,7 @@ import { accessEventsTable, gateActionsTable, tempCredentialsTable, villasTable 
 import { eq, and, sql } from "drizzle-orm";
 import { requireAuth } from "./auth";
 import { z } from "zod";
+import { eventBus } from "../lib/events";
 
 const router = Router();
 
@@ -69,6 +70,21 @@ router.post("/open-gate", requireAuth, async (req: any, res) => {
     notes: `Gate opened manually by ${req.user?.username ?? "operator"}`,
   });
 
+  void eventBus.publish({
+    event_type: "gate.opened",
+    villa_id: body.data.villa_id,
+    operator_id: req.user?.id,
+    source: "dashboard",
+    payload: { action_type: "open_gate", triggered_by: "manual", operator: req.user?.username },
+  });
+  void eventBus.publish({
+    event_type: "access.manual_override",
+    villa_id: body.data.villa_id,
+    operator_id: req.user?.id,
+    source: "dashboard",
+    payload: { action: "open_gate", notes: body.data.notes ?? null },
+  });
+
   res.json({
     id: action.id,
     villa_id: action.villa_id,
@@ -107,6 +123,21 @@ router.post("/open-door", requireAuth, async (req: any, res) => {
     status: "manual",
     villa_id: body.data.villa_id,
     notes: `Door opened manually by ${req.user?.username ?? "operator"}`,
+  });
+
+  void eventBus.publish({
+    event_type: "gate.door_opened",
+    villa_id: body.data.villa_id,
+    operator_id: req.user?.id,
+    source: "dashboard",
+    payload: { action_type: "open_door", triggered_by: "manual", operator: req.user?.username },
+  });
+  void eventBus.publish({
+    event_type: "access.manual_override",
+    villa_id: body.data.villa_id,
+    operator_id: req.user?.id,
+    source: "dashboard",
+    payload: { action: "open_door", notes: body.data.notes ?? null },
   });
 
   res.json({

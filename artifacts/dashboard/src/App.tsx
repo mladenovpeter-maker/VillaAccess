@@ -12,6 +12,7 @@ import VehiclesPage from "@/pages/vehicles";
 import AccessControlPage from "@/pages/access";
 import CamerasPage from "@/pages/cameras";
 import LogsPage from "@/pages/logs";
+import EventsPage from "@/pages/events";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -43,6 +44,7 @@ function Router() {
       <Route path="/access" component={() => <ProtectedRoute component={AccessControlPage} />} />
       <Route path="/cameras" component={() => <ProtectedRoute component={CamerasPage} />} />
       <Route path="/logs" component={() => <ProtectedRoute component={LogsPage} />} />
+      <Route path="/events" component={() => <ProtectedRoute component={EventsPage} />} />
       <Route component={NotFound} />
     </Switch>
   );

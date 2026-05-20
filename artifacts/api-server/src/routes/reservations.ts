@@ -4,6 +4,7 @@ import { reservationsTable, reservationVehiclesTable, villasTable, vehiclesTable
 import { eq, and, inArray } from "drizzle-orm";
 import { requireAuth } from "./auth";
 import { z } from "zod";
+import { eventBus } from "../lib/events";
 
 const router = Router();
 
@@ -105,7 +106,23 @@ router.post("/", requireAuth, async (req, res) => {
     );
   }
 
-  res.status(201).json(await enrichReservation(reservation));
+  const enriched = await enrichReservation(reservation);
+
+  void eventBus.publish({
+    event_type: "reservation.created",
+    reservation_id: reservation.id,
+    villa_id: body.data.villa_id,
+    operator_id: (req as any).user?.id,
+    source: "dashboard",
+    payload: {
+      guest_name: body.data.guest_name,
+      check_in: body.data.check_in,
+      check_out: body.data.check_out,
+      villa_name: enriched.villa?.name ?? undefined,
+    },
+  });
+
+  res.status(201).json(enriched);
 });
 
 router.get("/:id", requireAuth, async (req, res) => {
@@ -140,6 +157,19 @@ router.put("/:id", requireAuth, async (req, res) => {
   }).where(eq(reservationsTable.id, req.params.id)).returning();
 
   if (!rows[0]) { res.status(404).json({ detail: "Not found" }); return; }
+
+  void eventBus.publish({
+    event_type: "reservation.updated",
+    reservation_id: req.params.id,
+    villa_id: body.data.villa_id,
+    operator_id: (req as any).user?.id,
+    source: "dashboard",
+    payload: {
+      guest_name: body.data.guest_name,
+      check_in: body.data.check_in,
+      check_out: body.data.check_out,
+    },
+  });
 
   if (body.data.vehicle_ids !== undefined) {
     await db.delete(reservationVehiclesTable).where(eq(reservationVehiclesTable.reservation_id, req.params.id));

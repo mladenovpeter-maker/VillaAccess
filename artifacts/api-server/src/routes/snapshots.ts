@@ -8,6 +8,7 @@ import { vehiclesTable, vehicleSnapshotsTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import { requireAuth } from "./auth";
 import { z } from "zod";
+import { eventBus } from "../lib/events";
 
 const router = Router();
 
@@ -237,6 +238,21 @@ router.post(
       .from(vehiclesTable)
       .where(eq(vehiclesTable.id, vehicle.id))
       .limit(1);
+
+    void eventBus.publish({
+      event_type: "ai.snapshot_uploaded",
+      vehicle_id: vehicle.id,
+      camera_id: camera_id ?? undefined,
+      source: "dashboard",
+      payload: {
+        snapshot_url: snapshotUrl,
+        is_primary,
+        ocr_hint: ocr_hint ?? null,
+        license_plate: updatedVehicle.license_plate,
+        file_size_bytes: req.file.size,
+        ocr_status: "pending",
+      },
+    });
 
     res.status(201).json({
       snapshot: serializeSnapshot(snapshot),

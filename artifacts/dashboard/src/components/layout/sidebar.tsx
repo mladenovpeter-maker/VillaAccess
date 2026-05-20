@@ -8,6 +8,7 @@ import {
   ShieldCheck,
   Camera,
   ScrollText,
+  Activity,
   LogOut,
   Menu,
   X,
@@ -22,6 +23,7 @@ const navItems = [
   { href: "/vehicles", label: "Vehicles", icon: Car },
   { href: "/access", label: "Access Control", icon: ShieldCheck },
   { href: "/cameras", label: "Cameras", icon: Camera },
+  { href: "/events", label: "Event Stream", icon: Activity },
   { href: "/logs", label: "Logs", icon: ScrollText },
 ];
 

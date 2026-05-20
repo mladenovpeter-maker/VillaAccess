@@ -4,6 +4,7 @@ import { vehiclesTable, vehicleSnapshotsTable, accessEventsTable } from "@worksp
 import { eq, or, ilike, sql, desc, and } from "drizzle-orm";
 import { requireAuth } from "./auth";
 import { z } from "zod";
+import { eventBus } from "../lib/events";
 
 const router = Router();
 
@@ -131,6 +132,19 @@ router.post("/", requireAuth, async (req, res) => {
     })
     .returning();
 
+  void eventBus.publish({
+    event_type: "vehicle.created",
+    vehicle_id: vehicle.id,
+    operator_id: (req as any).user?.id,
+    source: "dashboard",
+    payload: {
+      license_plate: vehicle.license_plate,
+      status: vehicle.status,
+      make: vehicle.make ?? undefined,
+      model: vehicle.model ?? undefined,
+    },
+  });
+
   res.status(201).json(serializeVehicle(vehicle));
 });
 
@@ -189,6 +203,18 @@ router.put("/:id", requireAuth, async (req, res) => {
     res.status(404).json({ detail: "Vehicle not found" });
     return;
   }
+
+  void eventBus.publish({
+    event_type: "vehicle.updated",
+    vehicle_id: rows[0].id,
+    operator_id: (req as any).user?.id,
+    source: "dashboard",
+    payload: {
+      license_plate: rows[0].license_plate,
+      status: rows[0].status,
+    },
+  });
+
   res.json(serializeVehicle(rows[0]));
 });
 
@@ -227,6 +253,19 @@ router.patch("/:id/blacklist", requireAuth, async (req: any, res) => {
     res.status(404).json({ detail: "Vehicle not found" });
     return;
   }
+
+  void eventBus.publish({
+    event_type: "vehicle.blacklisted",
+    severity: "warning",
+    vehicle_id: rows[0].id,
+    operator_id: (req as any).user?.id,
+    source: "dashboard",
+    payload: {
+      license_plate: rows[0].license_plate,
+      reason: body.data.reason,
+    },
+  });
+
   res.json(serializeVehicle(rows[0]));
 });
 
@@ -249,6 +288,15 @@ router.patch("/:id/unblacklist", requireAuth, async (req, res) => {
     res.status(404).json({ detail: "Vehicle not found" });
     return;
   }
+
+  void eventBus.publish({
+    event_type: "vehicle.unblacklisted",
+    vehicle_id: rows[0].id,
+    operator_id: (req as any).user?.id,
+    source: "dashboard",
+    payload: { license_plate: rows[0].license_plate },
+  });
+
   res.json(serializeVehicle(rows[0]));
 });
 
@@ -293,6 +341,18 @@ router.patch("/:id/fingerprint", requireAuth, async (req, res) => {
     res.status(404).json({ detail: "Vehicle not found" });
     return;
   }
+  void eventBus.publish({
+    event_type: "ai.fingerprint_updated",
+    vehicle_id: rows[0].id,
+    source: "ai_worker",
+    payload: {
+      license_plate: rows[0].license_plate,
+      model_version: body.data.model_version,
+      plate_confidence: body.data.plate_confidence,
+      vehicle_confidence: body.data.vehicle_confidence,
+    },
+  });
+
   res.json({ id: rows[0].id, fingerprint_updated: true, model_version: body.data.model_version });
 });
 

@@ -9,6 +9,7 @@ import { accessRouter } from "./access";
 import { camerasRouter } from "./cameras";
 import { logsRouter } from "./logs";
 import { snapshotsRouter } from "./snapshots";
+import { eventsRouter } from "./events";
 
 const router: IRouter = Router();
 
@@ -22,5 +23,6 @@ router.use("/access", accessRouter);
 router.use("/cameras", camerasRouter);
 router.use("/logs", logsRouter);
 router.use("/snapshots", snapshotsRouter);
+router.use("/events", eventsRouter);
 
 export default router;

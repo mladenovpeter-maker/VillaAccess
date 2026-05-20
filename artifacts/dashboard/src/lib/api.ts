@@ -490,3 +490,67 @@ export interface LogEntry {
   snapshot_url: string | null;
   confidence_score: number | null;
 }
+
+// ─── Domain Events ────────────────────────────────────────────────────────────
+
+export interface DomainEvent {
+  id: string;
+  event_type: string;
+  category: "vehicle" | "gate" | "access" | "ai" | "reservation";
+  severity: "info" | "warning" | "error" | "critical";
+  payload: Record<string, unknown> | null;
+  vehicle_id: string | null;
+  villa_id: string | null;
+  camera_id: string | null;
+  reservation_id: string | null;
+  operator_id: string | null;
+  source: string;
+  created_at: string;
+}
+
+export interface PaginatedEvents {
+  items: DomainEvent[];
+  total: number;
+  page: number;
+  page_size: number;
+}
+
+export interface EventStats {
+  period: string;
+  total: number;
+  by_category: Record<string, number>;
+  by_severity: Record<string, number>;
+  sse_clients: number;
+}
+
+export const eventsApi = {
+  list: (params?: {
+    category?: string;
+    event_type?: string;
+    severity?: string;
+    vehicle_id?: string;
+    villa_id?: string;
+    camera_id?: string;
+    source?: string;
+    since?: string;
+    until?: string;
+    page?: number;
+    page_size?: number;
+  }) => {
+    const entries = Object.entries(params ?? {}).filter(
+      ([, v]) => v !== undefined && v !== "" && v !== null,
+    );
+    const qs = entries.length
+      ? `?${new URLSearchParams(entries as [string, string][]).toString()}`
+      : "";
+    return authedFetch<PaginatedEvents>(`/events${qs}`);
+  },
+
+  stats: () => authedFetch<EventStats>("/events/stats"),
+
+  streamUrl: (token: string, category?: string): string => {
+    const params = new URLSearchParams({ token });
+    if (category && category !== "all") params.set("category", category);
+    return `${BASE}/events/stream?${params.toString()}`;
+  },
+};
