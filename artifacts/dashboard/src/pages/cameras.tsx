@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  camerasApi, villasApi,
+  camerasApi,
   type Camera, type CameraStatusResult, type CameraActionResult,
 } from "@/lib/api";
 import { AppLayout } from "@/components/layout/app-layout";
@@ -16,13 +16,14 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { useTranslation } from "react-i18next";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const STATUS_CFG = {
-  online:  { label: "Online",  cls: "bg-green-500/15 text-green-400 border-green-500/20",  Icon: Wifi        },
-  offline: { label: "Offline", cls: "bg-red-500/15 text-red-400 border-red-500/20",        Icon: WifiOff     },
-  error:   { label: "Error",   cls: "bg-yellow-500/15 text-yellow-400 border-yellow-500/20", Icon: AlertCircle },
+const STATUS_KEYS = {
+  online:  { cls: "bg-green-500/15 text-green-400 border-green-500/20",   Icon: Wifi        },
+  offline: { cls: "bg-red-500/15 text-red-400 border-red-500/20",         Icon: WifiOff     },
+  error:   { cls: "bg-yellow-500/15 text-yellow-400 border-yellow-500/20", Icon: AlertCircle },
 };
 
 const PROTOCOL_LABELS: Record<string, string> = {
@@ -44,7 +45,7 @@ function formatLatency(ms: number | null) {
   return ms < 1000 ? `${ms} ms` : `${(ms / 1000).toFixed(1)} s`;
 }
 
-// ─── Action button with loading + result feedback ─────────────────────────────
+// ─── Action button ─────────────────────────────────────────────────────────────
 
 function ActionButton({
   icon: Icon, label, onClick, variant = "outline", disabled = false, loading = false,
@@ -74,35 +75,31 @@ function ActionButton({
 
 // ─── CameraCard ───────────────────────────────────────────────────────────────
 
-function CameraCard({ camera, villaName }: { camera: Camera; villaName?: string }) {
+function CameraCard({ camera }: { camera: Camera }) {
   const qc = useQueryClient();
   const { toast } = useToast();
+  const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
   const [liveSnap, setLiveSnap] = useState<string | null>(null);
 
-  const cfg = STATUS_CFG[camera.status] ?? STATUS_CFG.offline;
+  const cfg = STATUS_KEYS[camera.status as keyof typeof STATUS_KEYS] ?? STATUS_KEYS.offline;
   const StatusIcon = cfg.Icon;
+  const statusLabel = t(`cameras.${camera.status as "online" | "offline" | "error"}`);
 
-  // ── Snapshot mutation ──────────────────────────────────────────────────────
   const snapMut = useMutation({
     mutationFn: () => camerasApi.snapshot(camera.id),
     onSuccess: (r: CameraActionResult) => {
       if (r.success && r.snapshot_url) {
         setLiveSnap(r.snapshot_url);
-        toast({ title: `Snapshot captured`, description: camera.name });
+        toast({ title: t("cameras.snapshotCaptured"), description: camera.name });
       } else {
-        toast({
-          title: "Snapshot failed",
-          description: r.error ?? "Camera did not respond",
-          variant: "destructive",
-        });
+        toast({ title: t("cameras.snapshotFailed"), description: r.error ?? "Camera did not respond", variant: "destructive" });
       }
       qc.invalidateQueries({ queryKey: ["cameras"] });
     },
-    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onError: (e: any) => toast({ title: t("common.error"), description: e.message, variant: "destructive" }),
   });
 
-  // ── Status mutation ────────────────────────────────────────────────────────
   const statusMut = useMutation({
     mutationFn: () => camerasApi.status(camera.id),
     onSuccess: (r: CameraStatusResult) => {
@@ -115,37 +112,35 @@ function CameraCard({ camera, villaName }: { camera: Camera; villaName?: string 
       });
       qc.invalidateQueries({ queryKey: ["cameras"] });
     },
-    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onError: (e: any) => toast({ title: t("common.error"), description: e.message, variant: "destructive" }),
   });
 
-  // ── Gate mutation ──────────────────────────────────────────────────────────
   const gateMut = useMutation({
     mutationFn: () => camerasApi.gate(camera.id),
     onSuccess: (r: CameraActionResult) => {
       toast({
-        title: r.success ? "Gate opened" : "Gate failed",
+        title: r.success ? t("cameras.gateOpened") : t("cameras.gateFailed"),
         description: r.success
           ? `${camera.name} — relay ${r.target_no} (${r.mode})`
           : r.error ?? "No response from camera",
         variant: r.success ? "default" : "destructive",
       });
     },
-    onError: (e: any) => toast({ title: "Gate error", description: e.message, variant: "destructive" }),
+    onError: (e: any) => toast({ title: t("cameras.gateError"), description: e.message, variant: "destructive" }),
   });
 
-  // ── Door mutation ──────────────────────────────────────────────────────────
   const doorMut = useMutation({
     mutationFn: () => camerasApi.door(camera.id),
     onSuccess: (r: CameraActionResult) => {
       toast({
-        title: r.success ? "Door opened" : "Door failed",
+        title: r.success ? t("cameras.doorOpened") : t("cameras.doorFailed"),
         description: r.success
           ? `${camera.name} — relay ${r.target_no} (${r.mode})`
           : r.error ?? "No response from camera",
         variant: r.success ? "default" : "destructive",
       });
     },
-    onError: (e: any) => toast({ title: "Door error", description: e.message, variant: "destructive" }),
+    onError: (e: any) => toast({ title: t("cameras.doorError"), description: e.message, variant: "destructive" }),
   });
 
   const displaySnap = liveSnap ?? camera.snapshot_url;
@@ -159,36 +154,26 @@ function CameraCard({ camera, villaName }: { camera: Camera; villaName?: string 
       {/* Snapshot / feed area */}
       <div className="relative bg-black/40 aspect-video flex items-center justify-center border-b border-border overflow-hidden">
         {displaySnap ? (
-          <img
-            src={displaySnap}
-            alt={camera.name}
-            className="w-full h-full object-cover"
-            key={displaySnap}
-          />
+          <img src={displaySnap} alt={camera.name} className="w-full h-full object-cover" key={displaySnap} />
         ) : (
           <div className="flex flex-col items-center gap-2 text-muted-foreground">
             <CameraIcon className="w-8 h-8" />
-            <span className="text-xs">{camera.status === "online" ? "No snapshot yet" : "No signal"}</span>
+            <span className="text-xs">{camera.status === "online" ? t("cameras.noSnapshot") : t("cameras.noSignal")}</span>
           </div>
         )}
 
         {/* Status badge */}
-        <div className={cn(
-          "absolute top-2 right-2 flex items-center gap-1.5 text-xs px-2 py-1 rounded-full border font-medium",
-          cfg.cls,
-        )}>
+        <div className={cn("absolute top-2 right-2 flex items-center gap-1.5 text-xs px-2 py-1 rounded-full border font-medium", cfg.cls)}>
           <StatusIcon className="w-3 h-3" />
-          {cfg.label}
+          {statusLabel}
         </div>
 
-        {/* REC indicator */}
         {camera.status === "online" && (
           <div className="absolute top-2 left-2 flex items-center gap-1.5 text-xs px-2 py-0.5 rounded-full bg-red-600/80 text-white font-medium">
             <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />REC
           </div>
         )}
 
-        {/* Latency pill */}
         {camera.last_status_latency_ms != null && camera.status === "online" && (
           <div className="absolute bottom-2 right-2 bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded font-mono">
             {formatLatency(camera.last_status_latency_ms)}
@@ -197,14 +182,11 @@ function CameraCard({ camera, villaName }: { camera: Camera; villaName?: string 
       </div>
 
       <CardContent className="p-3 space-y-3">
-        {/* Name + villa + protocol */}
+        {/* Name + protocol */}
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
             <div className="font-medium text-sm text-foreground truncate">{camera.name}</div>
             <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-              {villaName && (
-                <span className="text-xs text-muted-foreground">{villaName}</span>
-              )}
               <Badge variant="outline" className="text-[10px] h-4 px-1 py-0 font-mono border-border/60">
                 {PROTOCOL_LABELS[camera.protocol] ?? camera.protocol}
               </Badge>
@@ -223,7 +205,7 @@ function CameraCard({ camera, villaName }: { camera: Camera; villaName?: string 
           {camera.last_snapshot && (
             <div className="flex items-center gap-1.5">
               <Clock className="w-3 h-3" />
-              Last snap {formatTime(camera.last_snapshot)}
+              {t("cameras.lastSnap")} {formatTime(camera.last_snapshot)}
             </div>
           )}
           {camera.model && <div className="flex items-center gap-1.5"><Cpu className="w-3 h-3" />{camera.model}</div>}
@@ -231,36 +213,10 @@ function CameraCard({ camera, villaName }: { camera: Camera; villaName?: string 
 
         {/* Action buttons */}
         <div className="flex flex-wrap gap-1.5">
-          <ActionButton
-            icon={ImageIcon}
-            label="Snapshot"
-            onClick={() => snapMut.mutate()}
-            loading={snapMut.isPending}
-            disabled={anyLoading}
-          />
-          <ActionButton
-            icon={Activity}
-            label="Ping"
-            onClick={() => statusMut.mutate()}
-            loading={statusMut.isPending}
-            disabled={anyLoading}
-          />
-          <ActionButton
-            icon={GitMerge}
-            label="Gate"
-            onClick={() => gateMut.mutate()}
-            loading={gateMut.isPending}
-            disabled={anyLoading}
-            variant="secondary"
-          />
-          <ActionButton
-            icon={DoorOpen}
-            label="Door"
-            onClick={() => doorMut.mutate()}
-            loading={doorMut.isPending}
-            disabled={anyLoading}
-            variant="secondary"
-          />
+          <ActionButton icon={ImageIcon} label={t("cameras.snapshot")} onClick={() => snapMut.mutate()} loading={snapMut.isPending} disabled={anyLoading} />
+          <ActionButton icon={Activity} label={t("cameras.ping")} onClick={() => statusMut.mutate()} loading={statusMut.isPending} disabled={anyLoading} />
+          <ActionButton icon={GitMerge} label={t("cameras.gate")} onClick={() => gateMut.mutate()} loading={gateMut.isPending} disabled={anyLoading} variant="secondary" />
+          <ActionButton icon={DoorOpen} label={t("cameras.door")} onClick={() => doorMut.mutate()} loading={doorMut.isPending} disabled={anyLoading} variant="secondary" />
         </div>
 
         {/* Expandable device info */}
@@ -271,7 +227,7 @@ function CameraCard({ camera, villaName }: { camera: Camera; villaName?: string 
               onClick={() => setExpanded((v) => !v)}
             >
               {expanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-              Device info
+              {t("cameras.deviceInfo")}
             </button>
             {expanded && (
               <div className="mt-2 text-xs space-y-1 text-muted-foreground border border-border/40 rounded-lg p-2.5 bg-muted/20">
@@ -296,7 +252,6 @@ function CameraCard({ camera, villaName }: { camera: Camera; villaName?: string 
           </div>
         )}
 
-        {/* Access control mode indicator */}
         {camera.use_access_control && (
           <div className="text-[10px] text-blue-400 bg-blue-500/10 border border-blue-500/20 rounded px-2 py-1">
             Access control mode · Door {camera.gate_no} / {camera.door_no}
@@ -316,6 +271,7 @@ function CameraCard({ camera, villaName }: { camera: Camera; villaName?: string 
 
 export default function CamerasPage() {
   const { toast } = useToast();
+  const { t } = useTranslation();
   const qc = useQueryClient();
 
   const { data: cameras = [], isLoading } = useQuery({
@@ -324,18 +280,10 @@ export default function CamerasPage() {
     refetchInterval: 30_000,
   });
 
-  const { data: villas = [] } = useQuery({
-    queryKey: ["villas"],
-    queryFn: () => import("@/lib/api").then((m) => m.villasApi.list()),
-  });
-
-  const villaMap = Object.fromEntries(villas.map((v) => [v.id, v.name]));
-
   const online  = cameras.filter((c) => c.status === "online").length;
   const offline = cameras.filter((c) => c.status === "offline").length;
   const error   = cameras.filter((c) => c.status === "error").length;
 
-  // Ping all cameras at once
   const pingAllMut = useMutation({
     mutationFn: async () => {
       const results = await Promise.allSettled(cameras.map((c) => camerasApi.status(c.id)));
@@ -343,14 +291,14 @@ export default function CamerasPage() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["cameras"] });
-      toast({ title: "Status refresh complete", description: `${cameras.length} cameras checked` });
+      toast({ title: t("cameras.statusRefresh"), description: t("cameras.camerasChecked", { count: cameras.length }) });
     },
   });
 
   return (
     <AppLayout
-      title="Cameras"
-      subtitle={`${cameras.length} cameras · ${online} online`}
+      title={t("cameras.title")}
+      subtitle={`${cameras.length} ${t("cameras.total")} · ${online} ${t("cameras.online")}`}
       actions={
         <Button
           variant="outline"
@@ -359,7 +307,7 @@ export default function CamerasPage() {
           disabled={pingAllMut.isPending || cameras.length === 0}
         >
           <RefreshCw className={cn("w-4 h-4 mr-2", pingAllMut.isPending && "animate-spin")} />
-          Ping All
+          {t("cameras.pingAll")}
         </Button>
       }
     >
@@ -368,19 +316,19 @@ export default function CamerasPage() {
         <div className="flex flex-wrap gap-4 text-sm">
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-green-400" />
-            <span className="text-muted-foreground">{online} online</span>
+            <span className="text-muted-foreground">{online} {t("cameras.online")}</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-red-400" />
-            <span className="text-muted-foreground">{offline} offline</span>
+            <span className="text-muted-foreground">{offline} {t("cameras.offline")}</span>
           </div>
           {error > 0 && (
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-yellow-400" />
-              <span className="text-muted-foreground">{error} error</span>
+              <span className="text-muted-foreground">{error} {t("cameras.error")}</span>
             </div>
           )}
-          <span className="text-muted-foreground">{cameras.length} total</span>
+          <span className="text-muted-foreground">{cameras.length} {t("cameras.total")}</span>
         </div>
 
         {/* Camera grid */}
@@ -393,24 +341,20 @@ export default function CamerasPage() {
         ) : cameras.length === 0 ? (
           <Card>
             <CardContent className="py-16 text-center text-muted-foreground">
-              No cameras configured.
+              {t("cameras.noCameras")}
             </CardContent>
           </Card>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {cameras.map((c) => (
-              <CameraCard
-                key={c.id}
-                camera={c}
-                villaName={c.entrance_id ? villaMap[c.entrance_id] : undefined}
-              />
+              <CameraCard key={c.id} camera={c} />
             ))}
           </div>
         )}
 
         {/* Protocol legend */}
         <div className="text-xs text-muted-foreground border border-border rounded-lg px-4 py-3 bg-muted/20 space-y-1">
-          <div className="font-medium text-foreground/70 mb-1.5">Supported protocols</div>
+          <div className="font-medium text-foreground/70 mb-1.5">{t("cameras.supportedProtocols")}</div>
           <div className="grid grid-cols-2 gap-x-6 gap-y-1">
             <div><span className="font-mono text-primary">Hikvision ISAPI</span> — snapshot, gate relay, status</div>
             <div><span className="font-mono text-muted-foreground/60">Dahua HTTP</span> — stub (planned)</div>

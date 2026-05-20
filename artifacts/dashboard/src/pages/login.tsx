@@ -4,10 +4,12 @@ import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Building2, Eye, EyeOff, Loader2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 export default function LoginPage() {
   const { login } = useAuth();
   const [, setLocation] = useLocation();
+  const { t } = useTranslation();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -22,7 +24,7 @@ export default function LoginPage() {
       await login(username, password);
       setLocation("/");
     } catch (err: any) {
-      setError(err.message || "Invalid credentials");
+      setError(err.message || t("login.invalidCredentials"));
     } finally {
       setLoading(false);
     }
@@ -36,16 +38,16 @@ export default function LoginPage() {
           <div className="w-14 h-14 rounded-2xl bg-primary/20 border border-primary/30 flex items-center justify-center mb-4">
             <Building2 className="w-7 h-7 text-primary" />
           </div>
-          <h1 className="text-2xl font-bold text-foreground">Villa Access</h1>
-          <p className="text-muted-foreground text-sm mt-1">Control Center</p>
+          <h1 className="text-2xl font-bold text-foreground">{t("login.title")}</h1>
+          <p className="text-muted-foreground text-sm mt-1">{t("login.subtitle")}</p>
         </div>
 
         {/* Card */}
         <div className="bg-card border border-border rounded-2xl p-6 shadow-xl">
-          <h2 className="text-base font-semibold text-foreground mb-5">Sign in to your account</h2>
+          <h2 className="text-base font-semibold text-foreground mb-5">{t("login.signIn")}</h2>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-xs font-medium text-muted-foreground mb-1.5">Username</label>
+              <label className="block text-xs font-medium text-muted-foreground mb-1.5">{t("login.username")}</label>
               <Input
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
@@ -56,7 +58,7 @@ export default function LoginPage() {
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-muted-foreground mb-1.5">Password</label>
+              <label className="block text-xs font-medium text-muted-foreground mb-1.5">{t("login.password")}</label>
               <div className="relative">
                 <Input
                   type={showPassword ? "text" : "password"}
@@ -85,13 +87,13 @@ export default function LoginPage() {
 
             <Button type="submit" className="w-full" disabled={loading}>
               {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              Sign in
+              {t("login.signInButton")}
             </Button>
           </form>
         </div>
 
         <p className="text-center text-xs text-muted-foreground mt-6">
-          Villa Access Control System v1.0
+          {t("login.version")}
         </p>
       </div>
     </div>

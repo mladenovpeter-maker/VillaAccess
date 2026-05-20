@@ -8,16 +8,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight, Activity, ShieldX, Settings, Brain, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "react-i18next";
 
-const logTypeConfig: Record<string, { label: string; className: string; icon: React.ElementType }> = {
-  access: { label: "Access", className: "text-green-400", icon: Activity },
-  denied: { label: "Denied", className: "text-red-400", icon: ShieldX },
-  override: { label: "Override", className: "text-yellow-400", icon: AlertTriangle },
-  system: { label: "System", className: "text-blue-400", icon: Settings },
-  ai: { label: "AI", className: "text-purple-400", icon: Brain },
+const logTypeConfig: Record<string, { className: string; icon: React.ElementType }> = {
+  access:   { className: "text-green-400",  icon: Activity },
+  denied:   { className: "text-red-400",    icon: ShieldX },
+  override: { className: "text-yellow-400", icon: AlertTriangle },
+  system:   { className: "text-blue-400",   icon: Settings },
+  ai:       { className: "text-purple-400", icon: Brain },
 };
 
 export default function LogsPage() {
+  const { t } = useTranslation();
   const [page, setPage] = useState(1);
   const [typeFilter, setTypeFilter] = useState("all");
   const [villaFilter, setVillaFilter] = useState("all");
@@ -39,29 +41,29 @@ export default function LogsPage() {
   const villaMap = Object.fromEntries(villas.map((v) => [v.id, v.name]));
 
   return (
-    <AppLayout title="Logs" subtitle="System and access event logs">
+    <AppLayout title={t("logs.title")} subtitle={t("logs.subtitle")}>
       <div className="max-w-6xl mx-auto space-y-4">
         {/* Filters */}
         <div className="flex gap-3 flex-wrap items-center">
           <Select value={typeFilter} onValueChange={(v) => { setTypeFilter(v); setPage(1); }}>
-            <SelectTrigger className="w-36"><SelectValue placeholder="Log type" /></SelectTrigger>
+            <SelectTrigger className="w-36"><SelectValue placeholder={t("logs.logType")} /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All types</SelectItem>
-              <SelectItem value="access">Access</SelectItem>
-              <SelectItem value="denied">Denied</SelectItem>
-              <SelectItem value="override">Override</SelectItem>
-              <SelectItem value="system">System</SelectItem>
-              <SelectItem value="ai">AI</SelectItem>
+              <SelectItem value="all">{t("logs.allTypes")}</SelectItem>
+              <SelectItem value="access">{t("logs.types.access")}</SelectItem>
+              <SelectItem value="denied">{t("logs.types.denied")}</SelectItem>
+              <SelectItem value="override">{t("logs.types.override")}</SelectItem>
+              <SelectItem value="system">{t("logs.types.system")}</SelectItem>
+              <SelectItem value="ai">{t("logs.types.ai")}</SelectItem>
             </SelectContent>
           </Select>
           <Select value={villaFilter} onValueChange={(v) => { setVillaFilter(v); setPage(1); }}>
-            <SelectTrigger className="w-44"><SelectValue placeholder="All villas" /></SelectTrigger>
+            <SelectTrigger className="w-44"><SelectValue placeholder={t("logs.allVillas")} /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All villas</SelectItem>
+              <SelectItem value="all">{t("logs.allVillas")}</SelectItem>
               {villas.map((v) => <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>)}
             </SelectContent>
           </Select>
-          <span className="text-sm text-muted-foreground ml-auto">{total.toLocaleString()} log entries</span>
+          <span className="text-sm text-muted-foreground ml-auto">{total.toLocaleString()} {t("logs.logEntries")}</span>
         </div>
 
         {/* Logs */}
@@ -72,7 +74,7 @@ export default function LogsPage() {
                 {Array.from({ length: 10 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
               </div>
             ) : !logsData?.items.length ? (
-              <div className="py-16 text-center text-muted-foreground">No logs found.</div>
+              <div className="py-16 text-center text-muted-foreground">{t("logs.noLogs")}</div>
             ) : (
               <div className="divide-y divide-border/30 font-mono text-xs">
                 {logsData.items.map((log) => {
@@ -108,7 +110,7 @@ export default function LogsPage() {
             <Button variant="outline" size="sm" onClick={() => setPage(p => p - 1)} disabled={page <= 1}>
               <ChevronLeft className="w-4 h-4" />
             </Button>
-            <span className="text-sm text-muted-foreground">Page {page} of {totalPages}</span>
+            <span className="text-sm text-muted-foreground">{t("logs.page")} {page} {t("logs.of")} {totalPages}</span>
             <Button variant="outline" size="sm" onClick={() => setPage(p => p + 1)} disabled={page >= totalPages}>
               <ChevronRight className="w-4 h-4" />
             </Button>

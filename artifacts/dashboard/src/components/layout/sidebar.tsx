@@ -18,26 +18,29 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-
-const navItems = [
-  { href: "/", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/reservations", label: "Reservations", icon: CalendarDays },
-  { href: "/vehicles", label: "Vehicles", icon: Car },
-  { href: "/access", label: "Access Control", icon: ShieldCheck },
-  { href: "/entrances", label: "Entrances", icon: DoorOpen },
-  { href: "/cameras", label: "Cameras", icon: Camera },
-  { href: "/events", label: "Event Stream", icon: Activity },
-  { href: "/logs", label: "Logs", icon: ScrollText },
-];
-
-const devItems = [
-  { href: "/mock", label: "Mock Camera Mode", icon: FlaskConical },
-];
+import { useTranslation } from "react-i18next";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 
 export function Sidebar() {
   const [location] = useLocation();
   const { user, logout } = useAuth();
   const [open, setOpen] = useState(false);
+  const { t } = useTranslation();
+
+  const navItems = [
+    { href: "/", label: t("nav.dashboard"), icon: LayoutDashboard },
+    { href: "/reservations", label: t("nav.reservations"), icon: CalendarDays },
+    { href: "/vehicles", label: t("nav.vehicles"), icon: Car },
+    { href: "/access", label: t("nav.access"), icon: ShieldCheck },
+    { href: "/entrances", label: t("nav.entrances"), icon: DoorOpen },
+    { href: "/cameras", label: t("nav.cameras"), icon: Camera },
+    { href: "/events", label: t("nav.events"), icon: Activity },
+    { href: "/logs", label: t("nav.logs"), icon: ScrollText },
+  ];
+
+  const devItems = [
+    { href: "/mock", label: t("nav.mockMode"), icon: FlaskConical },
+  ];
 
   return (
     <>
@@ -71,7 +74,7 @@ export function Sidebar() {
           </div>
           <div>
             <div className="font-bold text-sm text-sidebar-foreground leading-none">Villa Access</div>
-            <div className="text-xs text-muted-foreground mt-0.5">Control Center</div>
+            <div className="text-xs text-muted-foreground mt-0.5">{t("nav.controlCenter")}</div>
           </div>
         </div>
 
@@ -99,7 +102,7 @@ export function Sidebar() {
           {/* Dev section */}
           <div className="pt-3 pb-1">
             <p className="px-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">
-              Development
+              {t("nav.development")}
             </p>
           </div>
           {devItems.map(({ href, label, icon: Icon }) => {
@@ -122,6 +125,9 @@ export function Sidebar() {
           })}
         </nav>
 
+        {/* Language switcher */}
+        <LanguageSwitcher />
+
         {/* User */}
         <div className="border-t border-sidebar-border px-4 py-4">
           <div className="flex items-center gap-3 mb-3">
@@ -142,7 +148,7 @@ export function Sidebar() {
             onClick={() => void logout()}
           >
             <LogOut className="w-4 h-4 mr-2" />
-            Sign out
+            {t("nav.signOut")}
           </Button>
         </div>
       </aside>

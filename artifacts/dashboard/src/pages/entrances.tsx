@@ -45,6 +45,7 @@ import {
   AlertTriangle,
   Loader2,
 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -107,21 +108,22 @@ async function apiFetch(path: string, options?: RequestInit) {
 // ─── Status helpers ───────────────────────────────────────────────────────────
 
 function StatusBadge({ status }: { status: Entrance["status"] }) {
+  const { t } = useTranslation();
   if (status === "active")
     return (
       <Badge className="bg-emerald-500/15 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/15">
-        <CheckCircle2 className="w-3 h-3 mr-1" /> Active
+        <CheckCircle2 className="w-3 h-3 mr-1" /> {t("entrances.status.active")}
       </Badge>
     );
   if (status === "maintenance")
     return (
       <Badge className="bg-amber-500/15 text-amber-400 border-amber-500/20 hover:bg-amber-500/15">
-        <AlertTriangle className="w-3 h-3 mr-1" /> Maintenance
+        <AlertTriangle className="w-3 h-3 mr-1" /> {t("entrances.status.maintenance")}
       </Badge>
     );
   return (
     <Badge className="bg-zinc-500/15 text-zinc-400 border-zinc-500/20 hover:bg-zinc-500/15">
-      <XCircle className="w-3 h-3 mr-1" /> Inactive
+      <XCircle className="w-3 h-3 mr-1" /> {t("entrances.status.inactive")}
     </Badge>
   );
 }
@@ -139,6 +141,7 @@ function EntranceDialog({
 }) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { t } = useTranslation();
   const [form, setForm] = useState<EntranceForm>(
     entrance
       ? {
@@ -174,23 +177,23 @@ function EntranceDialog({
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["entrances"] });
-      toast({ title: entrance ? "Entrance updated" : "Entrance created" });
+      toast({ title: entrance ? t("entrances.updated") : t("entrances.created") });
       onClose();
     },
-    onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onError: (e: Error) => toast({ title: t("common.error"), description: e.message, variant: "destructive" }),
   });
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>{entrance ? "Edit Entrance" : "Add Entrance"}</DialogTitle>
+          <DialogTitle>{entrance ? t("entrances.editEntrance") : t("entrances.addEntrance")}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 py-2">
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-2 space-y-1.5">
-              <Label>Name *</Label>
+              <Label>{t("entrances.entranceName")}</Label>
               <Input
                 placeholder="e.g. Main Gate"
                 value={form.name}
@@ -199,7 +202,7 @@ function EntranceDialog({
             </div>
 
             <div className="col-span-2 space-y-1.5">
-              <Label>Description</Label>
+              <Label>{t("entrances.description")}</Label>
               <Input
                 placeholder="Brief description"
                 value={form.description}
@@ -208,7 +211,7 @@ function EntranceDialog({
             </div>
 
             <div className="col-span-2 space-y-1.5">
-              <Label>Physical Location</Label>
+              <Label>{t("entrances.location")}</Label>
               <Input
                 placeholder="e.g. Front gate on Jl. Utama"
                 value={form.location}
@@ -217,21 +220,21 @@ function EntranceDialog({
             </div>
 
             <div className="space-y-1.5">
-              <Label>Status</Label>
+              <Label>{t("common.status")}</Label>
               <Select value={form.status} onValueChange={(v) => set("status", v)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="inactive">Inactive</SelectItem>
-                  <SelectItem value="maintenance">Maintenance</SelectItem>
+                  <SelectItem value="active">{t("entrances.status.active")}</SelectItem>
+                  <SelectItem value="inactive">{t("entrances.status.inactive")}</SelectItem>
+                  <SelectItem value="maintenance">{t("entrances.status.maintenance")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div className="space-y-1.5">
-              <Label>Gate Relay Port</Label>
+              <Label>{t("entrances.gateRelayPort")}</Label>
               <Input
                 type="number"
                 placeholder="80"
@@ -241,7 +244,7 @@ function EntranceDialog({
             </div>
 
             <div className="col-span-2 space-y-1.5">
-              <Label>Gate Relay IP</Label>
+              <Label>{t("entrances.gateRelayIp")}</Label>
               <Input
                 placeholder="e.g. 192.168.1.50 (optional)"
                 value={form.gate_relay_ip}
@@ -250,7 +253,7 @@ function EntranceDialog({
             </div>
 
             <div className="col-span-2 space-y-1.5">
-              <Label>Notes</Label>
+              <Label>{t("common.notes")}</Label>
               <Textarea
                 placeholder="Additional notes…"
                 className="resize-none"
@@ -263,13 +266,13 @@ function EntranceDialog({
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button variant="outline" onClick={onClose}>{t("common.cancel")}</Button>
           <Button
             onClick={() => mutation.mutate()}
             disabled={!form.name || mutation.isPending}
           >
             {mutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-            {entrance ? "Save changes" : "Create entrance"}
+            {entrance ? t("entrances.saveChanges") : t("entrances.createEntrance")}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -282,6 +285,7 @@ function EntranceDialog({
 export default function EntrancesPage() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { t } = useTranslation();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<Entrance | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Entrance | null>(null);
@@ -296,16 +300,15 @@ export default function EntrancesPage() {
     mutationFn: (id: string) => apiFetch(`/entrances/${id}`, { method: "DELETE" }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["entrances"] });
-      toast({ title: "Entrance deleted" });
+      toast({ title: t("entrances.deleted") });
       setDeleteTarget(null);
     },
-    onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onError: (e: Error) => toast({ title: t("common.error"), description: e.message, variant: "destructive" }),
   });
 
   const active = entrances.filter((e) => e.status === "active").length;
   const inactive = entrances.filter((e) => e.status !== "active").length;
   const totalCameras = entrances.reduce((s, e) => s + e.camera_count, 0);
-  const totalIntercoms = entrances.reduce((s, e) => s + e.intercom_count, 0);
 
   function openEdit(e: Entrance) {
     setEditTarget(e);
@@ -319,12 +322,12 @@ export default function EntrancesPage() {
 
   return (
     <AppLayout
-      title="Entrances"
-      subtitle="Shared physical access points — cameras and intercoms are assigned here, not to individual villas"
+      title={t("entrances.title")}
+      subtitle={t("entrances.subtitle")}
       actions={
         <Button onClick={openCreate} className="gap-2">
           <Plus className="w-4 h-4" />
-          Add Entrance
+          {t("entrances.addEntrance")}
         </Button>
       }
     >
@@ -332,10 +335,10 @@ export default function EntrancesPage() {
         {/* Stats row */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {[
-            { label: "Total Entrances", value: entrances.length, color: "text-foreground" },
-            { label: "Active", value: active, color: "text-emerald-400" },
-            { label: "Offline / Maintenance", value: inactive, color: "text-zinc-400" },
-            { label: "Cameras Deployed", value: totalCameras, color: "text-sky-400" },
+            { label: t("entrances.totalEntrances"), value: entrances.length, color: "text-foreground" },
+            { label: t("entrances.active"), value: active, color: "text-emerald-400" },
+            { label: t("entrances.offlineMaintenance"), value: inactive, color: "text-zinc-400" },
+            { label: t("entrances.camerasDeployed"), value: totalCameras, color: "text-sky-400" },
           ].map(({ label, value, color }) => (
             <div key={label} className="bg-card border border-border rounded-xl p-4">
               <div className={`text-2xl font-bold ${color}`}>{value}</div>
@@ -347,7 +350,7 @@ export default function EntrancesPage() {
         {/* List */}
         {isLoading ? (
           <div className="flex items-center justify-center py-20 text-muted-foreground gap-2">
-            <Loader2 className="w-5 h-5 animate-spin" /> Loading entrances…
+            <Loader2 className="w-5 h-5 animate-spin" /> {t("entrances.loading")}
           </div>
         ) : entrances.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-24 text-center space-y-3">
@@ -355,13 +358,11 @@ export default function EntrancesPage() {
               <DoorOpen className="w-7 h-7 text-primary/60" />
             </div>
             <div>
-              <p className="font-medium text-foreground">No entrances yet</p>
-              <p className="text-sm text-muted-foreground">
-                Add a shared entrance to start assigning cameras and intercoms.
-              </p>
+              <p className="font-medium text-foreground">{t("entrances.noEntrances")}</p>
+              <p className="text-sm text-muted-foreground">{t("entrances.noEntrancesDesc")}</p>
             </div>
             <Button onClick={openCreate} variant="outline" size="sm" className="gap-2">
-              <Plus className="w-4 h-4" /> Add first entrance
+              <Plus className="w-4 h-4" /> {t("entrances.addFirst")}
             </Button>
           </div>
         ) : (
@@ -401,14 +402,14 @@ export default function EntrancesPage() {
                     <Camera className="w-4 h-4 text-sky-400" />
                     <span className="font-medium text-foreground">{entrance.camera_count}</span>
                     <span className="text-muted-foreground text-xs">
-                      {entrance.camera_count === 1 ? "camera" : "cameras"}
+                      {entrance.camera_count === 1 ? t("entrances.camera_one") : t("entrances.camera_other")}
                     </span>
                   </div>
                   <div className="flex items-center gap-1.5 text-sm">
                     <Phone className="w-4 h-4 text-violet-400" />
                     <span className="font-medium text-foreground">{entrance.intercom_count}</span>
                     <span className="text-muted-foreground text-xs">
-                      {entrance.intercom_count === 1 ? "intercom" : "intercoms"}
+                      {entrance.intercom_count === 1 ? t("entrances.intercom_one") : t("entrances.intercom_other")}
                     </span>
                   </div>
                   {entrance.gate_relay_ip && (
@@ -426,7 +427,7 @@ export default function EntrancesPage() {
                     className="flex-1 gap-1.5"
                     onClick={() => openEdit(entrance)}
                   >
-                    <Pencil className="w-3.5 h-3.5" /> Edit
+                    <Pencil className="w-3.5 h-3.5" /> {t("common.edit")}
                   </Button>
                   <Button
                     variant="outline"
@@ -457,14 +458,13 @@ export default function EntrancesPage() {
       <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete entrance?</AlertDialogTitle>
+            <AlertDialogTitle>{t("entrances.deleteTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
-              <strong>{deleteTarget?.name}</strong> will be permanently deleted. Cameras and
-              intercoms assigned here will become unassigned but will not be deleted.
+              <strong>{deleteTarget?.name}</strong> {t("entrances.deleteDesc")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
               onClick={() => deleteTarget && deleteMutation.mutate(deleteTarget.id)}
@@ -472,7 +472,7 @@ export default function EntrancesPage() {
               {deleteMutation.isPending ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
-                "Delete"
+                t("common.delete")
               )}
             </AlertDialogAction>
           </AlertDialogFooter>

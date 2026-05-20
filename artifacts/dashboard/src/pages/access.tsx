@@ -7,9 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { DoorOpen, ShieldCheck, AlertTriangle, Activity, ChevronLeft, ChevronRight } from "lucide-react";
+import { DoorOpen, ShieldCheck, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { useTranslation } from "react-i18next";
 
 const statusColors: Record<string, string> = {
   allowed: "bg-green-500/15 text-green-400 border-green-500/20",
@@ -20,6 +21,7 @@ const statusColors: Record<string, string> = {
 
 export default function AccessControlPage() {
   const { toast } = useToast();
+  const { t } = useTranslation();
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState("all");
   const [entranceFilter, setEntranceFilter] = useState("all");
@@ -41,11 +43,14 @@ export default function AccessControlPage() {
     mutationFn: ({ type, entrance_id }: { type: "gate" | "door"; entrance_id: string }) =>
       type === "gate" ? accessApi.openGate(entrance_id) : accessApi.openDoor(entrance_id),
     onSuccess: (_, { type }) => {
-      toast({ title: `${type === "gate" ? "Gate" : "Door"} opened`, description: "Command sent successfully." });
+      toast({
+        title: type === "gate" ? t("access.opened_gate") : t("access.opened_door"),
+        description: t("access.commandSent"),
+      });
       setGateDialog(null);
       refetch();
     },
-    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onError: (e: any) => toast({ title: t("common.error"), description: e.message, variant: "destructive" }),
   });
 
   const total = eventsData?.total ?? 0;
@@ -54,18 +59,18 @@ export default function AccessControlPage() {
   const activeEntrances = entrances.filter((e) => e.status === "active");
 
   return (
-    <AppLayout title="Access Control" subtitle="Gate events and manual controls">
+    <AppLayout title={t("access.title")} subtitle={t("access.subtitle")}>
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Manual controls */}
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-              <ShieldCheck className="w-4 h-4" /> Manual Gate Control
+              <ShieldCheck className="w-4 h-4" /> {t("access.manualGate")}
             </CardTitle>
           </CardHeader>
           <CardContent>
             {activeEntrances.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No active entrances configured. Add entrances first.</p>
+              <p className="text-sm text-muted-foreground">{t("access.noEntrances")}</p>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                 {activeEntrances.map((entrance) => (
@@ -75,11 +80,11 @@ export default function AccessControlPage() {
                     <div className="flex gap-2">
                       <Button size="sm" variant="outline" className="flex-1 text-xs h-8"
                         onClick={() => setGateDialog({ type: "gate", entrance })}>
-                        <DoorOpen className="w-3 h-3 mr-1" />Gate
+                        <DoorOpen className="w-3 h-3 mr-1" />{t("access.openGate")}
                       </Button>
                       <Button size="sm" variant="outline" className="flex-1 text-xs h-8"
                         onClick={() => setGateDialog({ type: "door", entrance })}>
-                        <DoorOpen className="w-3 h-3 mr-1" />Door
+                        <DoorOpen className="w-3 h-3 mr-1" />{t("access.openDoor")}
                       </Button>
                     </div>
                   </div>
@@ -92,22 +97,22 @@ export default function AccessControlPage() {
         {/* Filters */}
         <div className="flex gap-3 flex-wrap items-center">
           <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(1); }}>
-            <SelectTrigger className="w-36"><SelectValue placeholder="Status" /></SelectTrigger>
+            <SelectTrigger className="w-36"><SelectValue placeholder={t("access.allStatuses")} /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All statuses</SelectItem>
-              <SelectItem value="allowed">Allowed</SelectItem>
-              <SelectItem value="denied">Denied</SelectItem>
-              <SelectItem value="manual">Manual</SelectItem>
+              <SelectItem value="all">{t("access.allStatuses")}</SelectItem>
+              <SelectItem value="allowed">{t("access.status.allowed")}</SelectItem>
+              <SelectItem value="denied">{t("access.status.denied")}</SelectItem>
+              <SelectItem value="manual">{t("access.status.manual")}</SelectItem>
             </SelectContent>
           </Select>
           <Select value={entranceFilter} onValueChange={(v) => { setEntranceFilter(v); setPage(1); }}>
-            <SelectTrigger className="w-44"><SelectValue placeholder="All entrances" /></SelectTrigger>
+            <SelectTrigger className="w-44"><SelectValue placeholder={t("access.allEntrances")} /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All entrances</SelectItem>
+              <SelectItem value="all">{t("access.allEntrances")}</SelectItem>
               {entrances.map((e) => <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>)}
             </SelectContent>
           </Select>
-          <span className="text-sm text-muted-foreground ml-auto">{total} events</span>
+          <span className="text-sm text-muted-foreground ml-auto">{total} {t("access.events")}</span>
         </div>
 
         {/* Events table */}
@@ -116,7 +121,7 @@ export default function AccessControlPage() {
             {isLoading ? (
               <div className="p-4 space-y-2">{Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}</div>
             ) : !eventsData?.items.length ? (
-              <div className="py-16 text-center text-muted-foreground">No events found.</div>
+              <div className="py-16 text-center text-muted-foreground">{t("access.noEvents")}</div>
             ) : (
               <div className="divide-y divide-border/50">
                 {eventsData.items.map((e) => <EventRow key={e.id} event={e} entranceMap={entranceMap} />)}
@@ -131,7 +136,7 @@ export default function AccessControlPage() {
             <Button variant="outline" size="sm" onClick={() => setPage(p => p - 1)} disabled={page <= 1}>
               <ChevronLeft className="w-4 h-4" />
             </Button>
-            <span className="text-sm text-muted-foreground">Page {page} of {totalPages}</span>
+            <span className="text-sm text-muted-foreground">{t("access.page")} {page} {t("access.of")} {totalPages}</span>
             <Button variant="outline" size="sm" onClick={() => setPage(p => p + 1)} disabled={page >= totalPages}>
               <ChevronRight className="w-4 h-4" />
             </Button>
@@ -143,18 +148,19 @@ export default function AccessControlPage() {
       <Dialog open={!!gateDialog} onOpenChange={(open) => !open && setGateDialog(null)}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>Open {gateDialog?.type === "gate" ? "Gate" : "Door"}</DialogTitle>
+            <DialogTitle>
+              {gateDialog?.type === "gate" ? t("access.openGate") : t("access.openDoor")}
+            </DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground py-2">
-            Open the {gateDialog?.type} at <strong>{gateDialog?.entrance.name}</strong>?
-            This action will be logged.
+            {t("common.confirm")} — {gateDialog?.type === "gate" ? t("access.gate") : t("access.door")} @ <strong>{gateDialog?.entrance.name}</strong>?
           </p>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setGateDialog(null)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setGateDialog(null)}>{t("common.cancel")}</Button>
             <Button
               onClick={() => gateDialog && gateAction.mutate({ type: gateDialog.type, entrance_id: gateDialog.entrance.id })}
               disabled={gateAction.isPending}>
-              {gateAction.isPending ? "Opening..." : "Confirm Open"}
+              {gateAction.isPending ? t("access.opening") : t("access.confirmOpen")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -164,6 +170,7 @@ export default function AccessControlPage() {
 }
 
 function EventRow({ event, entranceMap }: { event: AccessEvent; entranceMap: Record<string, string> }) {
+  const { t } = useTranslation();
   return (
     <div className="flex items-center gap-4 px-4 py-3 hover:bg-muted/30 transition-colors">
       <span className={cn(
@@ -184,7 +191,7 @@ function EventRow({ event, entranceMap }: { event: AccessEvent; entranceMap: Rec
         </div>
         {event.confidence_score != null && (
           <div className="text-xs text-muted-foreground">
-            Confidence: {Math.round(event.confidence_score * 100)}%
+            {t("access.confidenceLabel")}: {Math.round(event.confidence_score * 100)}%
           </div>
         )}
       </div>

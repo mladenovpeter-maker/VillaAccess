@@ -1,0 +1,221 @@
+NEXT DEVELOPMENT TASKS (BEFORE HARDWARE ARRIVES)
+
+Do NOT start advanced AI yet.
+Do NOT start realtime video analysis yet.
+
+Focus on infrastructure, visibility, debugging, and event flow.
+
+====================================================
+PRIORITY 1 — CAMERA CONNECTION TESTER
+====================================================
+
+Build camera diagnostics/testing panel.
+
+For each camera:
+- test ping
+- test RTSP availability
+- test Hikvision ISAPI login
+- test snapshot endpoint
+- show online/offline status
+- show response latency
+- show last successful connection
+
+Add:
+- TEST CONNECTION button
+
+====================================================
+PRIORITY 2 — SETTINGS PAGE
+====================================================
+
+Build centralized settings/configuration page.
+
+Move configurable values out of hardcoded code.
+
+Settings should include:
+- OCR confidence threshold
+- AI confidence threshold
+- gate open duration
+- auto-close timeout
+- snapshot retention days
+- event retention
+- mock mode toggle
+- debug logging toggle
+
+Store settings in database.
+
+====================================================
+PRIORITY 3 — SNAPSHOT GALLERY
+====================================================
+
+Build snapshot gallery/debugging page.
+
+Requirements:
+- vehicle snapshots
+- timestamps
+- OCR result
+- confidence score
+- entrance source
+- search/filter
+- denied/allowed filter
+- reservation match result
+
+This page will later be critical for OCR debugging.
+
+====================================================
+PRIORITY 4 — CAMERA → ENTRANCE ASSIGNMENT
+====================================================
+
+Fix and complete camera assignment workflow.
+
+Requirements:
+- assign cameras to entrances
+- edit assignment
+- validate entrance mapping
+- show entrance name in camera list
+- prevent orphan cameras
+
+This is required before real hardware integration.
+
+====================================================
+PRIORITY 5 — RESERVATION ACCESS ENGINE
+====================================================
+
+Build real reservation validation pipeline.
+
+Flow:
+
+vehicle detected
+↓
+OCR result
+↓
+find matching reservation
+↓
+validate:
+- check-in/check-out
+- vehicle plate
+- blacklist
+- access enabled
+↓
+decision:
+- allow
+- deny
+- manual confirmation
+
+====================================================
+PRIORITY 6 — SYSTEM HEALTH PAGE
+====================================================
+
+Build infrastructure monitoring page.
+
+Show:
+- cameras online/offline
+- database status
+- OCR worker status
+- API health
+- event bus status
+- SSE stream status
+- uptime
+- future CPU/RAM placeholders
+
+====================================================
+PRIORITY 7 — ACCESS TIMELINE VIEW
+====================================================
+
+Build visual access timeline.
+
+Example:
+
+Vehicle Detected
+↓
+OCR Processed
+↓
+Reservation Matched
+↓
+Confidence Calculated
+↓
+Gate Opened
+
+Timeline should help debugging event flow.
+
+====================================================
+PRIORITY 8 — MOCK CAMERA / OCR SIMULATOR
+====================================================
+
+Improve simulator mode.
+
+Add:
+- fake RTSP snapshots
+- fake OCR confidence
+- dirty plate simulation
+- blacklist simulation
+- unknown vehicle simulation
+- manual approval simulation
+
+Simulator must use SAME event pipeline as production later.
+
+====================================================
+PRIORITY 9 — EVENT REPLAY
+====================================================
+
+Build event replay/debugging system.
+
+Allow:
+- replay previous OCR attempts
+- replay denied events
+- rerun confidence engine
+- rerun reservation validation
+
+This will later be critical for AI tuning.
+
+====================================================
+PRIORITY 10 — BASIC ROLE SYSTEM
+====================================================
+
+Add basic role separation:
+
+- Admin
+- Manager
+
+Managers:
+- can view events
+- can open gates
+- can manage reservations
+
+Only Admin:
+- manage hardware
+- manage entrances
+- manage system settings
+
+====================================================
+PRIORITY 11 — EXPORT/BACKUP
+====================================================
+
+Add export tools:
+- reservations export
+- vehicles export
+- logs export
+- access events export
+
+Formats:
+- CSV
+- JSON
+
+====================================================
+IMPORTANT
+====================================================
+
+Do NOT build:
+- advanced embeddings
+- realtime AI
+- continuous OCR
+- face recognition
+
+yet.
+
+Current priority is:
+- stable architecture
+- event flow
+- debugging visibility
+- hardware readiness
+- reservation logic
+- OCR pipeline preparation

@@ -21,6 +21,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { tokenStore } from "@/lib/api";
+import { useTranslation } from "react-i18next";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -63,7 +64,7 @@ const defaultForm: VehicleForm = {
 
 type DetailTab = "snapshots" | "events";
 
-// ─── Snapshot upload function (FormData, not JSON) ────────────────────────────
+// ─── Snapshot upload ──────────────────────────────────────────────────────────
 
 async function uploadSnapshot(
   vehicleId: string,
@@ -132,6 +133,7 @@ function UploadZone({
   vehicleId, onSuccess,
 }: { vehicleId: string; onSuccess: () => void }) {
   const { toast } = useToast();
+  const { t } = useTranslation();
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
@@ -142,7 +144,7 @@ function UploadZone({
 
   const selectFile = (f: File) => {
     if (!f.type.startsWith("image/")) {
-      toast({ title: "Invalid file", description: "Only images are accepted", variant: "destructive" });
+      toast({ title: t("vehicles.invalidFile"), description: t("vehicles.onlyImages"), variant: "destructive" });
       return;
     }
     setFile(f);
@@ -165,11 +167,11 @@ function UploadZone({
     setUploading(true);
     try {
       await uploadSnapshot(vehicleId, file, { is_primary: isPrimary, ocr_hint: ocrHint || undefined });
-      toast({ title: "Snapshot uploaded", description: isPrimary ? "Set as primary image" : "Added to gallery" });
+      toast({ title: t("vehicles.snapshotUploaded"), description: isPrimary ? t("vehicles.setPrimarySuccess") : t("vehicles.addedToGallery") });
       clear();
       onSuccess();
     } catch (err: any) {
-      toast({ title: "Upload failed", description: err.message, variant: "destructive" });
+      toast({ title: t("vehicles.uploadFailed"), description: err.message, variant: "destructive" });
     } finally {
       setUploading(false);
     }
@@ -192,9 +194,9 @@ function UploadZone({
         >
           <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
           <p className="text-sm text-muted-foreground font-medium">
-            Drop an image here or <span className="text-primary">click to browse</span>
+            {t("vehicles.dropImage")} <span className="text-primary">{t("vehicles.clickToBrowse")}</span>
           </p>
-          <p className="text-xs text-muted-foreground/60 mt-1">JPEG, PNG, WebP · max 15 MB</p>
+          <p className="text-xs text-muted-foreground/60 mt-1">{t("vehicles.maxSize")}</p>
           <input
             ref={inputRef}
             type="file"
@@ -229,13 +231,13 @@ function UploadZone({
                 className="rounded"
               />
               <Star className="w-3.5 h-3.5 text-yellow-500" />
-              Set as primary photo
+              {t("vehicles.setPrimary")}
             </label>
           </div>
 
           <div>
             <label className="block text-xs font-medium text-muted-foreground mb-1">
-              License plate hint <span className="font-normal">(for OCR verification)</span>
+              {t("vehicles.licensePlateHint")} <span className="font-normal">{t("vehicles.forOcr")}</span>
             </label>
             <Input
               value={ocrHint}
@@ -252,10 +254,10 @@ function UploadZone({
                   <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" className="opacity-25" />
                   <path fill="currentColor" className="opacity-75" d="M4 12a8 8 0 018-8v8H4z" />
                 </svg>
-                Uploading…
+                {t("vehicles.uploading")}
               </span>
             ) : (
-              <span className="flex items-center gap-2"><Upload className="w-4 h-4" />Upload Snapshot</span>
+              <span className="flex items-center gap-2"><Upload className="w-4 h-4" />{t("vehicles.uploadSnapshot")}</span>
             )}
           </Button>
         </div>
@@ -271,6 +273,7 @@ function SnapshotGallery({
 }: { vehicleId: string; onPrimaryChange: () => void }) {
   const qc = useQueryClient();
   const { toast } = useToast();
+  const { t } = useTranslation();
   const [lightbox, setLightbox] = useState<VehicleSnapshot | null>(null);
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 12;
@@ -292,15 +295,14 @@ function SnapshotGallery({
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["snapshots", vehicleId] });
-      toast({ title: "Snapshot deleted" });
+      toast({ title: t("vehicles.snapshotDeleted") });
     },
-    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onError: (e: any) => toast({ title: t("common.error"), description: e.message, variant: "destructive" }),
   });
 
   const primaryMut = useMutation({
     mutationFn: async (s: VehicleSnapshot) => {
       const token = tokenStore.getAccess();
-      // Re-upload is complex; instead call addSnapshot with is_primary
       const res = await fetch(`${API_BASE}/vehicles/${vehicleId}/snapshots`, {
         method: "POST",
         headers: {
@@ -320,9 +322,9 @@ function SnapshotGallery({
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["snapshots", vehicleId] });
       qc.invalidateQueries({ queryKey: ["vehicles"] });
-      toast({ title: "Primary photo updated" });
+      toast({ title: t("vehicles.primaryUpdated") });
     },
-    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onError: (e: any) => toast({ title: t("common.error"), description: e.message, variant: "destructive" }),
   });
 
   if (isLoading) {
@@ -339,8 +341,7 @@ function SnapshotGallery({
     return (
       <div className="text-center py-10 text-muted-foreground">
         <ImageIcon className="w-10 h-10 mx-auto mb-2 opacity-30" />
-        <p className="text-sm">No snapshots yet.</p>
-        <p className="text-xs mt-1">Upload the first one above.</p>
+        <p className="text-sm">{t("vehicles.noSnapshots")}</p>
       </div>
     );
   }
@@ -393,7 +394,7 @@ function SnapshotGallery({
               <button
                 onClick={() => setLightbox(snap)}
                 className="w-7 h-7 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center"
-                title="View full size"
+                title={t("vehicles.viewFullSize")}
               >
                 <ZoomIn className="w-3.5 h-3.5 text-white" />
               </button>
@@ -401,7 +402,7 @@ function SnapshotGallery({
                 <button
                   onClick={() => primaryMut.mutate(snap)}
                   className="w-7 h-7 rounded-full bg-yellow-500/80 hover:bg-yellow-500 flex items-center justify-center"
-                  title="Set as primary"
+                  title={t("vehicles.setAsPrimary")}
                 >
                   <Star className="w-3.5 h-3.5 text-black" />
                 </button>
@@ -409,7 +410,7 @@ function SnapshotGallery({
               <button
                 onClick={() => deleteMut.mutate(snap)}
                 className="w-7 h-7 rounded-full bg-red-500/80 hover:bg-red-500 flex items-center justify-center"
-                title="Delete"
+                title={t("common.delete")}
               >
                 <Trash2 className="w-3.5 h-3.5 text-white" />
               </button>
@@ -421,7 +422,7 @@ function SnapshotGallery({
       {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex items-center justify-between mt-3">
-          <span className="text-xs text-muted-foreground">{data.total} snapshots</span>
+          <span className="text-xs text-muted-foreground">{data.total} {t("vehicles.snapshots")}</span>
           <div className="flex gap-1">
             <Button variant="ghost" size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>
               <ChevronLeft className="w-4 h-4" />
@@ -448,7 +449,7 @@ function SnapshotGallery({
                 <div className="mt-2 px-2 flex items-center gap-3 text-xs text-white/60">
                   {lightbox.is_primary && <Badge variant="secondary" className="bg-yellow-500/20 text-yellow-400 border-0"><Star className="w-3 h-3 mr-1" />Primary</Badge>}
                   {lightbox.camera_id && <span className="flex items-center gap-1"><Camera className="w-3 h-3" />{lightbox.camera_id}</span>}
-                  {lightbox.confidence_score != null && <span>{formatConf(lightbox.confidence_score)} confidence</span>}
+                  {lightbox.confidence_score != null && <span>{formatConf(lightbox.confidence_score)} {t("common.confidence").toLowerCase()}</span>}
                   {lightbox.ocr_text && <span className="font-mono">{lightbox.ocr_text}</span>}
                   <span className="ml-auto">{formatDate(lightbox.captured_at)}</span>
                 </div>
@@ -467,6 +468,7 @@ function VehicleDetailDialog({
   vehicle, open, onClose,
 }: { vehicle: Vehicle | null; open: boolean; onClose: () => void }) {
   const qc = useQueryClient();
+  const { t } = useTranslation();
   const [tab, setTab] = useState<DetailTab>("snapshots");
 
   const { data: eventsData } = useQuery({
@@ -481,6 +483,11 @@ function VehicleDetailDialog({
   };
 
   if (!vehicle) return null;
+
+  const tabLabels: Record<DetailTab, string> = {
+    snapshots: t("vehicles.snapshotHistory"),
+    events: t("vehicles.events"),
+  };
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
@@ -500,7 +507,7 @@ function VehicleDetailDialog({
                   {vehicle.license_plate}
                 </div>
                 <div className="text-sm text-muted-foreground">
-                  {[vehicle.make, vehicle.model].filter(Boolean).join(" ") || "Unknown vehicle"}
+                  {[vehicle.make, vehicle.model].filter(Boolean).join(" ") || t("vehicles.unknownVehicle")}
                   {vehicle.color && ` · ${vehicle.color}`}
                 </div>
               </div>
@@ -513,28 +520,28 @@ function VehicleDetailDialog({
 
         {/* Quick stats bar */}
         <div className="flex items-center gap-4 px-4 py-2.5 border-b border-border bg-muted/30 text-xs text-muted-foreground shrink-0">
-          <span><span className="font-semibold text-foreground">{vehicle.total_visits}</span> visits</span>
+          <span><span className="font-semibold text-foreground">{vehicle.total_visits}</span> {t("vehicles.visits")}</span>
           {vehicle.confidence_score != null && (
-            <span>AI conf. <span className="font-semibold text-foreground">{formatConf(vehicle.confidence_score)}</span></span>
+            <span>{t("vehicles.aiConf")} <span className="font-semibold text-foreground">{formatConf(vehicle.confidence_score)}</span></span>
           )}
-          {vehicle.plate_region && <span>Region: <span className="font-semibold text-foreground">{vehicle.plate_region}</span></span>}
-          <span className="ml-auto">First: {formatDate(vehicle.first_seen)} · Last: {formatDate(vehicle.last_seen)}</span>
+          {vehicle.plate_region && <span>{t("vehicles.region_label")}: <span className="font-semibold text-foreground">{vehicle.plate_region}</span></span>}
+          <span className="ml-auto">{t("vehicles.first")}: {formatDate(vehicle.first_seen)} · {t("vehicles.last")}: {formatDate(vehicle.last_seen)}</span>
         </div>
 
         {/* Tabs */}
         <div className="flex border-b border-border px-4 shrink-0 bg-background">
-          {(["snapshots", "events"] as const).map((t) => (
+          {(["snapshots", "events"] as const).map((tab_key) => (
             <button
-              key={t}
-              onClick={() => setTab(t)}
+              key={tab_key}
+              onClick={() => setTab(tab_key)}
               className={cn(
                 "px-4 py-2.5 text-sm font-medium capitalize border-b-2 transition-colors",
-                tab === t
+                tab === tab_key
                   ? "border-primary text-primary"
                   : "border-transparent text-muted-foreground hover:text-foreground",
               )}
             >
-              {t}
+              {tabLabels[tab_key]}
             </button>
           ))}
         </div>
@@ -546,7 +553,7 @@ function VehicleDetailDialog({
               <UploadZone vehicleId={vehicle.id} onSuccess={refreshVehicle} />
               <div className="border-t border-border/50 pt-4">
                 <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider mb-3">
-                  Snapshot History
+                  {t("vehicles.snapshotHistory")}
                 </p>
                 <SnapshotGallery vehicleId={vehicle.id} onPrimaryChange={refreshVehicle} />
               </div>
@@ -558,18 +565,18 @@ function VehicleDetailDialog({
               {!eventsData ? (
                 Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-12 w-full" />)
               ) : eventsData.items.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-8">No events recorded.</p>
+                <p className="text-sm text-muted-foreground text-center py-8">{t("vehicles.noEvents")}</p>
               ) : eventsData.items.map((e) => (
                 <div key={e.id} className="flex items-center justify-between py-2.5 px-3 rounded-lg border border-border/50 hover:border-border transition-colors">
                   <div>
                     <div className="text-sm font-medium capitalize">{e.event_type?.replace(/_/g, " ")}</div>
-                    <div className="text-xs text-muted-foreground">{new Date(e.timestamp).toLocaleString()}</div>
+                    {e.confidence_score != null && (
+                      <div className="text-xs text-muted-foreground">{formatConf(e.confidence_score)} {t("common.confidence").toLowerCase()}</div>
+                    )}
                   </div>
-                  <span className={cn("text-xs px-2 py-0.5 rounded-full border font-medium", {
-                    "bg-green-500/15 text-green-400 border-green-500/20": e.status === "allowed",
-                    "bg-red-500/15 text-red-400 border-red-500/20": e.status === "denied",
-                    "bg-blue-500/15 text-blue-400 border-blue-500/20": e.status === "manual",
-                  })}>{e.status}</span>
+                  <div className="text-xs text-muted-foreground">
+                    {new Date(e.timestamp).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                  </div>
                 </div>
               ))}
             </div>
@@ -580,306 +587,230 @@ function VehicleDetailDialog({
   );
 }
 
-// ─── VehicleCard ──────────────────────────────────────────────────────────────
+// ─── Vehicle form dialog ──────────────────────────────────────────────────────
 
-function VehicleCard({
-  vehicle, onEdit, onDelete, onView,
-}: { vehicle: Vehicle; onEdit: () => void; onDelete: () => void; onView: () => void }) {
-  return (
-    <Card
-      className="overflow-hidden hover:border-primary/40 transition-all cursor-pointer group"
-      onClick={onView}
-    >
-      {/* Snapshot thumbnail */}
-      <div className="relative h-32 bg-card overflow-hidden">
-        <SnapshotImage
-          src={vehicle.snapshot_url}
-          alt={vehicle.license_plate}
-          className="w-full h-full group-hover:scale-105 transition-transform duration-300"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-background/80 to-transparent" />
-
-        {/* Status badge */}
-        <div className="absolute top-2 right-2">
-          <span className={cn(
-            "text-[10px] px-1.5 py-0.5 rounded-full border font-medium capitalize flex items-center gap-1",
-            STATUS_STYLES[vehicle.status],
-          )}>
-            {STATUS_ICONS[vehicle.status]}{vehicle.status}
-          </span>
-        </div>
-
-        {/* Confidence */}
-        {vehicle.confidence_score != null && (
-          <div className="absolute bottom-2 right-2 bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded">
-            {formatConf(vehicle.confidence_score)}
-          </div>
-        )}
-      </div>
-
-      <CardContent className="p-3">
-        <div className="font-bold text-base font-mono text-foreground tracking-wide">
-          {vehicle.license_plate}
-        </div>
-        <div className="text-xs text-muted-foreground mt-0.5 truncate">
-          {[vehicle.make, vehicle.model].filter(Boolean).join(" ") || "Unknown vehicle"}
-          {vehicle.color && ` · ${vehicle.color}`}
-        </div>
-
-        <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
-          <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{vehicle.total_visits} visits</span>
-          {vehicle.last_seen && (
-            <span className="ml-auto">{formatDate(vehicle.last_seen)}</span>
-          )}
-        </div>
-
-        {/* Blacklist warning */}
-        {vehicle.status === "blacklisted" && vehicle.blacklist_reason && (
-          <div className="mt-2 text-[10px] text-red-400 bg-red-500/10 border border-red-500/20 rounded px-2 py-1 truncate">
-            {vehicle.blacklist_reason}
-          </div>
-        )}
-
-        {/* Actions */}
-        <div
-          className="flex gap-1.5 mt-3 pt-2.5 border-t border-border/40"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <Button variant="ghost" size="sm" className="text-xs flex-1 h-7" onClick={onView}>
-            <Eye className="w-3 h-3 mr-1" />View
-          </Button>
-          <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={onEdit}>
-            <Pencil className="w-3.5 h-3.5" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-destructive hover:text-destructive h-7 w-7 p-0"
-            onClick={onDelete}
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-// ─── Main page ────────────────────────────────────────────────────────────────
-
-export default function VehiclesPage() {
+function VehicleFormDialog({
+  open, onClose, vehicle,
+}: { open: boolean; onClose: () => void; vehicle: Vehicle | null }) {
   const qc = useQueryClient();
   const { toast } = useToast();
+  const { t } = useTranslation();
+  const [form, setForm] = useState<VehicleForm>(vehicle ? {
+    license_plate: vehicle.license_plate, make: vehicle.make ?? "", model: vehicle.model ?? "",
+    color: vehicle.color ?? "", vehicle_type: vehicle.vehicle_type ?? "sedan",
+    owner_name: vehicle.owner_name ?? "", plate_region: vehicle.plate_region ?? "",
+    status: vehicle.status, notes: vehicle.notes ?? "",
+  } : defaultForm);
 
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-
-  const [formOpen, setFormOpen] = useState(false);
-  const [editTarget, setEditTarget] = useState<Vehicle | null>(null);
-  const [form, setForm] = useState<VehicleForm>(defaultForm);
-
-  const [detailVehicle, setDetailVehicle] = useState<Vehicle | null>(null);
-
-  const { data: vehicles = [], isLoading } = useQuery({
-    queryKey: ["vehicles", statusFilter],
-    queryFn: () =>
-      vehiclesApi.list(statusFilter !== "all" ? { status: statusFilter } : undefined),
+  const mut = useMutation({
+    mutationFn: () => vehicle ? vehiclesApi.update(vehicle.id, form) : vehiclesApi.create(form),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["vehicles"] });
+      toast({ title: vehicle ? t("vehicles.updated") : t("vehicles.created") });
+      onClose();
+    },
+    onError: (e: any) => toast({ title: t("common.error"), description: e.message, variant: "destructive" }),
   });
 
-  const createMut = useMutation({
-    mutationFn: (data: VehicleForm) => vehiclesApi.create(data),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["vehicles"] }); setFormOpen(false); toast({ title: "Vehicle added" }); },
-    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
-  });
-
-  const updateMut = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: VehicleForm }) => vehiclesApi.update(id, data),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["vehicles"] }); setFormOpen(false); toast({ title: "Vehicle updated" }); },
-    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
-  });
-
-  const deleteMut = useMutation({
-    mutationFn: (id: string) => vehiclesApi.delete(id),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["vehicles"] }); toast({ title: "Vehicle deleted" }); },
-    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
-  });
-
-  const filtered = vehicles.filter((v) => {
-    if (!search) return true;
-    const q = search.toLowerCase();
-    return (
-      v.license_plate.toLowerCase().includes(q) ||
-      (v.make ?? "").toLowerCase().includes(q) ||
-      (v.model ?? "").toLowerCase().includes(q) ||
-      (v.owner_name ?? "").toLowerCase().includes(q)
-    );
-  });
-
-  function openNew() {
-    setEditTarget(null);
-    setForm(defaultForm);
-    setFormOpen(true);
-  }
-
-  function openEdit(v: Vehicle) {
-    setEditTarget(v);
-    setForm({
-      license_plate: v.license_plate,
-      make: v.make ?? "",
-      model: v.model ?? "",
-      color: v.color ?? "",
-      vehicle_type: v.vehicle_type ?? "sedan",
-      owner_name: v.owner_name ?? "",
-      plate_region: v.plate_region ?? "",
-      status: v.status,
-      notes: v.notes ?? "",
-    });
-    setFormOpen(true);
-  }
-
-  function handleSubmit() {
-    if (editTarget) updateMut.mutate({ id: editTarget.id, data: form });
-    else createMut.mutate(form);
-  }
-
-  const saving = createMut.isPending || updateMut.isPending;
+  const f = (k: keyof VehicleForm) => (e: React.ChangeEvent<HTMLInputElement>) =>
+    setForm((prev) => ({ ...prev, [k]: e.target.value }));
 
   return (
-    <AppLayout
-      title="Vehicles"
-      subtitle={`${filtered.length} vehicle${filtered.length !== 1 ? "s" : ""}`}
-      actions={
-        <Button size="sm" onClick={openNew}>
-          <Plus className="w-4 h-4 mr-2" />Add Vehicle
-        </Button>
-      }
-    >
-      <div className="max-w-6xl mx-auto space-y-4">
-        {/* Filters */}
-        <div className="flex gap-3 flex-wrap">
-          <div className="relative flex-1 min-w-48">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              className="pl-9"
-              placeholder="Search plate, make, model, owner…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{vehicle ? t("vehicles.editVehicle") : t("vehicles.addVehicle")}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3 py-2">
+          <Field label={t("vehicles.licensePlate")}>
+            <Input value={form.license_plate} onChange={f("license_plate")} className="font-mono" placeholder="B 1234 AB" />
+          </Field>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label={t("vehicles.make")}><Input value={form.make} onChange={f("make")} placeholder="Toyota" /></Field>
+            <Field label={t("vehicles.model")}><Input value={form.model} onChange={f("model")} placeholder="Camry" /></Field>
           </div>
-          <div className="flex gap-2">
-            {["all", "known", "unknown", "blacklisted"].map((s) => (
-              <button
-                key={s}
-                onClick={() => setStatusFilter(s)}
-                className={cn(
-                  "px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors capitalize",
-                  statusFilter === s
-                    ? "bg-primary text-primary-foreground border-primary"
-                    : "border-border text-muted-foreground hover:text-foreground hover:border-foreground/30",
-                )}
-              >
-                {s}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Grid */}
-        {isLoading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-            {Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-52 w-full rounded-xl" />)}
-          </div>
-        ) : filtered.length === 0 ? (
-          <Card>
-            <CardContent className="py-16 text-center text-muted-foreground">
-              No vehicles found.
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-            {filtered.map((v) => (
-              <VehicleCard
-                key={v.id}
-                vehicle={v}
-                onView={() => setDetailVehicle(v)}
-                onEdit={() => openEdit(v)}
-                onDelete={() => deleteMut.mutate(v.id)}
-              />
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Detail dialog */}
-      <VehicleDetailDialog
-        vehicle={detailVehicle}
-        open={!!detailVehicle}
-        onClose={() => setDetailVehicle(null)}
-      />
-
-      {/* Add / Edit dialog */}
-      <Dialog open={formOpen} onOpenChange={setFormOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>{editTarget ? "Edit Vehicle" : "Add Vehicle"}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3 py-2">
-            <FF label="License Plate *">
-              <Input
-                value={form.license_plate}
-                onChange={(e) => setForm({ ...form, license_plate: e.target.value.toUpperCase() })}
-                placeholder="B 1234 ABC"
-                className="font-mono"
-              />
-            </FF>
-            <div className="grid grid-cols-2 gap-3">
-              <FF label="Make"><Input value={form.make} onChange={(e) => setForm({ ...form, make: e.target.value })} placeholder="Toyota" /></FF>
-              <FF label="Model"><Input value={form.model} onChange={(e) => setForm({ ...form, model: e.target.value })} placeholder="Fortuner" /></FF>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <FF label="Color"><Input value={form.color} onChange={(e) => setForm({ ...form, color: e.target.value })} placeholder="Silver" /></FF>
-              <FF label="Type">
-                <Select value={form.vehicle_type} onValueChange={(v) => setForm({ ...form, vehicle_type: v })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>{VEHICLE_TYPES.map((t) => <SelectItem key={t} value={t} className="capitalize">{t}</SelectItem>)}</SelectContent>
-                </Select>
-              </FF>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <FF label="Owner Name"><Input value={form.owner_name} onChange={(e) => setForm({ ...form, owner_name: e.target.value })} placeholder="Optional" /></FF>
-              <FF label="Plate Region"><Input value={form.plate_region} onChange={(e) => setForm({ ...form, plate_region: e.target.value.toUpperCase() })} placeholder="ID-BA" /></FF>
-            </div>
-            <FF label="Status">
-              <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v })}>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label={t("vehicles.color")}><Input value={form.color} onChange={f("color")} placeholder="Black" /></Field>
+            <Field label={t("vehicles.type")}>
+              <Select value={form.vehicle_type} onValueChange={(v) => setForm((p) => ({ ...p, vehicle_type: v }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="known">Known</SelectItem>
-                  <SelectItem value="unknown">Unknown</SelectItem>
-                  <SelectItem value="blacklisted">Blacklisted</SelectItem>
+                  {VEHICLE_TYPES.map((tp) => <SelectItem key={tp} value={tp}>{tp}</SelectItem>)}
                 </SelectContent>
               </Select>
-            </FF>
-            <FF label="Notes">
-              <Input value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Optional notes" />
-            </FF>
+            </Field>
           </div>
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setFormOpen(false)}>Cancel</Button>
-            <Button onClick={handleSubmit} disabled={saving || !form.license_plate}>
-              {saving ? "Saving…" : editTarget ? "Update" : "Add"}
-            </Button>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label={t("vehicles.owner")}><Input value={form.owner_name} onChange={f("owner_name")} /></Field>
+            <Field label={t("vehicles.region")}><Input value={form.plate_region} onChange={f("plate_region")} placeholder="Sofia" /></Field>
           </div>
-        </DialogContent>
-      </Dialog>
-    </AppLayout>
+          <Field label={t("common.status")}>
+            <Select value={form.status} onValueChange={(v) => setForm((p) => ({ ...p, status: v }))}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="known">{t("vehicles.status.known")}</SelectItem>
+                <SelectItem value="unknown">{t("vehicles.status.unknown")}</SelectItem>
+                <SelectItem value="blacklisted">{t("vehicles.status.blacklisted")}</SelectItem>
+              </SelectContent>
+            </Select>
+          </Field>
+          <Field label={t("common.notes")}><Input value={form.notes} onChange={f("notes")} /></Field>
+        </div>
+        <div className="flex justify-end gap-2 pt-2">
+          <Button variant="outline" onClick={onClose}>{t("common.cancel")}</Button>
+          <Button onClick={() => mut.mutate()} disabled={!form.license_plate || mut.isPending}>
+            {mut.isPending ? t("common.saving") : vehicle ? t("common.update") : t("common.create")}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
-function FF({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
       <label className="block text-xs font-medium text-muted-foreground mb-1.5">{label}</label>
       {children}
     </div>
+  );
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
+
+export default function VehiclesPage() {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  const { t } = useTranslation();
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [formOpen, setFormOpen] = useState(false);
+  const [editTarget, setEditTarget] = useState<Vehicle | null>(null);
+  const [detailTarget, setDetailTarget] = useState<Vehicle | null>(null);
+
+  const { data: vehicles = [], isLoading } = useQuery({
+    queryKey: ["vehicles"],
+    queryFn: vehiclesApi.list,
+  });
+
+  const deleteMut = useMutation({
+    mutationFn: (id: string) => vehiclesApi.delete(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["vehicles"] });
+      toast({ title: t("vehicles.deleted") });
+    },
+    onError: (e: any) => toast({ title: t("common.error"), description: e.message, variant: "destructive" }),
+  });
+
+  const blacklistMut = useMutation({
+    mutationFn: ({ id, blacklisted }: { id: string; blacklisted: boolean }) =>
+      vehiclesApi.blacklist(id, blacklisted),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["vehicles"] }),
+    onError: (e: any) => toast({ title: t("common.error"), description: e.message, variant: "destructive" }),
+  });
+
+  const filtered = vehicles.filter((v) => {
+    const matchSearch =
+      !search ||
+      v.license_plate.toLowerCase().includes(search.toLowerCase()) ||
+      (v.make ?? "").toLowerCase().includes(search.toLowerCase()) ||
+      (v.owner_name ?? "").toLowerCase().includes(search.toLowerCase());
+    const matchStatus = statusFilter === "all" || v.status === statusFilter;
+    return matchSearch && matchStatus;
+  });
+
+  return (
+    <AppLayout title={t("vehicles.title")} subtitle={t("vehicles.subtitle")}>
+      <div className="max-w-7xl mx-auto space-y-4">
+        {/* Toolbar */}
+        <div className="flex gap-3 flex-wrap items-center">
+          <div className="relative flex-1 min-w-48">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              className="pl-9"
+              placeholder={`${t("common.search")}…`}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{t("common.all")}</SelectItem>
+              <SelectItem value="known">{t("vehicles.status.known")}</SelectItem>
+              <SelectItem value="unknown">{t("vehicles.status.unknown")}</SelectItem>
+              <SelectItem value="blacklisted">{t("vehicles.status.blacklisted")}</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button size="sm" onClick={() => { setEditTarget(null); setFormOpen(true); }}>
+            <Plus className="w-4 h-4 mr-2" />{t("vehicles.addVehicle")}
+          </Button>
+        </div>
+
+        {/* List */}
+        {isLoading ? (
+          <div className="space-y-2">{Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}</div>
+        ) : filtered.length === 0 ? (
+          <Card><CardContent className="py-16 text-center text-muted-foreground">{t("vehicles.noVehicles")}</CardContent></Card>
+        ) : (
+          <div className="space-y-2">
+            {filtered.map((v) => (
+              <Card key={v.id} className="hover:border-primary/30 transition-colors cursor-pointer" onClick={() => setDetailTarget(v)}>
+                <CardContent className="p-3">
+                  <div className="flex items-center gap-3">
+                    {/* Thumbnail */}
+                    <div className="w-12 h-12 rounded-lg overflow-hidden shrink-0 bg-muted border border-border">
+                      <SnapshotImage src={v.snapshot_url} alt={v.license_plate} className="w-full h-full" />
+                    </div>
+
+                    {/* Plate + details */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-mono font-bold text-foreground">{v.license_plate}</span>
+                        <span className={cn("text-xs px-2 py-0.5 rounded-full border font-medium flex items-center gap-1", STATUS_STYLES[v.status])}>
+                          {STATUS_ICONS[v.status]}{v.status}
+                        </span>
+                        {v.total_visits > 0 && (
+                          <span className="text-xs text-muted-foreground">{v.total_visits} {t("vehicles.visits")}</span>
+                        )}
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-2 flex-wrap">
+                        {v.make && <span>{v.make} {v.model}</span>}
+                        {v.color && <span>· {v.color}</span>}
+                        {v.owner_name && <span>· {v.owner_name}</span>}
+                      </div>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0"
+                        onClick={() => { setEditTarget(v); setFormOpen(true); }}>
+                        <Pencil className="w-3.5 h-3.5" />
+                      </Button>
+                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0"
+                        onClick={() => blacklistMut.mutate({ id: v.id, blacklisted: v.status !== "blacklisted" })}
+                        title={v.status === "blacklisted" ? t("vehicles.unblacklist") : t("vehicles.blacklist")}>
+                        <AlertTriangle className={cn("w-3.5 h-3.5", v.status === "blacklisted" ? "text-red-400" : "text-muted-foreground")} />
+                      </Button>
+                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0"
+                        onClick={() => setDetailTarget(v)}>
+                        <Eye className="w-3.5 h-3.5" />
+                      </Button>
+                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                        onClick={() => deleteMut.mutate(v.id)} disabled={deleteMut.isPending}>
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <VehicleFormDialog open={formOpen} onClose={() => { setFormOpen(false); setEditTarget(null); }} vehicle={editTarget} />
+      <VehicleDetailDialog vehicle={detailTarget} open={!!detailTarget} onClose={() => setDetailTarget(null)} />
+    </AppLayout>
   );
 }

@@ -2,7 +2,6 @@ import { useQuery } from "@tanstack/react-query";
 import { dashboardApi, type AccessEvent } from "@/lib/api";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Building2,
@@ -15,6 +14,7 @@ import {
   Activity,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "react-i18next";
 
 function StatCard({
   title,
@@ -69,6 +69,7 @@ function statusBadge(status: string) {
 }
 
 function EventRow({ event }: { event: AccessEvent }) {
+  const { t } = useTranslation();
   const ts = new Date(event.timestamp);
   const timeStr = ts.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   const dateStr = ts.toLocaleDateString([], { month: "short", day: "numeric" });
@@ -79,7 +80,7 @@ function EventRow({ event }: { event: AccessEvent }) {
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-sm font-medium text-foreground">
-            {event.license_plate ?? "Unknown plate"}
+            {event.license_plate ?? t("dashboard.unknownPlate")}
           </span>
           <span
             className={cn(
@@ -95,7 +96,7 @@ function EventRow({ event }: { event: AccessEvent }) {
         </div>
         {event.confidence_score != null && (
           <p className="text-xs text-muted-foreground mt-0.5">
-            Confidence: {Math.round(event.confidence_score * 100)}%
+            {t("dashboard.confidenceLabel")}: {Math.round(event.confidence_score * 100)}%
           </p>
         )}
       </div>
@@ -108,28 +109,29 @@ function EventRow({ event }: { event: AccessEvent }) {
 }
 
 export default function DashboardPage() {
+  const { t } = useTranslation();
   const statsQ = useQuery({ queryKey: ["dashboard-stats"], queryFn: dashboardApi.stats, refetchInterval: 30000 });
   const eventsQ = useQuery({ queryKey: ["dashboard-events"], queryFn: () => dashboardApi.recentEvents(15), refetchInterval: 10000 });
 
   const s = statsQ.data;
 
   return (
-    <AppLayout title="Dashboard" subtitle="Villa access control overview">
+    <AppLayout title={t("dashboard.title")} subtitle={t("dashboard.subtitle")}>
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Stats grid */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard title="Active Villas" value={s?.total_villas ?? 0} icon={Building2} loading={statsQ.isLoading} />
-          <StatCard title="Reservations" value={s?.active_reservations ?? 0} icon={CalendarDays} color="amber" loading={statsQ.isLoading} />
-          <StatCard title="Cameras Online" value={s?.cameras_online ?? 0} icon={Camera} color="green" loading={statsQ.isLoading} />
-          <StatCard title="Vehicles" value={s?.total_vehicles ?? 0} icon={Car} loading={statsQ.isLoading} />
+          <StatCard title={t("dashboard.activeVillas")} value={s?.total_villas ?? 0} icon={Building2} loading={statsQ.isLoading} />
+          <StatCard title={t("dashboard.reservations")} value={s?.active_reservations ?? 0} icon={CalendarDays} color="amber" loading={statsQ.isLoading} />
+          <StatCard title={t("dashboard.camerasOnline")} value={s?.cameras_online ?? 0} icon={Camera} color="green" loading={statsQ.isLoading} />
+          <StatCard title={t("dashboard.vehicles")} value={s?.total_vehicles ?? 0} icon={Car} loading={statsQ.isLoading} />
         </div>
 
         {/* Second row */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard title="Events Today" value={s?.events_today ?? 0} icon={Activity} loading={statsQ.isLoading} />
-          <StatCard title="Auto Opens" value={s?.auto_opens_today ?? 0} icon={Zap} color="green" loading={statsQ.isLoading} />
-          <StatCard title="Denied Today" value={s?.denied_attempts_today ?? 0} icon={ShieldX} color="red" loading={statsQ.isLoading} />
-          <StatCard title="Gates Online" value={s?.gates_online ?? 0} icon={ShieldCheck} color="amber" loading={statsQ.isLoading} />
+          <StatCard title={t("dashboard.eventsToday")} value={s?.events_today ?? 0} icon={Activity} loading={statsQ.isLoading} />
+          <StatCard title={t("dashboard.autoOpens")} value={s?.auto_opens_today ?? 0} icon={Zap} color="green" loading={statsQ.isLoading} />
+          <StatCard title={t("dashboard.deniedToday")} value={s?.denied_attempts_today ?? 0} icon={ShieldX} color="red" loading={statsQ.isLoading} />
+          <StatCard title={t("dashboard.gatesOnline")} value={s?.gates_online ?? 0} icon={ShieldCheck} color="amber" loading={statsQ.isLoading} />
         </div>
 
         {/* Recent events */}
@@ -137,7 +139,7 @@ export default function DashboardPage() {
           <CardHeader className="pb-3">
             <CardTitle className="text-base font-semibold flex items-center gap-2">
               <Activity className="w-4 h-4 text-primary" />
-              Recent Events
+              {t("dashboard.recentEvents")}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -148,7 +150,7 @@ export default function DashboardPage() {
                 ))}
               </div>
             ) : eventsQ.data?.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-8">No events yet.</p>
+              <p className="text-sm text-muted-foreground text-center py-8">{t("dashboard.noEvents")}</p>
             ) : (
               <div>
                 {eventsQ.data?.map((e) => <EventRow key={e.id} event={e} />)}

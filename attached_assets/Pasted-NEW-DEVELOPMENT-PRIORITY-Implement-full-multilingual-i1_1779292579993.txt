@@ -1,0 +1,135 @@
+NEW DEVELOPMENT PRIORITY
+
+Implement full multilingual/i18n support for the entire platform.
+
+Initial supported languages:
+- English
+- Bulgarian
+
+The platform must support easy future expansion for:
+- German
+- Russian
+- Turkish
+- Greek
+etc.
+
+====================================================
+UI LANGUAGE SWITCHER
+====================================================
+
+Add a language selector in the TOP RIGHT corner of the web dashboard.
+
+Requirements:
+- flag icons
+- dropdown or compact switcher
+- persistent language selection
+- save preference in localStorage/session
+
+Initial flags:
+- 🇬🇧 English
+- 🇧🇬 Български
+
+Default language:
+- English
+
+====================================================
+IMPORTANT I18N REQUIREMENTS
+====================================================
+
+Do NOT hardcode UI text directly inside components.
+
+Use a proper i18n architecture.
+
+Recommended:
+- react-i18next
+or
+- i18next
+
+All labels/buttons/messages/errors/navigation items must use translation keys.
+
+====================================================
+TRANSLATION COVERAGE
+====================================================
+
+Translate ALL current pages:
+
+- Login
+- Dashboard
+- Reservations
+- Vehicles
+- Access Control
+- Cameras
+- Entrances
+- Logs
+- Event Stream
+- Mock Simulator
+
+Translate:
+- buttons
+- menus
+- filters
+- forms
+- notifications
+- status labels
+- toast messages
+- validation errors
+- dialogs
+- table headers
+- event labels
+
+====================================================
+BULGARIAN TRANSLATION STYLE
+====================================================
+
+Bulgarian translations should be:
+- professional
+- modern
+- security/hospitality oriented
+- NOT machine-translated sounding
+
+Examples:
+
+Dashboard → Табло
+Reservations → Резервации
+Vehicles → Автомобили
+Access Control → Контрол на достъпа
+Open Gate → Отвори бариера
+Denied Access → Отказан достъп
+Entrances → Входове
+Logs → Логове
+Events → Събития
+Mock Mode → Тестов режим
+
+====================================================
+TECHNICAL REQUIREMENTS
+====================================================
+
+Language switching must:
+- work instantly
+- not require reload
+- persist across sessions
+
+Structure translations cleanly:
+- /locales/en
+- /locales/bg
+
+====================================================
+FUTURE REQUIREMENT
+====================================================
+
+Architecture must support:
+- dynamic language additions
+- admin-managed translations later
+- mobile app localization reuse
+
+====================================================
+GENERATE
+====================================================
+
+Generate:
+- i18n architecture
+- translation files
+- reusable translation hooks
+- language switcher UI
+- Bulgarian translations for all existing pages
+- localization-ready frontend structure

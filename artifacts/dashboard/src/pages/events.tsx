@@ -28,19 +28,21 @@ import {
   XCircle,
   Zap,
 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const CATEGORIES = [
-  { id: "all",         label: "All",         icon: Activity },
-  { id: "vehicle",     label: "Vehicle",     icon: Car },
-  { id: "gate",        label: "Gate",        icon: DoorOpen },
-  { id: "access",      label: "Access",      icon: ShieldCheck },
-  { id: "ai",          label: "AI",          icon: Brain },
-  { id: "reservation", label: "Reservation", icon: CalendarDays },
-] as const;
+const CATEGORY_IDS = ["all", "vehicle", "gate", "access", "ai", "reservation"] as const;
+type CategoryId = (typeof CATEGORY_IDS)[number];
 
-type CategoryId = (typeof CATEGORIES)[number]["id"];
+const CATEGORY_ICONS: Record<string, React.ElementType> = {
+  all:         Activity,
+  vehicle:     Car,
+  gate:        DoorOpen,
+  access:      ShieldCheck,
+  ai:          Brain,
+  reservation: CalendarDays,
+};
 
 const CATEGORY_COLORS: Record<string, string> = {
   vehicle:     "text-blue-400 bg-blue-400/10 border-blue-400/20",
@@ -58,11 +60,11 @@ const CATEGORY_DOT: Record<string, string> = {
   reservation: "bg-cyan-400",
 };
 
-const SEVERITY_CONFIG: Record<string, { label: string; icon: React.ElementType; className: string }> = {
-  info:     { label: "Info",     icon: Info,          className: "text-muted-foreground" },
-  warning:  { label: "Warning",  icon: AlertTriangle,  className: "text-amber-400" },
-  error:    { label: "Error",    icon: XCircle,        className: "text-red-400" },
-  critical: { label: "Critical", icon: Zap,            className: "text-red-400 animate-pulse" },
+const SEVERITY_CONFIG: Record<string, { icon: React.ElementType; className: string }> = {
+  info:     { icon: Info,          className: "text-muted-foreground" },
+  warning:  { icon: AlertTriangle, className: "text-amber-400" },
+  error:    { icon: XCircle,       className: "text-red-400" },
+  critical: { icon: Zap,           className: "text-red-400 animate-pulse" },
 };
 
 const SOURCE_LABELS: Record<string, string> = {
@@ -71,50 +73,6 @@ const SOURCE_LABELS: Record<string, string> = {
   ai_worker: "AI Worker",
   api:       "API",
 };
-
-// ─── Event type → human label ─────────────────────────────────────────────────
-
-function formatEventType(type: string): string {
-  const map: Record<string, string> = {
-    "vehicle.created":          "Vehicle Added",
-    "vehicle.updated":          "Vehicle Updated",
-    "vehicle.detected":         "Vehicle Detected",
-    "vehicle.recognized":       "Vehicle Recognized",
-    "vehicle.unrecognized":     "Vehicle Not Recognized",
-    "vehicle.blacklisted":      "Vehicle Blacklisted",
-    "vehicle.unblacklisted":    "Vehicle Cleared",
-    "gate.opened":              "Gate Opened",
-    "gate.failed":              "Gate Failed",
-    "gate.door_opened":         "Door Opened",
-    "gate.door_failed":         "Door Failed",
-    "access.granted":           "Access Granted",
-    "access.denied":            "Access Denied",
-    "access.manual_override":   "Manual Override",
-    "ai.snapshot_uploaded":     "Snapshot Uploaded",
-    "ai.plate_read":            "Plate Read",
-    "ai.confidence_low":        "Low Confidence",
-    "ai.fingerprint_updated":   "Fingerprint Updated",
-    "ai.recognition_complete":  "Recognition Complete",
-    "reservation.created":      "Reservation Created",
-    "reservation.updated":      "Reservation Updated",
-    "reservation.checked_in":   "Guest Checked In",
-    "reservation.checked_out":  "Guest Checked Out",
-    "reservation.cancelled":    "Reservation Cancelled",
-    "reservation.expired":      "Reservation Expired",
-  };
-  return map[type] ?? type.replace(/\./g, " › ").replace(/_/g, " ");
-}
-
-function getCategoryIcon(category: string): React.ElementType {
-  const map: Record<string, React.ElementType> = {
-    vehicle:     Car,
-    gate:        DoorOpen,
-    access:      ShieldCheck,
-    ai:          Brain,
-    reservation: CalendarDays,
-  };
-  return map[category] ?? Activity;
-}
 
 // ─── Relative time ────────────────────────────────────────────────────────────
 
@@ -126,15 +84,25 @@ function relativeTime(iso: string): string {
   return new Date(iso).toLocaleDateString();
 }
 
+function getCategoryIcon(category: string): React.ElementType {
+  return CATEGORY_ICONS[category] ?? Activity;
+}
+
 // ─── Event card ───────────────────────────────────────────────────────────────
 
 function EventCard({ event, isLive = false }: { event: DomainEvent; isLive?: boolean }) {
+  const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
   const CategoryIcon = getCategoryIcon(event.category);
   const severityConf  = SEVERITY_CONFIG[event.severity] ?? SEVERITY_CONFIG.info;
   const SeverityIcon  = severityConf.icon;
   const colorClass    = CATEGORY_COLORS[event.category] ?? "text-muted-foreground bg-muted/10";
   const hasPayload    = event.payload && Object.keys(event.payload).length > 0;
+
+  const eventLabel = (t(`events.eventTypes.${event.event_type}`, { defaultValue: "" }) as string) ||
+    event.event_type.replace(/\./g, " › ").replace(/_/g, " ");
+
+  const severityLabel = (t(`events.eventTypes.${event.severity}`, { defaultValue: event.severity }) as string);
 
   // Extract human-readable description from payload
   const description = (() => {
@@ -152,9 +120,7 @@ function EventCard({ event, isLive = false }: { event: DomainEvent; isLive?: boo
       className={cn(
         "group rounded-lg border border-border/50 bg-card/50 px-4 py-3 transition-all",
         isLive && "border-l-2",
-        isLive && CATEGORY_DOT[event.category] && `border-l-${event.category}`,
       )}
-      style={isLive ? { borderLeftColor: undefined } : undefined}
     >
       <div className="flex items-start gap-3">
         {/* Category icon */}
@@ -165,13 +131,11 @@ function EventCard({ event, isLive = false }: { event: DomainEvent; isLive?: boo
         {/* Content */}
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-sm font-medium text-foreground">
-              {formatEventType(event.event_type)}
-            </span>
+            <span className="text-sm font-medium text-foreground">{eventLabel}</span>
             {event.severity !== "info" && (
               <span className={cn("flex items-center gap-1 text-xs font-medium", severityConf.className)}>
                 <SeverityIcon className="h-3 w-3" />
-                {severityConf.label}
+                {severityLabel}
               </span>
             )}
             <span className="ml-auto shrink-0 text-xs text-muted-foreground">
@@ -237,6 +201,7 @@ function EventCard({ event, isLive = false }: { event: DomainEvent; isLive?: boo
 // ─── Stats bar ────────────────────────────────────────────────────────────────
 
 function StatsBar({ stats, sseConnected }: { stats: EventStats | undefined; sseConnected: boolean }) {
+  const { t } = useTranslation();
   const cats = ["vehicle", "gate", "access", "ai", "reservation"] as const;
 
   return (
@@ -244,7 +209,7 @@ function StatsBar({ stats, sseConnected }: { stats: EventStats | undefined; sseC
       <div className="flex items-center gap-2">
         <span className={cn("h-2 w-2 rounded-full", sseConnected ? "bg-emerald-400 shadow-[0_0_6px_theme(colors.emerald.400)]" : "bg-muted-foreground")} />
         <span className="text-xs text-muted-foreground">
-          {sseConnected ? "Live" : "Offline"}
+          {sseConnected ? t("events.liveLabel") : t("events.offlineLabel")}
         </span>
       </div>
 
@@ -253,7 +218,7 @@ function StatsBar({ stats, sseConnected }: { stats: EventStats | undefined; sseC
       <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
         <Activity className="h-3 w-3" />
         <span className="font-medium text-foreground">{stats?.total ?? "—"}</span>
-        <span>events / 24h</span>
+        <span>{t("events.eventsPerDay")}</span>
       </div>
 
       <div className="h-4 w-px bg-border" />
@@ -262,7 +227,7 @@ function StatsBar({ stats, sseConnected }: { stats: EventStats | undefined; sseC
         {cats.map((cat) => (
           <div key={cat} className="flex items-center gap-1.5">
             <span className={cn("h-1.5 w-1.5 rounded-full", CATEGORY_DOT[cat])} />
-            <span className="text-xs text-muted-foreground capitalize">{cat}</span>
+            <span className="text-xs text-muted-foreground">{t(`events.categories.${cat}`)}</span>
             <span className="text-xs font-medium text-foreground">{stats?.by_category[cat] ?? 0}</span>
           </div>
         ))}
@@ -273,7 +238,7 @@ function StatsBar({ stats, sseConnected }: { stats: EventStats | undefined; sseC
           <div className="h-4 w-px bg-border ml-auto" />
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <Users className="h-3 w-3" />
-            <span>{stats.sse_clients} connected</span>
+            <span>{stats.sse_clients} {t("events.connected")}</span>
           </div>
         </>
       )}
@@ -284,6 +249,7 @@ function StatsBar({ stats, sseConnected }: { stats: EventStats | undefined; sseC
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function EventsPage() {
+  const { t } = useTranslation();
   const [activeCategory, setActiveCategory] = useState<CategoryId>("all");
   const [liveEvents, setLiveEvents]         = useState<DomainEvent[]>([]);
   const [sseConnected, setSseConnected]     = useState(false);
@@ -306,7 +272,7 @@ export default function EventsPage() {
       es.onmessage = (e) => {
         try {
           const data = JSON.parse(e.data) as DomainEvent & { type?: string };
-          if (data.type === "connected") return; // handshake message
+          if (data.type === "connected") return;
           setLiveEvents((prev) => [data, ...prev].slice(0, 200));
         } catch { /* ignore parse errors */ }
       };
@@ -338,7 +304,6 @@ export default function EventsPage() {
     enabled: viewMode === "history",
   });
 
-  // Reset page when switching category
   useEffect(() => setHistoryPage(1), [activeCategory]);
 
   const liveFiltered =
@@ -353,10 +318,8 @@ export default function EventsPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-bold text-foreground">Event Stream</h1>
-            <p className="text-sm text-muted-foreground">
-              Real-time domain event bus — all 5 categories
-            </p>
+            <h1 className="text-xl font-bold text-foreground">{t("events.title")}</h1>
+            <p className="text-sm text-muted-foreground">{t("events.subtitle")}</p>
           </div>
           <div className="flex gap-2">
             <Button
@@ -368,7 +331,7 @@ export default function EventsPage() {
               }}
             >
               <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
-              Clear
+              {t("events.clear")}
             </Button>
           </div>
         </div>
@@ -378,29 +341,33 @@ export default function EventsPage() {
 
         {/* Category tabs */}
         <div className="flex gap-1 overflow-x-auto rounded-lg border border-border/50 bg-card/40 p-1">
-          {CATEGORIES.map(({ id, label, icon: Icon }) => (
-            <button
-              key={id}
-              onClick={() => setActiveCategory(id)}
-              className={cn(
-                "flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
-                activeCategory === id
-                  ? "bg-primary/15 text-primary"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              <Icon className="h-3.5 w-3.5" />
-              {label}
-              {id !== "all" && liveEvents.filter((e) => e.category === id).length > 0 && (
-                <span className={cn(
-                  "ml-0.5 min-w-[18px] rounded-full px-1 text-center text-[10px] font-bold leading-[18px]",
-                  activeCategory === id ? "bg-primary/30 text-primary" : "bg-muted text-muted-foreground",
-                )}>
-                  {liveEvents.filter((e) => e.category === id).length}
-                </span>
-              )}
-            </button>
-          ))}
+          {CATEGORY_IDS.map((id) => {
+            const Icon = CATEGORY_ICONS[id] ?? Activity;
+            const label = t(`events.categories.${id}`);
+            return (
+              <button
+                key={id}
+                onClick={() => setActiveCategory(id)}
+                className={cn(
+                  "flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+                  activeCategory === id
+                    ? "bg-primary/15 text-primary"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                <Icon className="h-3.5 w-3.5" />
+                {label}
+                {id !== "all" && liveEvents.filter((e) => e.category === id).length > 0 && (
+                  <span className={cn(
+                    "ml-0.5 min-w-[18px] rounded-full px-1 text-center text-[10px] font-bold leading-[18px]",
+                    activeCategory === id ? "bg-primary/30 text-primary" : "bg-muted text-muted-foreground",
+                  )}>
+                    {liveEvents.filter((e) => e.category === id).length}
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
 
         {/* View toggle */}
@@ -411,14 +378,14 @@ export default function EventsPage() {
             onClick={() => setViewMode("live")}
           >
             <span className={cn("mr-1.5 h-1.5 w-1.5 rounded-full", sseConnected ? "bg-emerald-400" : "bg-muted-foreground")} />
-            Live Feed
+            {t("events.live")}
           </Button>
           <Button
             variant={viewMode === "history" ? "default" : "outline"}
             size="sm"
             onClick={() => setViewMode("history")}
           >
-            History
+            {t("events.history")}
           </Button>
         </div>
 
@@ -428,17 +395,15 @@ export default function EventsPage() {
             {!sseConnected && (
               <div className="flex items-center gap-2 rounded-lg border border-amber-400/20 bg-amber-400/5 px-4 py-3 text-sm text-amber-400">
                 <WifiOff className="h-4 w-4 shrink-0" />
-                Connecting to event stream…
+                {t("events.connecting")}
               </div>
             )}
 
             {sseConnected && liveFiltered.length === 0 && (
               <div className="flex flex-col items-center gap-2 rounded-lg border border-border/50 bg-card/20 py-12 text-center">
                 <Wifi className="h-8 w-8 text-emerald-400/60" />
-                <p className="text-sm font-medium text-foreground">Stream connected</p>
-                <p className="text-xs text-muted-foreground">
-                  Waiting for events — trigger a gate, create a vehicle, or open a reservation to see them here.
-                </p>
+                <p className="text-sm font-medium text-foreground">{t("events.streamConnected")}</p>
+                <p className="text-xs text-muted-foreground">{t("events.waitingForEvents")}</p>
               </div>
             )}
 
@@ -452,12 +417,12 @@ export default function EventsPage() {
         {viewMode === "history" && (
           <div className="space-y-2">
             {historyLoading && (
-              <div className="py-8 text-center text-sm text-muted-foreground">Loading…</div>
+              <div className="py-8 text-center text-sm text-muted-foreground">{t("common.loading")}</div>
             )}
 
             {!historyLoading && history?.items.length === 0 && (
               <div className="py-12 text-center text-sm text-muted-foreground">
-                No events recorded yet for this category.
+                {t("events.noEventsForCategory")}
               </div>
             )}
 
@@ -469,7 +434,7 @@ export default function EventsPage() {
             {history && history.total > 30 && (
               <div className="flex items-center justify-between pt-2">
                 <span className="text-xs text-muted-foreground">
-                  {history.total} total events
+                  {t("events.totalEvents", { total: history.total })}
                 </span>
                 <div className="flex gap-2">
                   <Button
@@ -478,7 +443,7 @@ export default function EventsPage() {
                     disabled={historyPage <= 1}
                     onClick={() => setHistoryPage((p) => p - 1)}
                   >
-                    Previous
+                    {t("common.previous")}
                   </Button>
                   <span className="flex items-center px-2 text-sm text-muted-foreground">
                     {historyPage} / {Math.ceil(history.total / 30)}
@@ -489,7 +454,7 @@ export default function EventsPage() {
                     disabled={historyPage >= Math.ceil(history.total / 30)}
                     onClick={() => setHistoryPage((p) => p + 1)}
                   >
-                    Next
+                    {t("common.next")}
                   </Button>
                 </div>
               </div>

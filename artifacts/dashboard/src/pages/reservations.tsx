@@ -4,7 +4,6 @@ import { reservationsApi, villasApi, vehiclesApi, type Reservation, type Villa, 
 import { AppLayout } from "@/components/layout/app-layout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -12,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Plus, Pencil, Trash2, CalendarDays, User, Car, Phone, Key } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { useTranslation } from "react-i18next";
 
 const statusColors: Record<string, string> = {
   upcoming: "bg-blue-500/15 text-blue-400 border-blue-500/20",
@@ -47,6 +47,7 @@ function toInputDate(d: string) {
 export default function ReservationsPage() {
   const qc = useQueryClient();
   const { toast } = useToast();
+  const { t } = useTranslation();
   const [filter, setFilter] = useState("all");
   const [editTarget, setEditTarget] = useState<Reservation | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -61,18 +62,18 @@ export default function ReservationsPage() {
 
   const createMut = useMutation({
     mutationFn: (data: ReservationFormData) => reservationsApi.create(data),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["reservations"] }); setDialogOpen(false); toast({ title: "Reservation created" }); },
-    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["reservations"] }); setDialogOpen(false); toast({ title: t("reservations.created") }); },
+    onError: (e: any) => toast({ title: t("common.error"), description: e.message, variant: "destructive" }),
   });
   const updateMut = useMutation({
     mutationFn: ({ id, data }: { id: string; data: ReservationFormData }) => reservationsApi.update(id, data),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["reservations"] }); setDialogOpen(false); toast({ title: "Reservation updated" }); },
-    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["reservations"] }); setDialogOpen(false); toast({ title: t("reservations.updated") }); },
+    onError: (e: any) => toast({ title: t("common.error"), description: e.message, variant: "destructive" }),
   });
   const deleteMut = useMutation({
     mutationFn: (id: string) => reservationsApi.delete(id),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["reservations"] }); toast({ title: "Reservation deleted" }); },
-    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["reservations"] }); toast({ title: t("reservations.deleted") }); },
+    onError: (e: any) => toast({ title: t("common.error"), description: e.message, variant: "destructive" }),
   });
 
   function openNew() {
@@ -98,16 +99,18 @@ export default function ReservationsPage() {
   const villaMap = Object.fromEntries(villas.map((v) => [v.id, v.name]));
   const loading = createMut.isPending || updateMut.isPending;
 
+  const statusKeys = ["all", "upcoming", "active", "completed", "cancelled"] as const;
+
   return (
     <AppLayout
-      title="Reservations"
-      subtitle="Guest reservations and check-in management"
-      actions={<Button size="sm" onClick={openNew}><Plus className="w-4 h-4 mr-2" />New Reservation</Button>}
+      title={t("reservations.title")}
+      subtitle={t("reservations.subtitle")}
+      actions={<Button size="sm" onClick={openNew}><Plus className="w-4 h-4 mr-2" />{t("reservations.newReservation")}</Button>}
     >
       <div className="max-w-6xl mx-auto space-y-4">
         {/* Filters */}
         <div className="flex gap-2 flex-wrap">
-          {["all", "upcoming", "active", "completed", "cancelled"].map((s) => (
+          {statusKeys.map((s) => (
             <button
               key={s}
               onClick={() => setFilter(s)}
@@ -118,7 +121,7 @@ export default function ReservationsPage() {
                   : "border-border text-muted-foreground hover:text-foreground hover:border-foreground/30"
               )}
             >
-              {s}
+              {t(`reservations.status.${s}`)}
             </button>
           ))}
         </div>
@@ -129,7 +132,7 @@ export default function ReservationsPage() {
             {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-28 w-full" />)}
           </div>
         ) : reservations.length === 0 ? (
-          <Card><CardContent className="py-16 text-center text-muted-foreground">No reservations found.</CardContent></Card>
+          <Card><CardContent className="py-16 text-center text-muted-foreground">{t("reservations.noReservations")}</CardContent></Card>
         ) : (
           <div className="space-y-3">
             {reservations.map((r) => (
@@ -146,8 +149,13 @@ export default function ReservationsPage() {
                         <span className="flex items-center gap-1.5"><Building2Icon className="w-3.5 h-3.5" />{villaMap[r.villa_id] ?? r.villa_id}</span>
                         <span className="flex items-center gap-1.5"><CalendarDays className="w-3.5 h-3.5" />{formatDate(r.check_in)} → {formatDate(r.check_out)}</span>
                         {r.guest_phone && <span className="flex items-center gap-1.5"><Phone className="w-3.5 h-3.5" />{r.guest_phone}</span>}
-                        {r.vehicle_ids.length > 0 && <span className="flex items-center gap-1.5"><Car className="w-3.5 h-3.5" />{r.vehicle_ids.length} vehicle{r.vehicle_ids.length !== 1 ? "s" : ""}</span>}
-                        {r.pin_code && <span className="flex items-center gap-1.5"><Key className="w-3.5 h-3.5" />PIN: {r.pin_code}</span>}
+                        {r.vehicle_ids.length > 0 && (
+                          <span className="flex items-center gap-1.5">
+                            <Car className="w-3.5 h-3.5" />
+                            {r.vehicle_ids.length} {r.vehicle_ids.length === 1 ? t("reservations.vehicle_one") : t("reservations.vehicle_other")}
+                          </span>
+                        )}
+                        {r.pin_code && <span className="flex items-center gap-1.5"><Key className="w-3.5 h-3.5" />{t("reservations.pin")}: {r.pin_code}</span>}
                       </div>
                     </div>
                     <div className="flex gap-2 shrink-0">
@@ -165,37 +173,37 @@ export default function ReservationsPage() {
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogContent className="max-w-lg max-h-screen overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>{editTarget ? "Edit Reservation" : "New Reservation"}</DialogTitle>
+              <DialogTitle>{editTarget ? t("reservations.editReservation") : t("reservations.newReservation")}</DialogTitle>
             </DialogHeader>
             <div className="space-y-3 py-2">
-              <FormField label="Guest Name">
-                <Input value={form.guest_name} onChange={(e) => setForm({ ...form, guest_name: e.target.value })} placeholder="Full name" />
+              <FormField label={t("reservations.guestName")}>
+                <Input value={form.guest_name} onChange={(e) => setForm({ ...form, guest_name: e.target.value })} placeholder={t("reservations.fullName")} />
               </FormField>
               <div className="grid grid-cols-2 gap-3">
-                <FormField label="Phone">
-                  <Input value={form.guest_phone} onChange={(e) => setForm({ ...form, guest_phone: e.target.value })} placeholder="+62..." />
+                <FormField label={t("reservations.phone")}>
+                  <Input value={form.guest_phone} onChange={(e) => setForm({ ...form, guest_phone: e.target.value })} placeholder="+359..." />
                 </FormField>
-                <FormField label="Email">
+                <FormField label={t("reservations.email")}>
                   <Input value={form.guest_email} onChange={(e) => setForm({ ...form, guest_email: e.target.value })} placeholder="email@..." type="email" />
                 </FormField>
               </div>
-              <FormField label="Villa">
+              <FormField label={t("reservations.villa")}>
                 <Select value={form.villa_id} onValueChange={(v) => setForm({ ...form, villa_id: v })}>
-                  <SelectTrigger><SelectValue placeholder="Select villa..." /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder={t("reservations.selectVilla")} /></SelectTrigger>
                   <SelectContent>
                     {villas.map((v) => <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </FormField>
               <div className="grid grid-cols-2 gap-3">
-                <FormField label="Check-in">
+                <FormField label={t("reservations.checkIn")}>
                   <Input type="date" value={form.check_in} onChange={(e) => setForm({ ...form, check_in: e.target.value })} />
                 </FormField>
-                <FormField label="Check-out">
+                <FormField label={t("reservations.checkOut")}>
                   <Input type="date" value={form.check_out} onChange={(e) => setForm({ ...form, check_out: e.target.value })} />
                 </FormField>
               </div>
-              <FormField label="Vehicles (optional)">
+              <FormField label={t("reservations.vehiclesOptional")}>
                 <div className="border border-border rounded-lg max-h-36 overflow-y-auto p-2 space-y-1">
                   {vehicles.map((v) => (
                     <label key={v.id} className="flex items-center gap-2 cursor-pointer text-sm">
@@ -211,14 +219,14 @@ export default function ReservationsPage() {
                   ))}
                 </div>
               </FormField>
-              <FormField label="Notes">
-                <Input value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Optional notes" />
+              <FormField label={t("common.notes")}>
+                <Input value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder={t("reservations.optionalNotes")} />
               </FormField>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
+              <Button variant="outline" onClick={() => setDialogOpen(false)}>{t("common.cancel")}</Button>
               <Button onClick={handleSubmit} disabled={loading || !form.guest_name || !form.villa_id || !form.check_in || !form.check_out}>
-                {loading ? "Saving..." : editTarget ? "Update" : "Create"}
+                {loading ? t("common.saving") : editTarget ? t("common.update") : t("common.create")}
               </Button>
             </DialogFooter>
           </DialogContent>
