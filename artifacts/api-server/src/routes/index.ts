@@ -8,6 +8,7 @@ import { vehiclesRouter } from "./vehicles";
 import { accessRouter } from "./access";
 import { camerasRouter } from "./cameras";
 import { logsRouter } from "./logs";
+import { snapshotsRouter } from "./snapshots";
 
 const router: IRouter = Router();
 
@@ -20,5 +21,6 @@ router.use("/vehicles", vehiclesRouter);
 router.use("/access", accessRouter);
 router.use("/cameras", camerasRouter);
 router.use("/logs", logsRouter);
+router.use("/snapshots", snapshotsRouter);
 
 export default router;
