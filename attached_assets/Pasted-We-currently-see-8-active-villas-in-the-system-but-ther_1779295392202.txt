@@ -1,0 +1,124 @@
+We currently see 8 active villas in the system, but there is no clear operational workflow for managing them from the UI.
+
+We need a full clarification and verification of the Villa Management architecture and UI flow.
+
+Please explain and verify the following:
+
+====================================================
+VILLA MANAGEMENT AUDIT
+====================================================
+
+1. Can admins currently:
+- create new villas
+- edit villas
+- deactivate villas
+- delete villas
+
+If YES:
+- explain exactly where this exists in the UI
+- explain the current workflow
+- explain which API endpoints are used
+
+If NO:
+- explain what is missing
+
+====================================================
+2. RELATIONSHIPS
+====================================================
+
+Explain the current relationships between:
+
+- villas
+- reservations
+- vehicles
+- entrances
+- cameras
+- intercoms
+- future smart locks
+
+Clarify what is:
+- logical relationship
+- hardware relationship
+- access relationship
+
+====================================================
+3. FUTURE SMART LOCK SUPPORT
+====================================================
+
+We want future support for:
+- smart locks
+- PIN code locks
+- temporary PINs
+- reservation-based access
+
+Question:
+
+How should smart locks be architecturally attached?
+
+Should they belong to:
+- villa
+- entrance
+- reservation
+- access group
+or something else?
+
+Explain the recommended architecture before implementation.
+
+====================================================
+4. CURRENT UI GAP
+====================================================
+
+Right now it feels unclear how an admin operationally manages:
+- villas
+- hardware
+- assignments
+- future lock mappings
+
+Explain:
+- what already exists
+- what is missing
+- what should be added next
+
+====================================================
+5. ADMIN OPERATIONAL FLOW
+====================================================
+
+Please describe the intended real-world operational workflow.
+
+Example:
+- create villa
+- create entrance
+- add cameras
+- add intercoms
+- create reservation
+- assign vehicle
+- generate PIN
+- grant access
+
+Explain how the system is intended to operate day-to-day from an administrator perspective.
+
+====================================================
+6. DATABASE + UI CONSISTENCY
+====================================================
+
+Verify:
+- database schema consistency
+- frontend consistency
+- whether any UI pages are missing
+- whether any CRUD flows are incomplete
+- whether any relations are currently hidden or inaccessible in the UI
+
+====================================================
+IMPORTANT
+====================================================
+
+Do NOT implement new features yet.
+
+First:
+- explain the current architecture
+- explain missing operational workflows
+- identify architectural gaps
+- identify missing admin tooling
+- identify hidden or unfinished functionality
+
+We want to understand where the platform currently stands operationally before continuing development.
