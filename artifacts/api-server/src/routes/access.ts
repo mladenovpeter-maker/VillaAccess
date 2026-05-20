@@ -5,6 +5,7 @@ import { eq, and, sql } from "drizzle-orm";
 import { requireAuth } from "./auth";
 import { z } from "zod";
 import { eventBus } from "../lib/events";
+import { validateVehicleAccess } from "../lib/validation/reservation-validator";
 
 const router = Router();
 

@@ -122,7 +122,9 @@ async function request<T>(
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(err.detail || res.statusText);
+    const error = new Error(err.detail || res.statusText) as Error & Record<string, unknown>;
+    Object.assign(error, err);
+    throw error;
   }
 
   if (res.status === 204) return undefined as T;

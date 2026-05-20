@@ -16,6 +16,10 @@ export const reservationsTable = pgTable("reservations", {
   status: reservationStatusEnum("status").notNull().default("upcoming"),
   notes: text("notes"),
   pin_code: text("pin_code"),
+  actual_check_in: timestamp("actual_check_in"),
+  actual_check_out: timestamp("actual_check_out"),
+  cancelled_at: timestamp("cancelled_at"),
+  cancelled_by: text("cancelled_by"),
   created_at: timestamp("created_at").defaultNow().notNull(),
   updated_at: timestamp("updated_at").defaultNow().notNull(),
 });
