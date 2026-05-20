@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { villasTable, reservationsTable } from "@workspace/db";
-import { eq, sql } from "drizzle-orm";
+import { villasTable, reservationsTable, reservationVehiclesTable } from "@workspace/db";
+import { eq, sql, desc } from "drizzle-orm";
 import { requireAuth } from "./auth";
 import { z } from "zod";
 
@@ -13,6 +13,18 @@ async function enrichVilla(villa: typeof villasTable.$inferSelect) {
     .from(reservationsTable)
     .where(eq(reservationsTable.villa_id, villa.id));
 
+  let vehicleCount = 0;
+  try {
+    const [vc] = await db
+      .select({ vehicles: sql<number>`count(distinct ${reservationVehiclesTable.vehicle_id})::int` })
+      .from(reservationVehiclesTable)
+      .innerJoin(reservationsTable, eq(reservationsTable.id, reservationVehiclesTable.reservation_id))
+      .where(eq(reservationsTable.villa_id, villa.id));
+    vehicleCount = vc?.vehicles ?? 0;
+  } catch {
+    vehicleCount = 0;
+  }
+
   return {
     id: villa.id,
     name: villa.name,
@@ -20,6 +32,7 @@ async function enrichVilla(villa: typeof villasTable.$inferSelect) {
     location: villa.location,
     status: villa.status,
     active_reservations: active,
+    vehicle_count: vehicleCount,
     created_at: villa.created_at,
     updated_at: villa.updated_at,
   };
@@ -36,17 +49,28 @@ router.get("/", requireAuth, async (_req, res) => {
 // ─── GET /villas/:id ──────────────────────────────────────────────────────────
 
 router.get("/:id", requireAuth, async (req, res) => {
+  if (req.params.id === "reservations") { res.status(400).json({ detail: "Bad route" }); return; }
   const rows = await db.select().from(villasTable).where(eq(villasTable.id, req.params.id)).limit(1);
   if (!rows[0]) { res.status(404).json({ detail: "Not found" }); return; }
   res.json(await enrichVilla(rows[0]));
+});
+
+// ─── GET /villas/:id/reservations ─────────────────────────────────────────────
+
+router.get("/:id/reservations", requireAuth, async (req, res) => {
+  const rows = await db.select().from(reservationsTable)
+    .where(eq(reservationsTable.villa_id, req.params.id))
+    .orderBy(desc(reservationsTable.check_in))
+    .limit(50);
+  res.json(rows);
 });
 
 // ─── POST /villas ─────────────────────────────────────────────────────────────
 
 const villaSchema = z.object({
   name:        z.string().min(1),
-  description: z.string().optional(),
-  location:    z.string().optional(),
+  description: z.string().optional().nullable(),
+  location:    z.string().optional().nullable(),
   status:      z.enum(["active", "inactive", "maintenance"]).optional(),
 });
 

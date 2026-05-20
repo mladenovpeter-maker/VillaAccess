@@ -16,6 +16,8 @@ import { mockRouter } from "./mock";
 import { settingsRouter } from "./settings";
 import { diagnosticsRouter } from "./diagnostics";
 import { exportRouter } from "./export";
+import { usersRouter } from "./users";
+import { tempCredentialsRouter } from "./temp-credentials";
 
 const router: IRouter = Router();
 
@@ -36,5 +38,7 @@ router.use("/mock", mockRouter);
 router.use("/settings", settingsRouter);
 router.use("/diagnostics", diagnosticsRouter);
 router.use("/export", exportRouter);
+router.use("/users", usersRouter);
+router.use("/temp-credentials", tempCredentialsRouter);
 
 export default router;

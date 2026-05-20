@@ -9,6 +9,8 @@ export const tempCredentialsTable = pgTable("temp_credentials", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   reservation_id: text("reservation_id").notNull().references(() => reservationsTable.id, { onDelete: "cascade" }),
   pin_code: text("pin_code").notNull(),
+  label: text("label"),
+  notes: text("notes"),
   valid_from: timestamp("valid_from").notNull(),
   valid_until: timestamp("valid_until").notNull(),
   status: credentialStatusEnum("status").notNull().default("active"),

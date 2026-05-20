@@ -1,0 +1,80 @@
+STOP new feature development temporarily.
+
+We may have accidentally created overlapping or duplicated functionality during recent prompts.
+
+Do NOT redesign or rebuild anything yet.
+
+Please perform a full stabilization and duplication audit.
+
+====================================================
+CHECK FOR DUPLICATION
+====================================================
+
+Verify if any of the following now exist in duplicated or conflicting forms:
+
+- Villas management
+- Entrances management
+- Camera assignment
+- Event systems
+- Settings systems
+- Logs/timeline/event history
+- Diagnostics pages
+- Access control flows
+- User/role logic
+- Reservation validation
+- Snapshot gallery
+
+====================================================
+CHECK FOR ARCHITECTURE DRIFT
+====================================================
+
+Verify:
+- no duplicated APIs
+- no duplicated database logic
+- no duplicated frontend pages
+- no conflicting routes
+- no duplicated React state management
+- no duplicated services
+- no conflicting schemas
+
+====================================================
+CHECK FOR UNUSED / DEAD CODE
+====================================================
+
+Identify:
+- abandoned components
+- duplicate hooks
+- duplicate services
+- unreachable routes
+- old placeholder logic
+- obsolete mock implementations
+
+====================================================
+CHECK FOR UI DUPLICATION
+====================================================
+
+Verify if:
+- entrances are now managed in multiple places
+- cameras are managed in multiple places
+- settings are duplicated
+- logs/events overlap unnecessarily
+
+====================================================
+IMPORTANT
+====================================================
+
+Do NOT build anything new yet.
+
+First:
+- stabilize architecture
+- identify duplicate functionality
+- identify unnecessary complexity
+- identify conflicting implementations
+
+Then provide:
+- clean architecture report
+- duplication report
+- recommended cleanup actions
+- safe next steps
+
+We want to avoid project bloat and keep the platform maintainable.

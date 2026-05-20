@@ -21,6 +21,9 @@ import GalleryPage from "@/pages/gallery";
 import HealthPage from "@/pages/health";
 import TimelinePage from "@/pages/timeline";
 import ExportPage from "@/pages/export";
+import VillasPage from "@/pages/villas";
+import UsersPage from "@/pages/users";
+import TempCredentialsPage from "@/pages/temp-credentials";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -47,6 +50,7 @@ function Router() {
     <Switch>
       <Route path="/login" component={() => <PublicRoute component={LoginPage} />} />
       <Route path="/" component={() => <ProtectedRoute component={DashboardPage} />} />
+      <Route path="/villas" component={() => <ProtectedRoute component={VillasPage} />} />
       <Route path="/reservations" component={() => <ProtectedRoute component={ReservationsPage} />} />
       <Route path="/vehicles" component={() => <ProtectedRoute component={VehiclesPage} />} />
       <Route path="/access" component={() => <ProtectedRoute component={AccessControlPage} />} />
@@ -61,6 +65,8 @@ function Router() {
       <Route path="/health" component={() => <ProtectedRoute component={HealthPage} />} />
       <Route path="/timeline" component={() => <ProtectedRoute component={TimelinePage} />} />
       <Route path="/export" component={() => <ProtectedRoute component={ExportPage} />} />
+      <Route path="/users" component={() => <ProtectedRoute component={UsersPage} />} />
+      <Route path="/temp-credentials" component={() => <ProtectedRoute component={TempCredentialsPage} />} />
       <Route component={NotFound} />
     </Switch>
   );

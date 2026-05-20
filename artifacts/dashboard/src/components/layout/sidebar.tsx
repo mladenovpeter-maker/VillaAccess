@@ -2,30 +2,17 @@ import { Link, useLocation } from "wouter";
 import { useAuth } from "@/lib/auth-context";
 import { cn } from "@/lib/utils";
 import {
-  LayoutDashboard,
-  CalendarDays,
-  Car,
-  ShieldCheck,
-  Camera,
-  ScrollText,
-  Activity,
-  LogOut,
-  Menu,
-  X,
-  Building2,
-  DoorOpen,
-  FlaskConical,
-  Stethoscope,
-  Settings2,
-  Images,
-  HeartPulse,
-  GitCommitHorizontal,
-  Download,
+  LayoutDashboard, CalendarDays, Car, ShieldCheck, Camera, ScrollText,
+  Activity, LogOut, Menu, X, Building2, DoorOpen, FlaskConical,
+  Stethoscope, Settings2, Images, HeartPulse, GitCommitHorizontal,
+  Download, Users, KeyRound,
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "react-i18next";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+
+type NavItem = { href: string; label: string; icon: React.ElementType };
 
 export function Sidebar() {
   const [location] = useLocation();
@@ -33,8 +20,9 @@ export function Sidebar() {
   const [open, setOpen] = useState(false);
   const { t } = useTranslation();
 
-  const navItems = [
+  const navItems: NavItem[] = [
     { href: "/", label: t("nav.dashboard"), icon: LayoutDashboard },
+    { href: "/villas", label: t("nav.villas"), icon: Building2 },
     { href: "/reservations", label: t("nav.reservations"), icon: CalendarDays },
     { href: "/vehicles", label: t("nav.vehicles"), icon: Car },
     { href: "/access", label: t("nav.access"), icon: ShieldCheck },
@@ -46,16 +34,46 @@ export function Sidebar() {
     { href: "/logs", label: t("nav.logs"), icon: ScrollText },
   ];
 
-  const toolItems = [
+  const adminItems: NavItem[] = [
+    { href: "/users", label: t("nav.users"), icon: Users },
+    { href: "/temp-credentials", label: t("nav.tempCredentials"), icon: KeyRound },
+  ];
+
+  const toolItems: NavItem[] = [
     { href: "/diagnostics", label: t("nav.diagnostics"), icon: Stethoscope },
     { href: "/health", label: t("nav.health"), icon: HeartPulse },
     { href: "/export", label: t("nav.export"), icon: Download },
     { href: "/settings", label: t("nav.settings"), icon: Settings2 },
   ];
 
-  const devItems = [
-    { href: "/mock", label: t("nav.mockMode"), icon: FlaskConical },
-  ];
+  function SectionLabel({ label }: { label: string }) {
+    return (
+      <div className="pt-3 pb-1">
+        <p className="px-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">{label}</p>
+      </div>
+    );
+  }
+
+  function NavLink({ href, label, icon: Icon, devStyle }: NavItem & { devStyle?: boolean }) {
+    const active = href === "/" ? location === "/" : location.startsWith(href);
+    return (
+      <Link href={href} onClick={() => setOpen(false)}>
+        <div className={cn(
+          "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer",
+          devStyle
+            ? active
+              ? "bg-amber-500/15 text-amber-400"
+              : "text-amber-500/70 hover:bg-amber-500/10 hover:text-amber-400"
+            : active
+              ? "bg-primary/15 text-primary"
+              : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+        )}>
+          <Icon className="w-4 h-4 shrink-0" />
+          {label}
+        </div>
+      </Link>
+    );
+  }
 
   return (
     <>
@@ -69,19 +87,14 @@ export function Sidebar() {
 
       {/* Overlay */}
       {open && (
-        <div
-          className="fixed inset-0 z-40 bg-black/60 md:hidden"
-          onClick={() => setOpen(false)}
-        />
+        <div className="fixed inset-0 z-40 bg-black/60 md:hidden" onClick={() => setOpen(false)} />
       )}
 
       {/* Sidebar */}
-      <aside
-        className={cn(
-          "fixed inset-y-0 left-0 z-40 w-64 flex flex-col bg-sidebar border-r border-sidebar-border transition-transform duration-200",
-          open ? "translate-x-0" : "-translate-x-full md:translate-x-0"
-        )}
-      >
+      <aside className={cn(
+        "fixed inset-y-0 left-0 z-40 w-64 flex flex-col bg-sidebar border-r border-sidebar-border transition-transform duration-200",
+        open ? "translate-x-0" : "-translate-x-full md:translate-x-0"
+      )}>
         {/* Logo */}
         <div className="flex items-center gap-3 px-6 py-5 border-b border-sidebar-border">
           <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
@@ -95,74 +108,16 @@ export function Sidebar() {
 
         {/* Nav */}
         <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-0.5">
-          {navItems.map(({ href, label, icon: Icon }) => {
-            const active = href === "/" ? location === "/" : location.startsWith(href);
-            return (
-              <Link key={href} href={href} onClick={() => setOpen(false)}>
-                <div
-                  className={cn(
-                    "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer",
-                    active
-                      ? "bg-primary/15 text-primary"
-                      : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                  )}
-                >
-                  <Icon className="w-4 h-4 shrink-0" />
-                  {label}
-                </div>
-              </Link>
-            );
-          })}
+          {navItems.map((item) => <NavLink key={item.href} {...item} />)}
 
-          {/* Tools section */}
-          <div className="pt-3 pb-1">
-            <p className="px-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">
-              {t("nav.tools")}
-            </p>
-          </div>
-          {toolItems.map(({ href, label, icon: Icon }) => {
-            const active = location.startsWith(href);
-            return (
-              <Link key={href} href={href} onClick={() => setOpen(false)}>
-                <div
-                  className={cn(
-                    "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer",
-                    active
-                      ? "bg-primary/15 text-primary"
-                      : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                  )}
-                >
-                  <Icon className="w-4 h-4 shrink-0" />
-                  {label}
-                </div>
-              </Link>
-            );
-          })}
+          <SectionLabel label={t("nav.administration")} />
+          {adminItems.map((item) => <NavLink key={item.href} {...item} />)}
 
-          {/* Dev section */}
-          <div className="pt-3 pb-1">
-            <p className="px-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">
-              {t("nav.development")}
-            </p>
-          </div>
-          {devItems.map(({ href, label, icon: Icon }) => {
-            const active = location.startsWith(href);
-            return (
-              <Link key={href} href={href} onClick={() => setOpen(false)}>
-                <div
-                  className={cn(
-                    "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer",
-                    active
-                      ? "bg-amber-500/15 text-amber-400"
-                      : "text-amber-500/70 hover:bg-amber-500/10 hover:text-amber-400"
-                  )}
-                >
-                  <Icon className="w-4 h-4 shrink-0" />
-                  {label}
-                </div>
-              </Link>
-            );
-          })}
+          <SectionLabel label={t("nav.tools")} />
+          {toolItems.map((item) => <NavLink key={item.href} {...item} />)}
+
+          <SectionLabel label={t("nav.development")} />
+          <NavLink href="/mock" label={t("nav.mockMode")} icon={FlaskConical} devStyle />
         </nav>
 
         {/* Language switcher */}
