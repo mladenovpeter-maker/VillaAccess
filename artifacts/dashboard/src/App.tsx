@@ -13,6 +13,7 @@ import AccessControlPage from "@/pages/access";
 import CamerasPage from "@/pages/cameras";
 import LogsPage from "@/pages/logs";
 import EventsPage from "@/pages/events";
+import MockPage from "@/pages/mock";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -45,6 +46,7 @@ function Router() {
       <Route path="/cameras" component={() => <ProtectedRoute component={CamerasPage} />} />
       <Route path="/logs" component={() => <ProtectedRoute component={LogsPage} />} />
       <Route path="/events" component={() => <ProtectedRoute component={EventsPage} />} />
+      <Route path="/mock" component={() => <ProtectedRoute component={MockPage} />} />
       <Route component={NotFound} />
     </Switch>
   );

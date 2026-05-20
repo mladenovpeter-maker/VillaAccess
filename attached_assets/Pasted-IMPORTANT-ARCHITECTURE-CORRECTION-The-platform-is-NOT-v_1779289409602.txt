@@ -1,0 +1,339 @@
+IMPORTANT ARCHITECTURE CORRECTION
+
+The platform is NOT villa-specific at the hardware layer.
+
+Cameras, gates, barriers, and intercoms are SHARED infrastructure for the entire property/community.
+
+Do NOT directly bind:
+
+- cameras to villas
+
+- gates to villas
+
+- intercoms to villas
+
+Instead:
+
+====================================================
+
+CORRECT REAL-WORLD ARCHITECTURE
+
+====================================================
+
+There are:
+
+- multiple villas
+
+- multiple shared entrances/exits
+
+- multiple shared ANPR cameras
+
+- multiple shared intercoms
+
+- shared gates/barriers
+
+Example:
+
+Entrance A:
+
+- Camera A1
+
+- Camera A2
+
+- Intercom A
+
+Entrance B:
+
+- Camera B1
+
+- Camera B2
+
+- Intercom B
+
+These entrances are shared by ALL villas.
+
+The access decision is based on:
+
+- reservation validity
+
+- assigned vehicle
+
+- PIN validity
+
+- access permissions
+
+NOT villa-specific camera ownership.
+
+====================================================
+
+NEW PLATFORM LOGIC
+
+====================================================
+
+The system should support:
+
+1. Shared Entrances
+
+Entrances should be configurable objects.
+
+Each entrance may contain:
+
+- multiple cameras
+
+- multiple intercoms
+
+- gate/barrier controls
+
+2. Villas
+
+Villas are logical reservation/access units only.
+
+Villas do NOT own hardware devices.
+
+3. Reservations
+
+Reservations grant temporary access rights.
+
+A reservation contains:
+
+- guest name
+
+- villa assignment
+
+- check-in/check-out dates
+
+- assigned vehicle(s)
+
+- PIN code
+
+- access validity
+
+4. Access Validation
+
+When a vehicle arrives:
+
+System checks:
+
+- reservation validity
+
+- assigned vehicle
+
+- active access window
+
+- confidence score
+
+If valid:
+
+- open shared gate/barrier
+
+====================================================
+
+NEW REQUIRED MODULES
+
+====================================================
+
+1. Villas Management
+
+- create/edit/delete villas
+
+- villa naming
+
+- active/inactive status
+
+2. Entrance Management
+
+- create/edit/delete entrances
+
+- entrance naming
+
+- entrance status
+
+3. Camera Management
+
+- add/edit/delete cameras
+
+- IP address
+
+- username/password
+
+- RTSP configuration
+
+- Hikvision ISAPI settings
+
+- relay output support
+
+- assign camera to entrance
+
+- test connection button
+
+4. Intercom Management
+
+- add/edit/delete intercoms
+
+- IP address
+
+- credentials
+
+- assign intercom to entrance
+
+- PIN synchronization
+
+- open door support
+
+5. Vehicle Management
+
+Required:
+
+- license plate
+
+Optional:
+
+- make
+
+- model
+
+- color
+
+Additional:
+
+- blacklist
+
+- AI fingerprint
+
+- snapshots
+
+- visit history
+
+6. Reservation Management
+
+Reservation must support:
+
+- guest name
+
+- villa assignment
+
+- check-in/check-out
+
+- vehicle assignment
+
+- PIN code generation
+
+- access enable/disable
+
+7. Access Automation
+
+Reservation creation should automatically:
+
+- create access window
+
+- assign vehicle whitelist
+
+- generate PIN
+
+- activate access permissions
+
+====================================================
+
+AUTHENTICATION
+
+====================================================
+
+Temporary development credentials:
+
+username: admin
+
+password: 12345678
+
+Use secure hashing internally.
+
+====================================================
+
+SIMULATOR MODE
+
+====================================================
+
+Add development simulator mode:
+
+- simulate vehicle detection
+
+- simulate OCR
+
+- simulate dirty plate
+
+- simulate gate open
+
+- simulate denied access
+
+====================================================
+
+IMPORTANT AI LOGIC
+
+====================================================
+
+The system must NOT rely only on plate OCR.
+
+Use:
+
+- partial OCR
+
+- make/model recognition
+
+- vehicle color
+
+- embeddings/fingerprints
+
+- historical matching
+
+- confidence scoring
+
+====================================================
+
+IMPORTANT
+
+====================================================
+
+The platform must scale dynamically for:
+
+- 1 villa
+
+- 10 villas
+
+- 100 villas
+
+and:
+
+- multiple entrances
+
+- multiple cameras
+
+- multiple gates
+
+- multiple intercoms
+
+without architecture changes.
+
+Generate:
+
+- updated database schema
+
+- entrance-based architecture
+
+- relationships between:
+
+  - entrances
+
+  - cameras
+
+  - intercoms
+
+  - villas
+
+  - reservations
+
+  - vehicles
+
+  - access rules
+
+- dynamic admin interfaces
+
+- event-driven access logic

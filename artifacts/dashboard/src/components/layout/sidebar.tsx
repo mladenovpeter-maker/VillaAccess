@@ -13,6 +13,7 @@ import {
   Menu,
   X,
   Building2,
+  FlaskConical,
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -25,6 +26,10 @@ const navItems = [
   { href: "/cameras", label: "Cameras", icon: Camera },
   { href: "/events", label: "Event Stream", icon: Activity },
   { href: "/logs", label: "Logs", icon: ScrollText },
+];
+
+const devItems = [
+  { href: "/mock", label: "Mock Camera Mode", icon: FlaskConical },
 ];
 
 export function Sidebar() {
@@ -80,6 +85,31 @@ export function Sidebar() {
                     active
                       ? "bg-primary/15 text-primary"
                       : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                  )}
+                >
+                  <Icon className="w-4 h-4 shrink-0" />
+                  {label}
+                </div>
+              </Link>
+            );
+          })}
+
+          {/* Dev section */}
+          <div className="pt-3 pb-1">
+            <p className="px-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">
+              Development
+            </p>
+          </div>
+          {devItems.map(({ href, label, icon: Icon }) => {
+            const active = location.startsWith(href);
+            return (
+              <Link key={href} href={href} onClick={() => setOpen(false)}>
+                <div
+                  className={cn(
+                    "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer",
+                    active
+                      ? "bg-amber-500/15 text-amber-400"
+                      : "text-amber-500/70 hover:bg-amber-500/10 hover:text-amber-400"
                   )}
                 >
                   <Icon className="w-4 h-4 shrink-0" />

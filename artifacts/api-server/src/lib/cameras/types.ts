@@ -1,7 +1,7 @@
 // ─── Camera adapter types ──────────────────────────────────────────────────────
 // Unified interface for Hikvision ISAPI, Dahua SDK, and ONVIF cameras.
 
-export type CameraProtocol = "hikvision" | "dahua" | "onvif" | "rtsp";
+export type CameraProtocol = "hikvision" | "dahua" | "onvif" | "rtsp" | "mock";
 
 /** All configuration needed to connect to a physical camera. */
 export interface CameraConfig {

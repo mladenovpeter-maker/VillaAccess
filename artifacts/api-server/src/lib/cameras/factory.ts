@@ -9,6 +9,7 @@ import type { CameraAdapter, CameraConfig, CameraProtocol } from "./types";
 import { HikvisionAdapter } from "./hikvision";
 import { DahuaAdapter } from "./dahua";
 import { ONVIFAdapter } from "./onvif";
+import { MockCameraAdapter } from "./mock";
 
 /** Raw DB camera row shape (only the fields we need). */
 export interface CameraRow {
@@ -58,6 +59,8 @@ export function createAdapter(row: CameraRow): CameraAdapter {
     case "rtsp":
       // RTSP-only cameras: no snapshot/gate API — stub as ONVIF
       return new ONVIFAdapter({ ...config, protocol: "onvif" });
+    case "mock":
+      return new MockCameraAdapter(config);
     default:
       throw new Error(`Unknown camera protocol: "${config.protocol}"`);
   }

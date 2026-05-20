@@ -10,6 +10,7 @@ import { camerasRouter } from "./cameras";
 import { logsRouter } from "./logs";
 import { snapshotsRouter } from "./snapshots";
 import { eventsRouter } from "./events";
+import { mockRouter } from "./mock";
 
 const router: IRouter = Router();
 
@@ -24,5 +25,6 @@ router.use("/cameras", camerasRouter);
 router.use("/logs", logsRouter);
 router.use("/snapshots", snapshotsRouter);
 router.use("/events", eventsRouter);
+router.use("/mock", mockRouter);
 
 export default router;
