@@ -14,7 +14,7 @@ import { Separator } from "@/components/ui/separator";
 import {
   Plus, Pencil, Trash2, CalendarDays, User, Car, Phone, Key,
   RefreshCw, ShieldOff, Wifi, WifiOff, AlertCircle, CheckCircle2,
-  Clock, LogIn, LogOut, XCircle, ChevronRight,
+  Clock, LogIn, LogOut, XCircle, ChevronRight, X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -51,14 +51,18 @@ function toInputDate(d: string) {
 
 // ─── Form types ───────────────────────────────────────────────────────────────
 
+interface PlateEntry { plate: string; make: string; model: string; color: string; }
+
 interface ReservationFormData {
   guest_name: string; guest_phone: string; guest_email: string;
   villa_id: string; check_in: string; check_out: string;
-  notes: string; vehicle_ids: string[];
+  notes: string; pin_code: string; license_plates: PlateEntry[];
 }
 const defaultForm: ReservationFormData = {
   guest_name: "", guest_phone: "", guest_email: "",
-  villa_id: "", check_in: "", check_out: "", notes: "", vehicle_ids: [],
+  villa_id: "", check_in: "", check_out: "",
+  notes: "", pin_code: "",
+  license_plates: [{ plate: "", make: "", model: "", color: "" }],
 };
 
 // ─── Main page ────────────────────────────────────────────────────────────────
@@ -139,19 +143,40 @@ export default function ReservationsPage() {
   function openNew() {
     setEditTarget(null); setForm(defaultForm); setDialogOpen(true);
   }
+  function addPlate() {
+    setForm((f) => ({ ...f, license_plates: [...f.license_plates, { plate: "", make: "", model: "", color: "" }] }));
+  }
+  function removePlate(idx: number) {
+    setForm((f) => ({ ...f, license_plates: f.license_plates.filter((_, i) => i !== idx) }));
+  }
+  function updatePlate(idx: number, field: keyof PlateEntry, value: string) {
+    setForm((f) => ({ ...f, license_plates: f.license_plates.map((p, i) => i === idx ? { ...p, [field]: value } : p) }));
+  }
   function openEdit(r: Reservation, e: React.MouseEvent) {
     e.stopPropagation();
     setEditTarget(r);
+    const plates = r.vehicles?.length
+      ? r.vehicles.map((v) => ({ plate: v.license_plate, make: v.make ?? "", model: v.model ?? "", color: v.color ?? "" }))
+      : [{ plate: "", make: "", model: "", color: "" }];
     setForm({
       guest_name: r.guest_name, guest_phone: r.guest_phone ?? "", guest_email: r.guest_email ?? "",
       villa_id: r.villa_id, check_in: toInputDate(r.check_in), check_out: toInputDate(r.check_out),
-      notes: r.notes ?? "", vehicle_ids: r.vehicle_ids,
+      notes: r.notes ?? "", pin_code: r.pin_code ?? "", license_plates: plates,
     });
     setDialogOpen(true);
   }
   function handleSubmit() {
-    if (editTarget) updateMut.mutate({ id: editTarget.id, data: form });
-    else createMut.mutate(form);
+    const cleanPlates = form.license_plates
+      .filter((p) => p.plate.trim())
+      .map((p) => ({
+        plate: p.plate.trim().toUpperCase().replace(/\s+/g, ""),
+        ...(p.make.trim()  ? { make:  p.make.trim() }  : {}),
+        ...(p.model.trim() ? { model: p.model.trim() } : {}),
+        ...(p.color.trim() ? { color: p.color.trim() } : {}),
+      }));
+    const payload = { ...form, license_plates: cleanPlates, pin_code: form.pin_code.trim() || undefined };
+    if (editTarget) updateMut.mutate({ id: editTarget.id, data: payload as any });
+    else createMut.mutate(payload as any);
   }
 
   const { user } = useAuth();
@@ -301,20 +326,44 @@ export default function ReservationsPage() {
               </FormField>
             </div>
             <FormField label={t("reservations.vehiclesOptional")}>
-              <div className="border border-border rounded-lg max-h-36 overflow-y-auto p-2 space-y-1">
-                {vehicles.map((v) => (
-                  <label key={v.id} className="flex items-center gap-2 cursor-pointer text-sm">
-                    <input
-                      type="checkbox"
-                      className="accent-primary"
-                      checked={form.vehicle_ids.includes(v.id)}
-                      onChange={(e) => setForm({ ...form, vehicle_ids: e.target.checked ? [...form.vehicle_ids, v.id] : form.vehicle_ids.filter((id) => id !== v.id) })}
-                    />
-                    <span>{v.license_plate}</span>
-                    {v.make && <span className="text-muted-foreground">{v.make} {v.model}</span>}
-                  </label>
+              <div className="space-y-2">
+                {form.license_plates.map((entry, idx) => (
+                  <div key={idx} className="rounded-lg border border-border bg-muted/20 p-3 space-y-2">
+                    <div className="flex gap-2 items-center">
+                      <Car className="w-4 h-4 text-muted-foreground shrink-0" />
+                      <Input
+                        value={entry.plate}
+                        onChange={(e) => updatePlate(idx, "plate", e.target.value.toUpperCase())}
+                        placeholder="e.g. CA1234BP"
+                        className="font-mono flex-1 h-8"
+                      />
+                      {form.license_plates.length > 1 && (
+                        <Button type="button" variant="ghost" size="sm" className="h-8 w-8 p-0 shrink-0" onClick={() => removePlate(idx)}>
+                          <X className="w-4 h-4" />
+                        </Button>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 pl-6">
+                      <Input value={entry.make}  onChange={(e) => updatePlate(idx, "make",  e.target.value)} placeholder="Make"  className="text-xs h-7" />
+                      <Input value={entry.model} onChange={(e) => updatePlate(idx, "model", e.target.value)} placeholder="Model" className="text-xs h-7" />
+                      <Input value={entry.color} onChange={(e) => updatePlate(idx, "color", e.target.value)} placeholder="Color" className="text-xs h-7" />
+                    </div>
+                  </div>
                 ))}
+                <Button type="button" variant="outline" size="sm" className="w-full gap-1.5 h-8" onClick={addPlate}>
+                  <Plus className="w-3.5 h-3.5" />Add another plate
+                </Button>
               </div>
+            </FormField>
+            <FormField label="PIN Code">
+              <Input
+                value={form.pin_code}
+                onChange={(e) => setForm({ ...form, pin_code: e.target.value.replace(/\D/g, "").slice(0, 8) })}
+                placeholder="Auto-generated if blank"
+                className="font-mono"
+                maxLength={8}
+              />
+              <p className="text-xs text-muted-foreground mt-1">Leave blank to auto-generate a 4-digit PIN</p>
             </FormField>
             <FormField label={t("common.notes")}>
               <Input value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder={t("reservations.optionalNotes")} />

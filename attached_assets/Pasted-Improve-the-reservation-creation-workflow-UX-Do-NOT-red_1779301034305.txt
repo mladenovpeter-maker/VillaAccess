@@ -1,0 +1,141 @@
+Improve the reservation creation workflow UX.
+
+Do NOT redesign architecture.
+Do NOT redesign vehicles schema.
+Do NOT redesign reservations schema.
+
+This is ONLY a UX and operational flow correction.
+
+====================================================
+CURRENT PROBLEM
+====================================================
+
+The reservation flow currently behaves too much like:
+- vehicle management first
+- reservation second
+
+This is incorrect for a hospitality/front-desk workflow.
+
+Operators usually receive:
+- guest name
+- dates
+- villa
+- vehicle plate
+
+from:
+- Booking.com
+- Airbnb
+- WhatsApp
+- phone
+- email
+
+They should NOT need to:
+- create vehicles separately first
+- search vehicle lists
+- pick from dropdowns
+
+====================================================
+REQUIRED UX CHANGE
+====================================================
+
+Inside the reservation form:
+
+Replace:
+- vehicle dropdown picker
+
+with:
+- direct free-text license plate input
+
+====================================================
+NEW FLOW
+====================================================
+
+Operator enters:
+
+- guest name
+- villa
+- check-in/check-out
+- license plate (manual free-text input)
+
+Optional:
+- make
+- model
+- color
+
+====================================================
+BACKEND LOGIC
+====================================================
+
+When reservation is saved:
+
+System should:
+- normalize plate
+- check if vehicle already exists
+- if exists:
+    reuse existing vehicle record
+- if not:
+    auto-create vehicle record
+
+Then:
+- link vehicle to reservation automatically
+
+====================================================
+IMPORTANT
+====================================================
+
+Do NOT require operators to manage vehicles separately before reservations.
+
+Vehicle management page still remains for:
+- history
+- blacklist
+- snapshots
+- analytics
+- manual editing
+
+But reservation creation must be:
+- fast
+- direct
+- operator-friendly
+
+====================================================
+PIN LOGIC
+====================================================
+
+Keep automatic PIN generation.
+
+This is correct behavior.
+
+However:
+- allow optional manual PIN override
+- operator may manually enter a custom PIN if desired
+
+If PIN field is empty:
+- auto-generate PIN
+
+If PIN field is filled:
+- use manual PIN
+
+====================================================
+GOAL
+====================================================
+
+The operator workflow should feel like:
+
+1.
+Create reservation
+
+2.
+Type plate manually
+
+3.
+Save
+
+4.
+System handles:
+- vehicle creation
+- linking
+- PIN generation
+- access activation
+- intercom sync
+
+internally.

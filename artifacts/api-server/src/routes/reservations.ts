@@ -77,6 +77,41 @@ async function enrichReservation(r: DbReservation, includeWindow = false) {
   };
 }
 
+// ── Helpers: resolve license plates → vehicle IDs ────────────────────────────
+
+async function resolveLicensePlates(
+  plates: Array<{ plate: string; make?: string | null; model?: string | null; color?: string | null }>,
+): Promise<string[]> {
+  const ids: string[] = [];
+  for (const entry of plates) {
+    const normalized = entry.plate.trim().toUpperCase().replace(/\s+/g, "");
+    if (!normalized) continue;
+
+    const existing = await db
+      .select({ id: vehiclesTable.id })
+      .from(vehiclesTable)
+      .where(eq(vehiclesTable.license_plate, normalized))
+      .limit(1);
+
+    if (existing[0]) {
+      ids.push(existing[0].id);
+    } else {
+      const [created] = await db
+        .insert(vehiclesTable)
+        .values({
+          license_plate: normalized,
+          make:   entry.make?.trim()  || null,
+          model:  entry.model?.trim() || null,
+          color:  entry.color?.trim() || null,
+          status: "known",
+        })
+        .returning({ id: vehiclesTable.id });
+      ids.push(created.id);
+    }
+  }
+  return ids;
+}
+
 // ── GET / ─────────────────────────────────────────────────────────────────────
 
 router.get("/", requireAuth, async (req, res) => {
@@ -98,15 +133,23 @@ router.get("/", requireAuth, async (req, res) => {
 // ── POST / ───────────────────────────────────────────────────────────────────
 
 router.post("/", requireAuth, async (req: any, res) => {
+  const plateEntrySchema = z.object({
+    plate: z.string().min(1).max(20),
+    make:  z.string().max(60).nullable().optional(),
+    model: z.string().max(60).nullable().optional(),
+    color: z.string().max(30).nullable().optional(),
+  });
   const schema = z.object({
-    guest_name:  z.string().min(1),
-    guest_phone: z.string().nullable().optional(),
-    guest_email: z.string().nullable().optional(),
-    villa_id:    z.string(),
-    check_in:    z.string(),
-    check_out:   z.string(),
-    vehicle_ids: z.array(z.string()).optional(),
-    notes:       z.string().nullable().optional(),
+    guest_name:     z.string().min(1),
+    guest_phone:    z.string().nullable().optional(),
+    guest_email:    z.string().nullable().optional(),
+    villa_id:       z.string(),
+    check_in:       z.string(),
+    check_out:      z.string(),
+    notes:          z.string().nullable().optional(),
+    pin_code:       z.string().max(20).nullable().optional(),
+    license_plates: z.array(plateEntrySchema).optional(),
+    vehicle_ids:    z.array(z.string()).optional(),
   });
   const body = schema.safeParse(req.body);
   if (!body.success) { res.status(400).json({ detail: "Invalid request", issues: body.error.issues }); return; }
@@ -114,11 +157,17 @@ router.post("/", requireAuth, async (req: any, res) => {
   const checkIn  = new Date(body.data.check_in);
   const checkOut = new Date(body.data.check_out);
 
+  // Resolve inline plate entries → vehicle IDs (auto-create if new)
+  const plateIds   = body.data.license_plates?.length
+    ? await resolveLicensePlates(body.data.license_plates)
+    : [];
+  const vehicleIds = [...new Set([...plateIds, ...(body.data.vehicle_ids ?? [])])];
+
   const validation = await validateReservationCreate({
     villa_id:    body.data.villa_id,
     check_in:    checkIn,
     check_out:   checkOut,
-    vehicle_ids: body.data.vehicle_ids ?? [],
+    vehicle_ids: vehicleIds,
   });
 
   if (!validation.valid) {
@@ -126,7 +175,9 @@ router.post("/", requireAuth, async (req: any, res) => {
     return;
   }
 
-  const pinCode = Math.floor(1000 + Math.random() * 9000).toString();
+  const pinCode = (body.data.pin_code && body.data.pin_code.trim())
+    ? body.data.pin_code.trim()
+    : Math.floor(1000 + Math.random() * 9000).toString();
 
   const [reservation] = await db.insert(reservationsTable).values({
     guest_name:     body.data.guest_name,
@@ -142,9 +193,9 @@ router.post("/", requireAuth, async (req: any, res) => {
     status:         "upcoming",
   }).returning();
 
-  if (body.data.vehicle_ids?.length) {
+  if (vehicleIds.length) {
     await db.insert(reservationVehiclesTable).values(
-      body.data.vehicle_ids.map((vid) => ({ reservation_id: reservation.id, vehicle_id: vid })),
+      vehicleIds.map((vid) => ({ reservation_id: reservation.id, vehicle_id: vid })),
     );
   }
 
@@ -183,15 +234,23 @@ router.get("/:id", requireAuth, async (req, res) => {
 // ── PUT /:id ─────────────────────────────────────────────────────────────────
 
 router.put("/:id", requireAuth, async (req: any, res) => {
+  const plateEntrySchema = z.object({
+    plate: z.string().min(1).max(20),
+    make:  z.string().max(60).nullable().optional(),
+    model: z.string().max(60).nullable().optional(),
+    color: z.string().max(30).nullable().optional(),
+  });
   const schema = z.object({
-    guest_name:  z.string().min(1),
-    guest_phone: z.string().nullable().optional(),
-    guest_email: z.string().nullable().optional(),
-    villa_id:    z.string(),
-    check_in:    z.string(),
-    check_out:   z.string(),
-    vehicle_ids: z.array(z.string()).optional(),
-    notes:       z.string().nullable().optional(),
+    guest_name:     z.string().min(1),
+    guest_phone:    z.string().nullable().optional(),
+    guest_email:    z.string().nullable().optional(),
+    villa_id:       z.string(),
+    check_in:       z.string(),
+    check_out:      z.string(),
+    notes:          z.string().nullable().optional(),
+    pin_code:       z.string().max(20).nullable().optional(),
+    license_plates: z.array(plateEntrySchema).optional(),
+    vehicle_ids:    z.array(z.string()).optional(),
   });
   const body = schema.safeParse(req.body);
   if (!body.success) { res.status(400).json({ detail: "Invalid request", issues: body.error.issues }); return; }
@@ -199,8 +258,16 @@ router.put("/:id", requireAuth, async (req: any, res) => {
   const checkIn  = new Date(body.data.check_in);
   const checkOut = new Date(body.data.check_out);
 
+  // Resolve inline plate entries → vehicle IDs (auto-create if new)
+  const plateIds   = body.data.license_plates?.length
+    ? await resolveLicensePlates(body.data.license_plates)
+    : [];
+  const vehicleIds = body.data.license_plates?.length
+    ? [...new Set([...plateIds, ...(body.data.vehicle_ids ?? [])])]
+    : (body.data.vehicle_ids ?? []);
+
   const validation = await validateReservationUpdate(
-    { villa_id: body.data.villa_id, check_in: checkIn, check_out: checkOut, vehicle_ids: body.data.vehicle_ids ?? [] },
+    { villa_id: body.data.villa_id, check_in: checkIn, check_out: checkOut, vehicle_ids: vehicleIds },
     req.params.id,
   );
 
@@ -230,11 +297,12 @@ router.put("/:id", requireAuth, async (req: any, res) => {
 
   if (!rows[0]) { res.status(404).json({ detail: "Not found" }); return; }
 
-  if (body.data.vehicle_ids !== undefined) {
+  // Always overwrite vehicles when license_plates or vehicle_ids are provided
+  if (body.data.license_plates !== undefined || body.data.vehicle_ids !== undefined) {
     await db.delete(reservationVehiclesTable).where(eq(reservationVehiclesTable.reservation_id, req.params.id));
-    if (body.data.vehicle_ids.length > 0) {
+    if (vehicleIds.length > 0) {
       await db.insert(reservationVehiclesTable).values(
-        body.data.vehicle_ids.map((vid) => ({ reservation_id: req.params.id, vehicle_id: vid })),
+        vehicleIds.map((vid) => ({ reservation_id: req.params.id, vehicle_id: vid })),
       );
     }
   }
