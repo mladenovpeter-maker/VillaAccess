@@ -243,7 +243,7 @@ export const vehiclesApi = {
 export const accessApi = {
   events: (params?: {
     status?: string;
-    villa_id?: string;
+    entrance_id?: string;
     page?: number;
     page_size?: number;
   }) => {
@@ -252,10 +252,18 @@ export const accessApi = {
     ).toString();
     return api.get<PaginatedEvents>(`/access/events${q ? "?" + q : ""}`);
   },
-  openGate: (villa_id: string, notes?: string) =>
-    api.post("/access/open-gate", { villa_id, notes }),
-  openDoor: (villa_id: string, notes?: string) =>
-    api.post("/access/open-door", { villa_id, notes }),
+  openGate: (entrance_id: string, notes?: string) =>
+    api.post("/access/open-gate", { entrance_id, notes }),
+  openDoor: (entrance_id: string, notes?: string) =>
+    api.post("/access/open-door", { entrance_id, notes }),
+};
+
+export const entrancesApi = {
+  list: () => api.get<Entrance[]>("/entrances"),
+  get: (id: string) => api.get<Entrance>(`/entrances/${id}`),
+  create: (body: Partial<Entrance>) => api.post<Entrance>("/entrances", body),
+  update: (id: string, body: Partial<Entrance>) => api.put<Entrance>(`/entrances/${id}`, body),
+  delete: (id: string) => api.delete(`/entrances/${id}`),
 };
 
 export const camerasApi = {
@@ -310,10 +318,8 @@ export interface DashboardStats {
 export interface Villa {
   id: string;
   name: string;
-  gate_id: string;
-  door_id: string;
-  camera_ids: string[];
   status: string;
+  active_reservations?: number;
 }
 
 export interface Reservation {
@@ -389,6 +395,20 @@ export interface PaginatedSnapshots {
   page_size: number;
 }
 
+export interface Entrance {
+  id: string;
+  name: string;
+  description: string | null;
+  location: string | null;
+  status: "active" | "inactive" | "maintenance";
+  gate_relay_ip: string | null;
+  gate_relay_port: number;
+  gate_relay_channel: number;
+  notes: string | null;
+  camera_count?: number;
+  intercom_count?: number;
+}
+
 export interface AccessEvent {
   id: string;
   timestamp: string;
@@ -397,12 +417,12 @@ export interface AccessEvent {
   confidence_score: number | null;
   vehicle_id: string | null;
   license_plate: string | null;
-  villa_id: string | null;
+  entrance_id: string | null;
   camera_id: string | null;
   snapshot_url: string | null;
   notes: string | null;
   vehicle: Vehicle | null;
-  villa: Villa | null;
+  entrance: Entrance | null;
 }
 
 export interface Camera {
@@ -410,7 +430,7 @@ export interface Camera {
   name: string;
   ip_address: string;
   rtsp_url: string | null;
-  villa_id: string | null;
+  entrance_id: string | null;
   model: string | null;
   // Integration
   protocol: "hikvision" | "dahua" | "onvif" | "rtsp";
@@ -502,7 +522,7 @@ export interface DomainEvent {
   severity: "info" | "warning" | "error" | "critical";
   payload: Record<string, unknown> | null;
   vehicle_id: string | null;
-  villa_id: string | null;
+  entrance_id: string | null;
   camera_id: string | null;
   reservation_id: string | null;
   operator_id: string | null;
@@ -531,7 +551,7 @@ export const eventsApi = {
     event_type?: string;
     severity?: string;
     vehicle_id?: string;
-    villa_id?: string;
+    entrance_id?: string;
     camera_id?: string;
     source?: string;
     since?: string;

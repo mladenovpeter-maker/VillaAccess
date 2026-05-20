@@ -6,6 +6,7 @@ import {
   vehiclesTable,
   accessEventsTable,
   camerasTable,
+  entrancesTable,
 } from "@workspace/db";
 import { eq, gte, sql } from "drizzle-orm";
 import { requireAuth } from "./auth";
@@ -16,7 +17,7 @@ router.get("/stats", requireAuth, async (_req, res) => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  const [villas, reservations, vehicles, eventsToday, cameras] = await Promise.all([
+  const [villas, reservations, vehicles, eventsToday, cameras, entrances] = await Promise.all([
     db.select({ count: sql<number>`count(*)::int` }).from(villasTable),
     db.select({ count: sql<number>`count(*)::int` }).from(reservationsTable).where(eq(reservationsTable.status, "active")),
     db.select({ count: sql<number>`count(*)::int` }).from(vehiclesTable),
@@ -27,6 +28,9 @@ router.get("/stats", requireAuth, async (_req, res) => {
     db.select({ count: sql<number>`count(*)::int`, status: camerasTable.status })
       .from(camerasTable)
       .groupBy(camerasTable.status),
+    db.select({ count: sql<number>`count(*)::int` })
+      .from(entrancesTable)
+      .where(eq(entrancesTable.status, "active")),
   ]);
 
   const totalEvents = eventsToday.reduce((acc, r) => acc + r.count, 0);
@@ -39,7 +43,7 @@ router.get("/stats", requireAuth, async (_req, res) => {
     active_reservations: reservations[0]?.count ?? 0,
     total_vehicles: vehicles[0]?.count ?? 0,
     events_today: totalEvents,
-    gates_online: villas[0]?.count ?? 0,
+    gates_online: entrances[0]?.count ?? 0,
     cameras_online: camerasOnline,
     denied_attempts_today: deniedCount,
     auto_opens_today: allowedCount,
@@ -63,12 +67,12 @@ router.get("/recent-events", requireAuth, async (req, res) => {
     confidence_score: e.confidence_score,
     vehicle_id: e.vehicle_id,
     license_plate: e.license_plate,
-    villa_id: e.villa_id,
+    entrance_id: e.entrance_id,
     camera_id: e.camera_id,
     snapshot_url: e.snapshot_url,
     notes: e.notes,
     vehicle: null,
-    villa: null,
+    entrance: null,
   }));
 
   res.json(enriched);

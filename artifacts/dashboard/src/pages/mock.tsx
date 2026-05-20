@@ -334,7 +334,7 @@ export default function MockPage() {
           pushResult({ scenario: id, label: "OCR Plate Scan", plate: data.plate, confidence: data.confidence, status: "event_only" });
           break;
         case "gate":
-          data = await apiFetch("/gate", { method: "POST", body: JSON.stringify({ villa_id: "demo" }) });
+          data = await apiFetch("/gate", { method: "POST", body: JSON.stringify({}) });
           pushResult({ scenario: id, label: "Gate Open", status: "event_only" });
           break;
         case "deny": {

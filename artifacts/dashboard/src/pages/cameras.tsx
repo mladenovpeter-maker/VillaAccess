@@ -402,7 +402,7 @@ export default function CamerasPage() {
               <CameraCard
                 key={c.id}
                 camera={c}
-                villaName={c.villa_id ? villaMap[c.villa_id] : undefined}
+                villaName={c.entrance_id ? villaMap[c.entrance_id] : undefined}
               />
             ))}
           </div>

@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { reservationsTable, reservationVehiclesTable, villasTable, vehiclesTable, camerasTable } from "@workspace/db";
+import { reservationsTable, reservationVehiclesTable, villasTable, vehiclesTable } from "@workspace/db";
 import { eq, and, inArray, desc } from "drizzle-orm";
 import { requireAuth } from "./auth";
 import { z } from "zod";
@@ -29,12 +29,7 @@ async function enrichReservation(r: DbReservation, includeWindow = false) {
     ? await db.select().from(vehiclesTable).where(inArray(vehiclesTable.id, vehicleIds))
     : [];
 
-  const villa = villaRows[0];
-  let villaWithCameras = null;
-  if (villa) {
-    const cameras = await db.select({ id: camerasTable.id }).from(camerasTable).where(eq(camerasTable.villa_id, villa.id));
-    villaWithCameras = { ...villa, camera_ids: cameras.map((c) => c.id) };
-  }
+  const villa = villaRows[0] ?? null;
 
   return {
     id:              r.id,
@@ -54,7 +49,7 @@ async function enrichReservation(r: DbReservation, includeWindow = false) {
     created_at:      r.created_at,
     updated_at:      r.updated_at,
     vehicle_ids: vehicleIds,
-    villa: villaWithCameras,
+    villa: villa,
     vehicles: vehicles.map((v) => ({
       id: v.id, license_plate: v.license_plate, make: v.make, model: v.model,
       color: v.color, vehicle_type: v.vehicle_type, confidence_score: v.confidence_score,

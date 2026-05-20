@@ -198,9 +198,9 @@ function EventCard({ event, isLive = false }: { event: DomainEvent; isLive?: boo
                 vehicle
               </Badge>
             )}
-            {event.villa_id && (
+            {event.entrance_id && (
               <Badge variant="outline" className="h-5 px-1.5 text-[10px] text-muted-foreground">
-                villa
+                entrance
               </Badge>
             )}
             {event.camera_id && (

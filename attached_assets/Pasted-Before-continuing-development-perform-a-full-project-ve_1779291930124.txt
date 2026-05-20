@@ -1,0 +1,105 @@
+Before continuing development, perform a full project verification and status audit.
+
+Check EVERYTHING implemented so far and report:
+
+====================================================
+VERIFICATION REQUIRED
+====================================================
+
+1. Backend
+- verify all API routes work
+- verify authentication works
+- verify JWT persistence
+- verify database connections
+- verify Redis connections
+- verify error handling
+- verify Docker services
+
+2. Frontend
+- verify all pages load correctly
+- verify protected routes
+- verify login/logout flow
+- verify forms and CRUD actions
+- verify tables/grids
+- verify responsive layout
+
+3. Database
+- verify schema consistency
+- verify relationships
+- verify seed data integrity
+- verify migrations
+
+4. Docker Stack
+- verify all containers start correctly
+- verify networking between containers
+- verify environment variables
+- verify docker-compose.yml
+
+5. Current Features
+Verify:
+- reservations
+- vehicles
+- access events
+- logs
+- cameras
+- villas
+- dashboard stats
+- simulator mode
+- access control actions
+
+6. Architecture
+Verify:
+- entrance-based architecture
+- shared camera/intercom logic
+- scalable structure
+- event-driven flow
+- future AI compatibility
+
+====================================================
+CHECK FOR PROBLEMS
+====================================================
+
+Report:
+- unfinished functionality
+- broken routes
+- frontend/backend mismatches
+- missing APIs
+- missing database fields
+- architecture inconsistencies
+- TODOs
+- placeholders
+- mock-only logic
+- missing integrations
+
+====================================================
+GENERATE TESTING GUIDE
+====================================================
+
+Generate a step-by-step testing checklist for the current system.
+
+Include:
+- login test
+- reservation creation test
+- vehicle assignment test
+- camera creation test
+- simulator test
+- access event test
+- OPEN GATE simulation test
+- logs verification
+
+====================================================
+IMPORTANT
+====================================================
+
+Do NOT continue building new features yet.
+
+First:
+- validate the entire current system
+- identify issues
+- confirm stability
+- confirm architecture consistency
+
+Then provide:
+- system health report
+- missing components
+- recommended next development priorities
