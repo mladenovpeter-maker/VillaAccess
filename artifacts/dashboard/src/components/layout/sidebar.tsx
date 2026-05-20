@@ -12,7 +12,14 @@ import { Button } from "@/components/ui/button";
 import { useTranslation } from "react-i18next";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 
-type NavItem = { href: string; label: string; icon: React.ElementType };
+type Role = "admin" | "operator" | "viewer";
+
+type NavItem = {
+  href: string;
+  label: string;
+  icon: React.ElementType;
+  roles: Role[];
+};
 
 export function Sidebar() {
   const [location] = useLocation();
@@ -20,31 +27,45 @@ export function Sidebar() {
   const [open, setOpen] = useState(false);
   const { t } = useTranslation();
 
-  const navItems: NavItem[] = [
-    { href: "/", label: t("nav.dashboard"), icon: LayoutDashboard },
-    { href: "/villas", label: t("nav.villas"), icon: Building2 },
-    { href: "/reservations", label: t("nav.reservations"), icon: CalendarDays },
-    { href: "/vehicles", label: t("nav.vehicles"), icon: Car },
-    { href: "/access", label: t("nav.access"), icon: ShieldCheck },
-    { href: "/timeline", label: t("nav.timeline"), icon: GitCommitHorizontal },
-    { href: "/entrances", label: t("nav.entrances"), icon: DoorOpen },
-    { href: "/cameras", label: t("nav.cameras"), icon: Camera },
-    { href: "/gallery", label: t("nav.gallery"), icon: Images },
-    { href: "/events", label: t("nav.events"), icon: Activity },
-    { href: "/logs", label: t("nav.logs"), icon: ScrollText },
+  const role = (user?.role ?? "viewer") as Role;
+
+  // ── Nav sections ────────────────────────────────────────────────────────────
+
+  const mainItems: NavItem[] = [
+    { href: "/",             label: t("nav.dashboard"),    icon: LayoutDashboard,      roles: ["admin", "operator", "viewer"] },
+    { href: "/villas",       label: t("nav.villas"),       icon: Building2,            roles: ["admin", "operator"] },
+    { href: "/reservations", label: t("nav.reservations"), icon: CalendarDays,         roles: ["admin", "operator"] },
+    { href: "/vehicles",     label: t("nav.vehicles"),     icon: Car,                  roles: ["admin", "operator"] },
+    { href: "/access",       label: t("nav.access"),       icon: ShieldCheck,          roles: ["admin", "operator", "viewer"] },
+    { href: "/timeline",     label: t("nav.timeline"),     icon: GitCommitHorizontal,  roles: ["admin", "operator", "viewer"] },
+    { href: "/cameras",      label: t("nav.cameras"),      icon: Camera,               roles: ["admin"] },
+    { href: "/entrances",    label: t("nav.entrances"),    icon: DoorOpen,             roles: ["admin"] },
+    { href: "/gallery",      label: t("nav.gallery"),      icon: Images,               roles: ["admin", "operator", "viewer"] },
+    { href: "/events",       label: t("nav.events"),       icon: Activity,             roles: ["admin", "operator", "viewer"] },
+    { href: "/logs",         label: t("nav.logs"),         icon: ScrollText,           roles: ["admin", "operator", "viewer"] },
   ];
 
   const adminItems: NavItem[] = [
-    { href: "/users", label: t("nav.users"), icon: Users },
-    { href: "/temp-credentials", label: t("nav.tempCredentials"), icon: KeyRound },
+    { href: "/users",            label: t("nav.users"),           icon: Users,    roles: ["admin"] },
+    { href: "/temp-credentials", label: t("nav.tempCredentials"), icon: KeyRound, roles: ["admin"] },
   ];
 
   const toolItems: NavItem[] = [
-    { href: "/diagnostics", label: t("nav.diagnostics"), icon: Stethoscope },
-    { href: "/health", label: t("nav.health"), icon: HeartPulse },
-    { href: "/export", label: t("nav.export"), icon: Download },
-    { href: "/settings", label: t("nav.settings"), icon: Settings2 },
+    { href: "/diagnostics", label: t("nav.diagnostics"), icon: Stethoscope,  roles: ["admin"] },
+    { href: "/health",      label: t("nav.health"),      icon: HeartPulse,   roles: ["admin"] },
+    { href: "/export",      label: t("nav.export"),      icon: Download,     roles: ["admin"] },
+    { href: "/settings",    label: t("nav.settings"),    icon: Settings2,    roles: ["admin"] },
   ];
+
+  const devItems: NavItem[] = [
+    { href: "/mock", label: t("nav.mockMode"), icon: FlaskConical, roles: ["admin"] },
+  ];
+
+  function visible(items: NavItem[]) {
+    return items.filter((item) => item.roles.includes(role));
+  }
+
+  // ── Sub-components ──────────────────────────────────────────────────────────
 
   function SectionLabel({ label }: { label: string }) {
     return (
@@ -74,6 +95,10 @@ export function Sidebar() {
       </Link>
     );
   }
+
+  const visibleAdmin  = visible(adminItems);
+  const visibleTools  = visible(toolItems);
+  const visibleDev    = visible(devItems);
 
   return (
     <>
@@ -108,16 +133,28 @@ export function Sidebar() {
 
         {/* Nav */}
         <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-0.5">
-          {navItems.map((item) => <NavLink key={item.href} {...item} />)}
+          {visible(mainItems).map((item) => <NavLink key={item.href} {...item} />)}
 
-          <SectionLabel label={t("nav.administration")} />
-          {adminItems.map((item) => <NavLink key={item.href} {...item} />)}
+          {visibleAdmin.length > 0 && (
+            <>
+              <SectionLabel label={t("nav.administration")} />
+              {visibleAdmin.map((item) => <NavLink key={item.href} {...item} />)}
+            </>
+          )}
 
-          <SectionLabel label={t("nav.tools")} />
-          {toolItems.map((item) => <NavLink key={item.href} {...item} />)}
+          {visibleTools.length > 0 && (
+            <>
+              <SectionLabel label={t("nav.tools")} />
+              {visibleTools.map((item) => <NavLink key={item.href} {...item} />)}
+            </>
+          )}
 
-          <SectionLabel label={t("nav.development")} />
-          <NavLink href="/mock" label={t("nav.mockMode")} icon={FlaskConical} devStyle />
+          {visibleDev.length > 0 && (
+            <>
+              <SectionLabel label={t("nav.development")} />
+              {visibleDev.map((item) => <NavLink key={item.href} {...item} devStyle />)}
+            </>
+          )}
         </nav>
 
         {/* Language switcher */}

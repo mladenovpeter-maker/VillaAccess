@@ -69,6 +69,16 @@ async function rotateRefreshToken(
   return { userId: stored.user_id, newRaw };
 }
 
+export function requireRole(...roles: Array<"admin" | "operator" | "viewer">) {
+  return (req: any, res: any, next: any) => {
+    if (!roles.includes(req.user?.role)) {
+      res.status(403).json({ detail: "Forbidden" });
+      return;
+    }
+    next();
+  };
+}
+
 export async function requireAuth(req: any, res: any, next: any) {
   const auth = req.headers.authorization;
   if (!auth?.startsWith("Bearer ")) {

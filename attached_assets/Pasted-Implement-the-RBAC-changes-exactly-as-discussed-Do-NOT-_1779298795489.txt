@@ -1,0 +1,133 @@
+Implement the RBAC changes exactly as discussed.
+
+Do NOT redesign authentication.
+Do NOT redesign users schema.
+Reuse the existing roles and auth system.
+
+====================================================
+CREATE DEFAULT USERS
+====================================================
+
+Create 3 default seeded users:
+
+1.
+username: admin
+password: 12345678
+role: admin
+
+2.
+username: operator
+password: 12345678
+role: operator
+
+3.
+username: viewer
+password: 12345678
+role: viewer
+
+Passwords must be properly hashed using the current auth system.
+
+Seed users only if they do not already exist.
+
+====================================================
+ROLE ENFORCEMENT
+====================================================
+
+Implement simple RBAC using the existing roles only:
+- admin
+- operator
+- viewer
+
+Do NOT create:
+- custom permissions
+- ACL systems
+- dynamic permission matrices
+
+====================================================
+ADMIN-ONLY AREAS
+====================================================
+
+Restrict:
+- Users
+- Settings
+- Diagnostics
+- Cameras
+- Entrances
+- Intercoms
+- Export
+- Mock tools
+
+to admin only.
+
+====================================================
+OPERATOR ACCESS
+====================================================
+
+Operator can:
+- create/edit reservations
+- manage vehicles
+- generate PINs
+- view timeline/events
+- use access control actions
+- perform guest onboarding flow
+
+Operator must NOT see:
+- hardware configuration
+- system settings
+- user management
+- diagnostics
+
+====================================================
+VIEWER ACCESS
+====================================================
+
+Viewer is read-only.
+
+Viewer can:
+- monitor events
+- monitor reservations
+- monitor timeline
+- monitor logs
+
+Viewer cannot:
+- create
+- edit
+- delete
+- trigger actions
+
+====================================================
+PASSWORD MANAGEMENT
+====================================================
+
+Inside Users Management page:
+
+Admin must be able to:
+- reset/change passwords
+- change roles
+- activate/deactivate users
+
+IMPORTANT:
+Admin must ALSO be able to change their OWN password.
+
+====================================================
+SECURITY
+====================================================
+
+Add proper backend role middleware:
+requireRole(...roles)
+
+Do NOT rely only on frontend hiding.
+
+Frontend route protection and sidebar filtering must match backend authorization.
+
+====================================================
+IMPORTANT
+====================================================
+
+Keep implementation minimal and clean.
+
+Do NOT redesign architecture.
+Do NOT create new auth systems.
+Do NOT create enterprise ACL complexity.
+
+Only finish the existing RBAC implementation correctly.

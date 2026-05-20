@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import healthRouter from "./health";
-import { authRouter } from "./auth";
+import { authRouter, requireAuth, requireRole } from "./auth";
 import { dashboardRouter } from "./dashboard";
 import { entrancesRouter } from "./entrances";
 import { intercomsRouter } from "./intercoms";
@@ -21,24 +21,34 @@ import { tempCredentialsRouter } from "./temp-credentials";
 
 const router: IRouter = Router();
 
+const adminOnly   = requireRole("admin");
+const opOrAbove   = requireRole("admin", "operator");
+
+// Public
 router.use(healthRouter);
 router.use("/auth", authRouter);
-router.use("/dashboard", dashboardRouter);
-router.use("/entrances", entrancesRouter);
-router.use("/intercoms", intercomsRouter);
-router.use("/villas", villasRouter);
-router.use("/reservations", reservationsRouter);
-router.use("/vehicles", vehiclesRouter);
-router.use("/access", accessRouter);
-router.use("/cameras", camerasRouter);
-router.use("/logs", logsRouter);
-router.use("/snapshots", snapshotsRouter);
-router.use("/events", eventsRouter);
-router.use("/mock", mockRouter);
-router.use("/settings", settingsRouter);
-router.use("/diagnostics", diagnosticsRouter);
-router.use("/export", exportRouter);
-router.use("/users", usersRouter);
-router.use("/temp-credentials", tempCredentialsRouter);
+
+// All authenticated users (admin + operator + viewer)
+router.use("/dashboard",     requireAuth,             dashboardRouter);
+router.use("/access",        requireAuth,             accessRouter);
+router.use("/events",        requireAuth,             eventsRouter);
+router.use("/logs",          requireAuth,             logsRouter);
+router.use("/snapshots",     requireAuth,             snapshotsRouter);
+
+// Operator and above (admin + operator)
+router.use("/villas",        requireAuth, opOrAbove,  villasRouter);
+router.use("/reservations",  requireAuth, opOrAbove,  reservationsRouter);
+router.use("/vehicles",      requireAuth, opOrAbove,  vehiclesRouter);
+
+// Admin only
+router.use("/entrances",        requireAuth, adminOnly, entrancesRouter);
+router.use("/intercoms",        requireAuth, adminOnly, intercomsRouter);
+router.use("/cameras",          requireAuth, adminOnly, camerasRouter);
+router.use("/diagnostics",      requireAuth, adminOnly, diagnosticsRouter);
+router.use("/settings",         requireAuth, adminOnly, settingsRouter);
+router.use("/export",           requireAuth, adminOnly, exportRouter);
+router.use("/users",            requireAuth, adminOnly, usersRouter);
+router.use("/temp-credentials", requireAuth, adminOnly, tempCredentialsRouter);
+router.use("/mock",             requireAuth, adminOnly, mockRouter);
 
 export default router;
