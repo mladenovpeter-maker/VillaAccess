@@ -79,6 +79,17 @@ export function requireRole(...roles: Array<"admin" | "operator" | "viewer">) {
   };
 }
 
+export function requireWriteAccess() {
+  return (req: any, res: any, next: any) => {
+    const isReadOnly = ["GET", "HEAD", "OPTIONS"].includes(req.method);
+    if (!isReadOnly && req.user?.role === "viewer") {
+      res.status(403).json({ detail: "Forbidden" });
+      return;
+    }
+    next();
+  };
+}
+
 export async function requireAuth(req: any, res: any, next: any) {
   const auth = req.headers.authorization;
   if (!auth?.startsWith("Bearer ")) {

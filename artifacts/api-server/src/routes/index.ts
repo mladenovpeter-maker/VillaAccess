@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import healthRouter from "./health";
-import { authRouter, requireAuth, requireRole } from "./auth";
+import { authRouter, requireAuth, requireRole, requireWriteAccess } from "./auth";
 import { dashboardRouter } from "./dashboard";
 import { entrancesRouter } from "./entrances";
 import { intercomsRouter } from "./intercoms";
@@ -22,23 +22,23 @@ import { tempCredentialsRouter } from "./temp-credentials";
 const router: IRouter = Router();
 
 const adminOnly   = requireRole("admin");
-const opOrAbove   = requireRole("admin", "operator");
+const writeAccess = requireWriteAccess();
 
 // Public
 router.use(healthRouter);
 router.use("/auth", authRouter);
 
-// All authenticated users (admin + operator + viewer)
-router.use("/dashboard",     requireAuth,             dashboardRouter);
-router.use("/access",        requireAuth,             accessRouter);
-router.use("/events",        requireAuth,             eventsRouter);
-router.use("/logs",          requireAuth,             logsRouter);
-router.use("/snapshots",     requireAuth,             snapshotsRouter);
+// All authenticated — read-only viewers, write blocked for viewer
+router.use("/dashboard",     requireAuth,                  dashboardRouter);
+router.use("/access",        requireAuth,  writeAccess,    accessRouter);
+router.use("/events",        requireAuth,                  eventsRouter);
+router.use("/logs",          requireAuth,                  logsRouter);
+router.use("/snapshots",     requireAuth,                  snapshotsRouter);
 
-// Operator and above (admin + operator)
-router.use("/villas",        requireAuth, opOrAbove,  villasRouter);
-router.use("/reservations",  requireAuth, opOrAbove,  reservationsRouter);
-router.use("/vehicles",      requireAuth, opOrAbove,  vehiclesRouter);
+// All authenticated — viewer read-only (GET allowed, writes blocked)
+router.use("/villas",        requireAuth,  writeAccess,    villasRouter);
+router.use("/reservations",  requireAuth,  writeAccess,    reservationsRouter);
+router.use("/vehicles",      requireAuth,  writeAccess,    vehiclesRouter);
 
 // Admin only
 router.use("/entrances",        requireAuth, adminOnly, entrancesRouter);

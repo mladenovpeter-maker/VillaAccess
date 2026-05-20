@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
+import { useAuth } from "@/lib/auth-context";
 import {
   Building2, Plus, Pencil, Trash2, MapPin, CalendarDays, Car,
   Loader2, Search, CheckCircle2, XCircle, AlertTriangle, ExternalLink,
@@ -149,7 +150,7 @@ function VillaDialog({ open, onClose, villa }: { open: boolean; onClose: () => v
 
 // ─── Villa Detail Sheet ─────────────────────────────────────────────────────────
 
-function VillaDetailSheet({ villa, onClose, onEdit }: { villa: VillaDetail | null; onClose: () => void; onEdit: (v: VillaDetail) => void }) {
+function VillaDetailSheet({ villa, onClose, onEdit, readOnly }: { villa: VillaDetail | null; onClose: () => void; onEdit: (v: VillaDetail) => void; readOnly?: boolean }) {
   const { t } = useTranslation();
 
   const { data: reservations = [], isLoading: resLoading } = useQuery<VillaReservation[]>({
@@ -246,11 +247,13 @@ function VillaDetailSheet({ villa, onClose, onEdit }: { villa: VillaDetail | nul
           </div>
 
           {/* Actions */}
-          <div className="pt-2 border-t border-border flex gap-2">
-            <Button variant="outline" className="flex-1 gap-2" onClick={() => onEdit(villa)}>
-              <Pencil className="w-4 h-4" />{t("common.edit")}
-            </Button>
-          </div>
+          {!readOnly && (
+            <div className="pt-2 border-t border-border flex gap-2">
+              <Button variant="outline" className="flex-1 gap-2" onClick={() => onEdit(villa)}>
+                <Pencil className="w-4 h-4" />{t("common.edit")}
+              </Button>
+            </div>
+          )}
         </div>
       </SheetContent>
     </Sheet>
@@ -297,6 +300,9 @@ export default function VillasPage() {
   const inactive = villas.filter((v) => v.status === "inactive").length;
   const maintenance = villas.filter((v) => v.status === "maintenance").length;
 
+  const { user } = useAuth();
+  const isViewer = user?.role === "viewer";
+
   function openCreate() { setEditTarget(null); setDialogOpen(true); }
   function openEdit(v: VillaDetail) { setEditTarget(v); setDetailVilla(null); setDialogOpen(true); }
 
@@ -304,11 +310,11 @@ export default function VillasPage() {
     <AppLayout
       title={t("villas.title")}
       subtitle={t("villas.subtitle")}
-      actions={
+      actions={!isViewer ? (
         <Button onClick={openCreate} className="gap-2">
           <Plus className="w-4 h-4" />{t("villas.addVilla")}
         </Button>
-      }
+      ) : undefined}
     >
       <div className="p-6 space-y-6">
         {/* Stats */}
@@ -364,7 +370,7 @@ export default function VillasPage() {
               <p className="font-medium text-foreground">{search || statusFilter !== "all" ? t("villas.noResults") : t("villas.noVillas")}</p>
               <p className="text-sm text-muted-foreground">{t("villas.noVillasDesc")}</p>
             </div>
-            {!search && statusFilter === "all" && (
+            {!search && statusFilter === "all" && !isViewer && (
               <Button onClick={openCreate} variant="outline" size="sm" className="gap-2">
                 <Plus className="w-4 h-4" />{t("villas.addFirst")}
               </Button>
@@ -417,17 +423,21 @@ export default function VillasPage() {
                   <Button variant="outline" size="sm" className="flex-1 gap-1.5" onClick={() => setDetailVilla(villa)}>
                     <ExternalLink className="w-3.5 h-3.5" />{t("villas.viewDetails")}
                   </Button>
-                  <Button variant="outline" size="sm" className="gap-1.5" onClick={() => openEdit(villa)}>
-                    <Pencil className="w-3.5 h-3.5" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/20"
-                    onClick={() => setDeleteTarget(villa)}
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </Button>
+                  {!isViewer && (
+                    <>
+                      <Button variant="outline" size="sm" className="gap-1.5" onClick={() => openEdit(villa)}>
+                        <Pencil className="w-3.5 h-3.5" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/20"
+                        onClick={() => setDeleteTarget(villa)}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+                    </>
+                  )}
                 </div>
               </div>
             ))}
@@ -441,6 +451,7 @@ export default function VillasPage() {
         villa={detailVilla}
         onClose={() => setDetailVilla(null)}
         onEdit={(v) => { openEdit(v); }}
+        readOnly={isViewer}
       />
 
       <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>

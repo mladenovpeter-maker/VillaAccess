@@ -33,9 +33,9 @@ export function Sidebar() {
 
   const mainItems: NavItem[] = [
     { href: "/",             label: t("nav.dashboard"),    icon: LayoutDashboard,      roles: ["admin", "operator", "viewer"] },
-    { href: "/villas",       label: t("nav.villas"),       icon: Building2,            roles: ["admin", "operator"] },
-    { href: "/reservations", label: t("nav.reservations"), icon: CalendarDays,         roles: ["admin", "operator"] },
-    { href: "/vehicles",     label: t("nav.vehicles"),     icon: Car,                  roles: ["admin", "operator"] },
+    { href: "/villas",       label: t("nav.villas"),       icon: Building2,            roles: ["admin", "operator", "viewer"] },
+    { href: "/reservations", label: t("nav.reservations"), icon: CalendarDays,         roles: ["admin", "operator", "viewer"] },
+    { href: "/vehicles",     label: t("nav.vehicles"),     icon: Car,                  roles: ["admin", "operator", "viewer"] },
     { href: "/access",       label: t("nav.access"),       icon: ShieldCheck,          roles: ["admin", "operator", "viewer"] },
     { href: "/timeline",     label: t("nav.timeline"),     icon: GitCommitHorizontal,  roles: ["admin", "operator", "viewer"] },
     { href: "/cameras",      label: t("nav.cameras"),      icon: Camera,               roles: ["admin"] },

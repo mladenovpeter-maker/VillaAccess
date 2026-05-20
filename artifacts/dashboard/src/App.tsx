@@ -70,10 +70,10 @@ function Router() {
       <Route path="/logs"     component={() => <ProtectedRoute component={LogsPage} />} />
       <Route path="/gallery"  component={() => <ProtectedRoute component={GalleryPage} />} />
 
-      {/* Operator and above */}
-      <Route path="/villas"        component={() => <ProtectedRoute component={VillasPage}       roles={opOrAbove} />} />
-      <Route path="/reservations"  component={() => <ProtectedRoute component={ReservationsPage} roles={opOrAbove} />} />
-      <Route path="/vehicles"      component={() => <ProtectedRoute component={VehiclesPage}     roles={opOrAbove} />} />
+      {/* Operator and above — viewer gets read-only via backend */}
+      <Route path="/villas"        component={() => <ProtectedRoute component={VillasPage}       />} />
+      <Route path="/reservations"  component={() => <ProtectedRoute component={ReservationsPage} />} />
+      <Route path="/vehicles"      component={() => <ProtectedRoute component={VehiclesPage}     />} />
 
       {/* Admin only */}
       <Route path="/entrances"        component={() => <ProtectedRoute component={EntrancesPage}        roles={adminOnly} />} />

@@ -19,6 +19,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
+import { useAuth } from "@/lib/auth-context";
 
 // ─── Status helpers ───────────────────────────────────────────────────────────
 
@@ -153,6 +154,8 @@ export default function ReservationsPage() {
     else createMut.mutate(form);
   }
 
+  const { user } = useAuth();
+  const isViewer = user?.role === "viewer";
   const villaMap = Object.fromEntries(villas.map((v) => [v.id, v.name]));
   const loading  = createMut.isPending || updateMut.isPending;
   const statusKeys = ["all", "upcoming", "active", "completed", "cancelled"] as const;
@@ -161,7 +164,7 @@ export default function ReservationsPage() {
     <AppLayout
       title={t("reservations.title")}
       subtitle={t("reservations.subtitle")}
-      actions={<Button size="sm" onClick={openNew}><Plus className="w-4 h-4 mr-2" />{t("reservations.newReservation")}</Button>}
+      actions={!isViewer ? <Button size="sm" onClick={openNew}><Plus className="w-4 h-4 mr-2" />{t("reservations.newReservation")}</Button> : undefined}
     >
       <div className="max-w-6xl mx-auto space-y-4">
         {/* Status filters */}
@@ -224,8 +227,8 @@ export default function ReservationsPage() {
                       </div>
                     </div>
                     <div className="flex gap-2 shrink-0">
-                      <Button variant="ghost" size="sm" onClick={(e) => openEdit(r, e)}><Pencil className="w-3.5 h-3.5" /></Button>
-                      <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={(e) => { e.stopPropagation(); deleteMut.mutate(r.id); }} disabled={deleteMut.isPending}><Trash2 className="w-3.5 h-3.5" /></Button>
+                      {!isViewer && <Button variant="ghost" size="sm" onClick={(e) => openEdit(r, e)}><Pencil className="w-3.5 h-3.5" /></Button>}
+                      {!isViewer && <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={(e) => { e.stopPropagation(); deleteMut.mutate(r.id); }} disabled={deleteMut.isPending}><Trash2 className="w-3.5 h-3.5" /></Button>}
                       <ChevronRight className="w-4 h-4 text-muted-foreground self-center" />
                     </div>
                   </div>
@@ -244,6 +247,7 @@ export default function ReservationsPage() {
               reservation={selectedRes}
               villaMap={villaMap}
               vehicles={vehicles}
+              readOnly={isViewer}
               onEdit={(r) => { openEdit(r, { stopPropagation: () => {} } as any); }}
               onCheckIn={() => checkInMut.mutate(selectedRes.id)}
               onCheckOut={() => checkOutMut.mutate(selectedRes.id)}
@@ -334,6 +338,7 @@ interface DetailProps {
   reservation: Reservation;
   villaMap: Record<string, string>;
   vehicles: Vehicle[];
+  readOnly?: boolean;
   onEdit: (r: Reservation) => void;
   onCheckIn: () => void;
   onCheckOut: () => void;
@@ -350,7 +355,7 @@ interface DetailProps {
 }
 
 function ReservationDetail({
-  reservation: r, villaMap, vehicles,
+  reservation: r, villaMap, vehicles, readOnly,
   onEdit, onCheckIn, onCheckOut, onCancel,
   onRegenPin, onForceSync, onRevokePin,
   isCheckingIn, isCheckingOut, isCancelling,
@@ -388,7 +393,7 @@ function ReservationDetail({
       </Section>
 
       {/* Lifecycle actions */}
-      {(canCheckIn || canCheckOut || canCancel) && (
+      {!readOnly && (canCheckIn || canCheckOut || canCancel) && (
         <Section title={t("common.actions")}>
           <div className="flex gap-2 flex-wrap">
             {canCheckIn && (
@@ -444,7 +449,7 @@ function ReservationDetail({
         </div>
 
         {/* PIN action buttons */}
-        {canPinOps && (
+        {!readOnly && canPinOps && (
           <div className="flex gap-2 flex-wrap mt-2">
             <Button size="sm" variant="outline" onClick={onRegenPin} disabled={isRegenPin}>
               <RefreshCw className={cn("w-3.5 h-3.5 mr-1.5", isRegenPin && "animate-spin")} />
@@ -503,11 +508,13 @@ function ReservationDetail({
       )}
 
       {/* Edit button */}
-      <div className="pt-2">
-        <Button variant="outline" size="sm" className="w-full" onClick={() => onEdit(r)}>
-          <Pencil className="w-3.5 h-3.5 mr-1.5" />{t("reservations.editReservation")}
-        </Button>
-      </div>
+      {!readOnly && (
+        <div className="pt-2">
+          <Button variant="outline" size="sm" className="w-full" onClick={() => onEdit(r)}>
+            <Pencil className="w-3.5 h-3.5 mr-1.5" />{t("reservations.editReservation")}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

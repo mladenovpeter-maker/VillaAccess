@@ -22,6 +22,7 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { tokenStore } from "@/lib/api";
 import { useTranslation } from "react-i18next";
+import { useAuth } from "@/lib/auth-context";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -682,6 +683,8 @@ export default function VehiclesPage() {
   const qc = useQueryClient();
   const { toast } = useToast();
   const { t } = useTranslation();
+  const { user } = useAuth();
+  const isViewer = user?.role === "viewer";
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [formOpen, setFormOpen] = useState(false);
@@ -742,9 +745,11 @@ export default function VehiclesPage() {
               <SelectItem value="blacklisted">{t("vehicles.status.blacklisted")}</SelectItem>
             </SelectContent>
           </Select>
-          <Button size="sm" onClick={() => { setEditTarget(null); setFormOpen(true); }}>
-            <Plus className="w-4 h-4 mr-2" />{t("vehicles.addVehicle")}
-          </Button>
+          {!isViewer && (
+            <Button size="sm" onClick={() => { setEditTarget(null); setFormOpen(true); }}>
+              <Plus className="w-4 h-4 mr-2" />{t("vehicles.addVehicle")}
+            </Button>
+          )}
         </div>
 
         {/* List */}
@@ -783,23 +788,29 @@ export default function VehiclesPage() {
 
                     {/* Actions */}
                     <div className="flex gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
-                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0"
-                        onClick={() => { setEditTarget(v); setFormOpen(true); }}>
-                        <Pencil className="w-3.5 h-3.5" />
-                      </Button>
-                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0"
-                        onClick={() => blacklistMut.mutate({ id: v.id, blacklisted: v.status !== "blacklisted" })}
-                        title={v.status === "blacklisted" ? t("vehicles.unblacklist") : t("vehicles.blacklist")}>
-                        <AlertTriangle className={cn("w-3.5 h-3.5", v.status === "blacklisted" ? "text-red-400" : "text-muted-foreground")} />
-                      </Button>
+                      {!isViewer && (
+                        <>
+                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0"
+                            onClick={() => { setEditTarget(v); setFormOpen(true); }}>
+                            <Pencil className="w-3.5 h-3.5" />
+                          </Button>
+                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0"
+                            onClick={() => blacklistMut.mutate({ id: v.id, blacklisted: v.status !== "blacklisted" })}
+                            title={v.status === "blacklisted" ? t("vehicles.unblacklist") : t("vehicles.blacklist")}>
+                            <AlertTriangle className={cn("w-3.5 h-3.5", v.status === "blacklisted" ? "text-red-400" : "text-muted-foreground")} />
+                          </Button>
+                        </>
+                      )}
                       <Button variant="ghost" size="sm" className="h-8 w-8 p-0"
                         onClick={() => setDetailTarget(v)}>
                         <Eye className="w-3.5 h-3.5" />
                       </Button>
-                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                        onClick={() => deleteMut.mutate(v.id)} disabled={deleteMut.isPending}>
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </Button>
+                      {!isViewer && (
+                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                          onClick={() => deleteMut.mutate(v.id)} disabled={deleteMut.isPending}>
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </CardContent>
