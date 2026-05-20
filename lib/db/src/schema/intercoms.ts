@@ -28,8 +28,9 @@ export const intercomsTable = pgTable("intercoms", {
   door_no:    integer("door_no").notNull().default(1),   // which door relay to trigger
 
   // ── PIN sync ──────────────────────────────────────────────────────────────
-  // When true, reservation PINs are pushed to this device automatically
   pin_sync_enabled: boolean("pin_sync_enabled").notNull().default(true),
+  last_sync_status: text("last_sync_status"),
+  last_sync_at:     timestamp("last_sync_at"),
 
   // ── Runtime ───────────────────────────────────────────────────────────────
   status:               intercomStatusEnum("status").notNull().default("offline"),

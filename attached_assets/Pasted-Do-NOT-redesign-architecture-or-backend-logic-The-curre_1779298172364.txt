@@ -1,0 +1,104 @@
+Do NOT redesign architecture or backend logic.
+
+The current backend, schema, reservations, vehicles, entrances, intercoms, and PIN sync architecture are already correct.
+
+We now need a simplified operational workflow for reception/front-desk staff.
+
+====================================================
+GOAL
+====================================================
+
+A receptionist must be able to create a complete guest access setup in ONE simple flow.
+
+The receptionist should NOT need to:
+- manage hardware
+- understand entrances
+- understand intercom mapping
+- manage cameras
+- manage sync logic
+
+All technical logic must remain hidden behind the system.
+
+====================================================
+NEW REQUIRED UI FLOW
+====================================================
+
+Create a simplified:
+"New Guest Reservation" workflow.
+
+Single form.
+
+Required fields:
+- guest name
+- villa
+- check-in
+- check-out
+- vehicle license plate
+- optional make/model/color
+- PIN code (optional manual entry or auto-generate)
+
+====================================================
+SYSTEM AUTOMATION
+====================================================
+
+When receptionist clicks SAVE:
+
+System automatically:
+- creates reservation
+- creates/updates vehicle
+- links vehicle to reservation
+- creates access window
+- determines allowed entrances
+- syncs PIN to Hikvision intercom(s)
+- activates access permissions
+- logs all events
+
+Receptionist should see only:
+- success/failure
+- sync status
+- generated PIN
+- reservation summary
+
+====================================================
+ROLE SEPARATION
+====================================================
+
+Reception/front-desk users should NOT see:
+- diagnostics
+- hardware settings
+- relay controls
+- camera configuration
+- API settings
+- system settings
+
+Those remain Admin-only.
+
+====================================================
+IMPORTANT
+====================================================
+
+Do NOT create new backend architecture.
+Do NOT duplicate reservation logic.
+Do NOT duplicate vehicle logic.
+Do NOT create parallel systems.
+
+Reuse:
+- existing reservations API
+- existing vehicle logic
+- existing PIN sync logic
+- existing entrances/intercom mapping
+- existing event system
+
+This is ONLY a simplified operational UX layer on top of the current architecture.
+
+====================================================
+UX PRIORITY
+====================================================
+
+The receptionist flow must feel:
+- fast
+- simple
+- guided
+- impossible to misuse
+
+The system itself handles all technical complexity internally.

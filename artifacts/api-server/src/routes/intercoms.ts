@@ -117,14 +117,11 @@ router.delete("/:id", requireAuth, async (req, res) => {
 });
 
 // ─── POST /intercoms/:id/open ─────────────────────────────────────────────────
-// Trigger the door release relay (open door)
 
 router.post("/:id/open", requireAuth, async (req: any, res) => {
   const rows = await db.select().from(intercomsTable).where(eq(intercomsTable.id, req.params.id)).limit(1);
   if (!rows[0]) { res.status(404).json({ detail: "Intercom not found" }); return; }
 
-  // TODO: integrate with Hikvision ISAPI / SIP door-release API
-  // For now, simulate success
   res.json({
     intercom_id: rows[0].id,
     intercom_name: rows[0].name,
@@ -132,6 +129,84 @@ router.post("/:id/open", requireAuth, async (req: any, res) => {
     success: true,
     triggered_by: req.user?.username ?? "unknown",
     message: "Door release command sent",
+  });
+});
+
+// ─── POST /intercoms/:id/test-connectivity ────────────────────────────────────
+
+router.post("/:id/test-connectivity", requireAuth, async (req, res) => {
+  const rows = await db.select().from(intercomsTable).where(eq(intercomsTable.id, req.params.id)).limit(1);
+  if (!rows[0]) { res.status(404).json({ detail: "Intercom not found" }); return; }
+  const ic = rows[0];
+
+  const { HikvisionIntercomService } = await import("../services/hikvision/intercom");
+  const svc = new HikvisionIntercomService({
+    id:         ic.id,
+    name:       ic.name,
+    ip_address: ic.ip_address,
+    http_port:  ic.http_port,
+    username:   ic.username,
+    password:   ic.password ?? "",
+    door_no:    ic.door_no,
+  });
+
+  const start = Date.now();
+  const result = await svc.testConnectivity();
+  const latency_ms = Date.now() - start;
+
+  const now = new Date();
+  const newStatus = result.success ? "online" : "offline";
+  await db.update(intercomsTable)
+    .set({ status: newStatus as any, last_status_check: now, last_status_latency_ms: latency_ms, updated_at: now })
+    .where(eq(intercomsTable.id, ic.id));
+
+  res.json({
+    intercom_id:   ic.id,
+    intercom_name: ic.name,
+    success:       result.success,
+    latency_ms,
+    device_name:   result.device_name,
+    serial:        result.serial,
+    error:         result.error,
+  });
+});
+
+// ─── POST /intercoms/:id/test-pin-sync ───────────────────────────────────────
+
+router.post("/:id/test-pin-sync", requireAuth, async (req, res) => {
+  const rows = await db.select().from(intercomsTable).where(eq(intercomsTable.id, req.params.id)).limit(1);
+  if (!rows[0]) { res.status(404).json({ detail: "Intercom not found" }); return; }
+  const ic = rows[0];
+
+  if (ic.protocol !== "hikvision") {
+    res.status(400).json({ detail: "PIN sync test is only supported for Hikvision devices" });
+    return;
+  }
+
+  const { HikvisionIntercomService } = await import("../services/hikvision/intercom");
+  const svc = new HikvisionIntercomService({
+    id:         ic.id,
+    name:       ic.name,
+    ip_address: ic.ip_address,
+    http_port:  ic.http_port,
+    username:   ic.username,
+    password:   ic.password ?? "",
+    door_no:    ic.door_no,
+  });
+
+  const result = await svc.testPinSync();
+
+  const now = new Date();
+  await db.update(intercomsTable)
+    .set({ last_sync_status: result.success ? "success" : "failed", last_sync_at: now, updated_at: now })
+    .where(eq(intercomsTable.id, ic.id));
+
+  res.json({
+    intercom_id:   ic.id,
+    intercom_name: ic.name,
+    success:       result.success,
+    latency_ms:    result.latency_ms,
+    error:         result.error,
   });
 });
 

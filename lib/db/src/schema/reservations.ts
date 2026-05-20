@@ -4,6 +4,7 @@ import { z } from "zod/v4";
 import { villasTable } from "./villas";
 
 export const reservationStatusEnum = pgEnum("reservation_status", ["upcoming", "active", "completed", "cancelled"]);
+export const pinSyncStatusEnum = pgEnum("pin_sync_status", ["pending", "synced", "failed", "revoked", "not_applicable"]);
 
 export const reservationsTable = pgTable("reservations", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
@@ -16,6 +17,10 @@ export const reservationsTable = pgTable("reservations", {
   status: reservationStatusEnum("status").notNull().default("upcoming"),
   notes: text("notes"),
   pin_code: text("pin_code"),
+  pin_valid_from: timestamp("pin_valid_from"),
+  pin_valid_to: timestamp("pin_valid_to"),
+  pin_sync_status: pinSyncStatusEnum("pin_sync_status").notNull().default("pending"),
+  pin_last_synced_at: timestamp("pin_last_synced_at"),
   actual_check_in: timestamp("actual_check_in"),
   actual_check_out: timestamp("actual_check_out"),
   cancelled_at: timestamp("cancelled_at"),

@@ -1,0 +1,173 @@
+Implement real Hikvision intercom PIN synchronization flow using reservation validity windows.
+
+Current hardware architecture:
+
+- Hikvision ANPR cameras
+- Hikvision intercoms / door stations
+- Shared entrances
+- Shared gates/barriers
+
+Ignore Tuya/smart locks for now.
+
+Focus ONLY on Hikvision integration.
+
+====================================================
+GOAL
+====================================================
+
+When a reservation is created or updated:
+
+1. Generate PIN code
+2. Push PIN to Hikvision intercom via API
+3. Activate PIN only during reservation validity window
+4. Automatically revoke/disable PIN after checkout
+
+The backend must be the source of truth.
+
+====================================================
+REQUIRED FLOW
+====================================================
+
+Reservation Created
+↓
+Generate 4-digit PIN
+↓
+Determine:
+- valid_from
+- valid_to
+↓
+Push PIN to assigned Hikvision intercom(s)
+↓
+Store sync status
+↓
+At expiration:
+- revoke PIN automatically
+or
+- disable PIN via API
+
+====================================================
+IMPORTANT ARCHITECTURE
+====================================================
+
+PIN validity must NOT live only inside Hikvision.
+
+The platform backend controls:
+- reservation lifecycle
+- PIN lifecycle
+- validity windows
+- sync state
+
+Hikvision devices are execution endpoints only.
+
+====================================================
+NEW REQUIRED DATABASE FIELDS
+====================================================
+
+Verify existing schema and add only if missing.
+
+Reservation:
+- pin_code
+- pin_valid_from
+- pin_valid_to
+- pin_sync_status
+- pin_last_synced_at
+
+Intercom:
+- api_protocol
+- supports_pin_sync
+- last_sync_status
+
+====================================================
+INTERCOM ASSIGNMENT LOGIC
+====================================================
+
+Entrances already own intercoms.
+
+When a reservation is active:
+- guest PIN should sync to all intercoms associated with the allowed entrance(s)
+
+Do NOT bind intercoms directly to villas.
+
+====================================================
+REQUIRED API INTEGRATION LAYER
+====================================================
+
+Create dedicated Hikvision intercom service layer.
+
+Example:
+
+services/hikvision/intercom.ts
+
+Responsibilities:
+- authenticate with Hikvision device
+- create PIN
+- update PIN
+- revoke PIN
+- validate device connectivity
+- return sync status/errors
+
+Do NOT mix Hikvision logic directly into reservation routes.
+
+====================================================
+RESERVATION WORKFLOW
+====================================================
+
+When reservation is created:
+- auto-generate PIN if missing
+- sync PIN to intercom(s)
+- log sync event
+
+When reservation dates change:
+- update validity window on intercom(s)
+
+When reservation is cancelled or checked out:
+- revoke PIN automatically
+
+====================================================
+REQUIRED UI
+====================================================
+
+Inside Reservation Detail page add:
+
+SECTION:
+Access Credentials
+
+Show:
+- PIN code
+- valid from
+- valid to
+- sync status
+- last synced timestamp
+- assigned entrances
+- assigned intercoms
+
+Buttons:
+- regenerate PIN
+- force sync
+- revoke PIN
+
+====================================================
+INTERCOM MANAGEMENT PAGE
+====================================================
+
+Add:
+- test intercom connectivity
+- test PIN sync
+- device online/offline status
+- API protocol info
+- last successful sync
+
+====================================================
+IMPORTANT
+====================================================
+
+Do NOT redesign architecture.
+
+Reuse:
+- existing reservations
+- existing entrances
+- existing intercom schema
+- existing event system
+- existing logs
+
+Implement only the missing operational PIN synchronization layer.

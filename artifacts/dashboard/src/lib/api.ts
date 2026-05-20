@@ -208,6 +208,13 @@ export const reservationsApi = {
   update: (id: string, body: Partial<Reservation>) =>
     api.put<Reservation>(`/reservations/${id}`, body),
   delete: (id: string) => api.delete(`/reservations/${id}`),
+  checkIn:  (id: string) => api.post<Reservation>(`/reservations/${id}/check-in`, {}),
+  checkOut: (id: string) => api.post<Reservation>(`/reservations/${id}/check-out`, {}),
+  cancel:   (id: string, reason?: string) => api.post<Reservation>(`/reservations/${id}/cancel`, { reason }),
+  regeneratePin: (id: string) => api.post<Reservation & { sync_result: unknown }>(`/reservations/${id}/regenerate-pin`, {}),
+  forceSync:     (id: string) => api.post<Reservation & { sync_result: unknown }>(`/reservations/${id}/force-sync`, {}),
+  revokePin:     (id: string) => api.post<Reservation & { sync_result: unknown }>(`/reservations/${id}/revoke-pin`, {}),
+  accessWindow:  (id: string) => api.get(`/reservations/${id}/access-window`),
 };
 
 export const vehiclesApi = {
@@ -266,6 +273,17 @@ export const entrancesApi = {
   delete: (id: string) => api.delete(`/entrances/${id}`),
 };
 
+export const intercomsApi = {
+  list: () => api.get<Intercom[]>("/intercoms"),
+  get: (id: string) => api.get<Intercom>(`/intercoms/${id}`),
+  create: (body: Partial<Intercom>) => api.post<Intercom>("/intercoms", body),
+  update: (id: string, body: Partial<Intercom>) => api.patch<Intercom>(`/intercoms/${id}`, body),
+  delete: (id: string) => api.delete(`/intercoms/${id}`),
+  open: (id: string) => api.post(`/intercoms/${id}/open`, {}),
+  testConnectivity: (id: string) => api.post(`/intercoms/${id}/test-connectivity`, {}),
+  testPinSync: (id: string) => api.post(`/intercoms/${id}/test-pin-sync`, {}),
+};
+
 export const camerasApi = {
   list: () => api.get<Camera[]>("/cameras"),
   get: (id: string) => api.get<Camera>(`/cameras/${id}`),
@@ -322,6 +340,18 @@ export interface Villa {
   active_reservations?: number;
 }
 
+export interface AssignedIntercom {
+  id: string;
+  name: string;
+  ip_address: string;
+  protocol: string;
+  pin_sync_enabled: boolean;
+  last_sync_status: string | null;
+  last_sync_at: string | null;
+  status: string;
+  entrance_id: string | null;
+}
+
 export interface Reservation {
   id: string;
   guest_name: string;
@@ -336,6 +366,37 @@ export interface Reservation {
   vehicles: Vehicle[];
   notes: string | null;
   pin_code: string | null;
+  pin_valid_from: string | null;
+  pin_valid_to: string | null;
+  pin_sync_status: "pending" | "synced" | "failed" | "revoked" | "not_applicable";
+  pin_last_synced_at: string | null;
+  assigned_intercoms: AssignedIntercom[];
+  actual_check_in: string | null;
+  actual_check_out: string | null;
+  cancelled_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Intercom {
+  id: string;
+  name: string;
+  entrance_id: string | null;
+  ip_address: string;
+  http_port: number;
+  username: string;
+  protocol: string;
+  door_no: number;
+  pin_sync_enabled: boolean;
+  last_sync_status: string | null;
+  last_sync_at: string | null;
+  status: string;
+  last_status_check: string | null;
+  last_status_latency_ms: number | null;
+  device_info: Record<string, unknown> | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface AiFingerprint {
