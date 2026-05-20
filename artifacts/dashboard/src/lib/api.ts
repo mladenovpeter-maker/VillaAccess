@@ -258,6 +258,17 @@ export const accessApi = {
 
 export const camerasApi = {
   list: () => api.get<Camera[]>("/cameras"),
+  get: (id: string) => api.get<Camera>(`/cameras/${id}`),
+  create: (data: Partial<Camera> & { name: string; ip_address: string }) =>
+    api.post<Camera>("/cameras", data),
+  update: (id: string, data: Partial<Camera>) =>
+    api.patch<Camera>(`/cameras/${id}`, data),
+  delete: (id: string) => api.delete(`/cameras/${id}`),
+  // Live camera actions — delegate to the adapter layer
+  snapshot: (id: string) => api.get<CameraActionResult>(`/cameras/${id}/snapshot`),
+  status: (id: string) => api.get<CameraStatusResult>(`/cameras/${id}/status`),
+  gate: (id: string) => api.post<CameraActionResult>(`/cameras/${id}/gate`, {}),
+  door: (id: string) => api.post<CameraActionResult>(`/cameras/${id}/door`, {}),
 };
 
 export const logsApi = {
@@ -398,10 +409,60 @@ export interface Camera {
   ip_address: string;
   rtsp_url: string | null;
   villa_id: string | null;
-  status: string;
+  model: string | null;
+  // Integration
+  protocol: "hikvision" | "dahua" | "onvif" | "rtsp";
+  http_port: number;
+  username: string;
+  channel_no: number;
+  use_access_control: boolean;
+  gate_no: number;
+  door_no: number;
+  // Runtime state
+  status: "online" | "offline" | "error";
   last_snapshot: string | null;
   snapshot_url: string | null;
-  model: string | null;
+  last_status_check: string | null;
+  last_status_latency_ms: number | null;
+  device_info: CameraDeviceInfo | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CameraDeviceInfo {
+  device_name?: string;
+  model?: string;
+  serial_number?: string;
+  firmware_version?: string;
+  hardware_version?: string;
+  mac_address?: string;
+  ipv4?: string;
+}
+
+export interface CameraActionResult {
+  camera_id: string;
+  camera_name: string;
+  success: boolean;
+  snapshot_url?: string;
+  action?: string;
+  command?: string;
+  target_no?: number;
+  mode?: string;
+  executed_at?: string;
+  captured_at?: string;
+  error?: string;
+  raw_status?: number;
+}
+
+export interface CameraStatusResult {
+  camera_id: string;
+  camera_name: string;
+  success: boolean;
+  online: boolean;
+  device_info?: CameraDeviceInfo;
+  checked_at: string;
+  latency_ms?: number;
+  error?: string;
 }
 
 export interface PaginatedEvents {
