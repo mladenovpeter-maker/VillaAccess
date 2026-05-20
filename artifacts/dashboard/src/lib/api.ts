@@ -1,11 +1,108 @@
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "") + "/api";
 
-function getToken() {
-  return localStorage.getItem("access_token");
+// ─── Token storage ────────────────────────────────────────────────────────────
+
+const KEYS = {
+  access: "access_token",
+  refresh: "refresh_token",
+  user: "auth_user",
+} as const;
+
+export const tokenStore = {
+  getAccess: () => localStorage.getItem(KEYS.access),
+  getRefresh: () => localStorage.getItem(KEYS.refresh),
+  getUser: (): User | null => {
+    try {
+      const raw = localStorage.getItem(KEYS.user);
+      return raw ? (JSON.parse(raw) as User) : null;
+    } catch {
+      return null;
+    }
+  },
+  set: (access: string, refresh: string, user: User) => {
+    localStorage.setItem(KEYS.access, access);
+    localStorage.setItem(KEYS.refresh, refresh);
+    localStorage.setItem(KEYS.user, JSON.stringify(user));
+  },
+  clear: () => {
+    localStorage.removeItem(KEYS.access);
+    localStorage.removeItem(KEYS.refresh);
+    localStorage.removeItem(KEYS.user);
+  },
+};
+
+// ─── Token expiry check ───────────────────────────────────────────────────────
+
+function isTokenExpiredOrSoon(token: string, bufferSeconds = 60): boolean {
+  try {
+    const [, payloadB64] = token.split(".");
+    const payload = JSON.parse(atob(payloadB64));
+    return payload.exp * 1000 < Date.now() + bufferSeconds * 1000;
+  } catch {
+    return true;
+  }
 }
 
-async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const token = getToken();
+// ─── Refresh lock (prevents parallel refresh races) ───────────────────────────
+
+let _refreshPromise: Promise<string | null> | null = null;
+
+async function refreshAccessToken(): Promise<string | null> {
+  if (_refreshPromise) return _refreshPromise;
+
+  _refreshPromise = (async () => {
+    const refreshToken = tokenStore.getRefresh();
+    if (!refreshToken) return null;
+
+    try {
+      const res = await fetch(`${BASE}/auth/refresh`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refresh_token: refreshToken }),
+      });
+
+      if (!res.ok) {
+        tokenStore.clear();
+        return null;
+      }
+
+      const data: { access_token: string; refresh_token: string } =
+        await res.json();
+      const user = tokenStore.getUser();
+      if (user) {
+        tokenStore.set(data.access_token, data.refresh_token, user);
+      }
+      return data.access_token;
+    } catch {
+      tokenStore.clear();
+      return null;
+    } finally {
+      _refreshPromise = null;
+    }
+  })();
+
+  return _refreshPromise;
+}
+
+// ─── Core fetch with auto-refresh ─────────────────────────────────────────────
+
+async function request<T>(
+  path: string,
+  options?: RequestInit,
+  _retry = true
+): Promise<T> {
+  let token = tokenStore.getAccess();
+
+  // Proactively refresh if token is expiring within 60 seconds
+  if (token && isTokenExpiredOrSoon(token)) {
+    token = await refreshAccessToken();
+  }
+
+  if (!token && path !== "/auth/login" && path !== "/auth/refresh") {
+    redirectToLogin();
+    throw new Error("No access token");
+  }
+
   const res = await fetch(`${BASE}${path}`, {
     ...options,
     headers: {
@@ -14,18 +111,33 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
       ...options?.headers,
     },
   });
-  if (res.status === 401) {
-    localStorage.removeItem("access_token");
-    window.location.href = import.meta.env.BASE_URL + "login";
-    throw new Error("Unauthorized");
+
+  // 401 → try refresh once, then give up
+  if (res.status === 401 && _retry && path !== "/auth/refresh") {
+    const newToken = await refreshAccessToken();
+    if (newToken) return request<T>(path, options, false);
+    redirectToLogin();
+    throw new Error("Session expired");
   }
+
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: res.statusText }));
     throw new Error(err.detail || res.statusText);
   }
+
   if (res.status === 204) return undefined as T;
   return res.json();
 }
+
+function redirectToLogin() {
+  tokenStore.clear();
+  const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+  if (!window.location.pathname.endsWith("/login")) {
+    window.location.href = base + "/login";
+  }
+}
+
+// ─── Public API surface ───────────────────────────────────────────────────────
 
 export const api = {
   get: <T>(path: string) => request<T>(path),
@@ -36,77 +148,120 @@ export const api = {
   delete: <T>(path: string) => request<T>(path, { method: "DELETE" }),
 };
 
-// Auth
+// ─── Auth API ─────────────────────────────────────────────────────────────────
+
+export interface LoginResponse {
+  access_token: string;
+  refresh_token: string;
+  token_type: string;
+  expires_in: number;
+  user: User;
+}
+
 export const authApi = {
   login: (username: string, password: string) =>
-    api.post<{ access_token: string; user: User }>("/auth/login", { username, password }),
+    request<LoginResponse>("/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ username, password }),
+    }),
+  refresh: (refresh_token: string) =>
+    request<{ access_token: string; refresh_token: string }>(
+      "/auth/refresh",
+      { method: "POST", body: JSON.stringify({ refresh_token }) },
+      false
+    ),
   me: () => api.get<User>("/auth/me"),
-  logout: () => api.post("/auth/logout", {}),
+  logout: (refresh_token?: string) =>
+    api.post("/auth/logout", refresh_token ? { refresh_token } : {}),
 };
 
-// Dashboard
+// ─── Resource APIs ────────────────────────────────────────────────────────────
+
 export const dashboardApi = {
   stats: () => api.get<DashboardStats>("/dashboard/stats"),
-  recentEvents: (limit = 20) => api.get<AccessEvent[]>(`/dashboard/recent-events?limit=${limit}`),
+  recentEvents: (limit = 20) =>
+    api.get<AccessEvent[]>(`/dashboard/recent-events?limit=${limit}`),
 };
 
-// Villas
 export const villasApi = {
   list: () => api.get<Villa[]>("/villas"),
   get: (id: string) => api.get<Villa>(`/villas/${id}`),
   create: (body: Partial<Villa>) => api.post<Villa>("/villas", body),
-  update: (id: string, body: Partial<Villa>) => api.put<Villa>(`/villas/${id}`, body),
+  update: (id: string, body: Partial<Villa>) =>
+    api.put<Villa>(`/villas/${id}`, body),
 };
 
-// Reservations
 export const reservationsApi = {
   list: (params?: { status?: string; villa_id?: string }) => {
-    const q = new URLSearchParams(params as Record<string, string>).toString();
+    const q = new URLSearchParams(
+      params as Record<string, string>
+    ).toString();
     return api.get<Reservation[]>(`/reservations${q ? "?" + q : ""}`);
   },
   get: (id: string) => api.get<Reservation>(`/reservations/${id}`),
-  create: (body: Partial<Reservation>) => api.post<Reservation>("/reservations", body),
-  update: (id: string, body: Partial<Reservation>) => api.put<Reservation>(`/reservations/${id}`, body),
+  create: (body: Partial<Reservation>) =>
+    api.post<Reservation>("/reservations", body),
+  update: (id: string, body: Partial<Reservation>) =>
+    api.put<Reservation>(`/reservations/${id}`, body),
   delete: (id: string) => api.delete(`/reservations/${id}`),
 };
 
-// Vehicles
 export const vehiclesApi = {
   list: (params?: { status?: string; search?: string }) => {
-    const q = new URLSearchParams(params as Record<string, string>).toString();
+    const q = new URLSearchParams(
+      params as Record<string, string>
+    ).toString();
     return api.get<Vehicle[]>(`/vehicles${q ? "?" + q : ""}`);
   },
   get: (id: string) => api.get<Vehicle>(`/vehicles/${id}`),
   create: (body: Partial<Vehicle>) => api.post<Vehicle>("/vehicles", body),
-  update: (id: string, body: Partial<Vehicle>) => api.put<Vehicle>(`/vehicles/${id}`, body),
+  update: (id: string, body: Partial<Vehicle>) =>
+    api.put<Vehicle>(`/vehicles/${id}`, body),
   delete: (id: string) => api.delete(`/vehicles/${id}`),
-  events: (id: string) => api.get<{ items: AccessEvent[]; total: number }>(`/vehicles/${id}/events`),
+  events: (id: string) =>
+    api.get<{ items: AccessEvent[]; total: number }>(
+      `/vehicles/${id}/events`
+    ),
 };
 
-// Access
 export const accessApi = {
-  events: (params?: { status?: string; villa_id?: string; page?: number; page_size?: number }) => {
-    const q = new URLSearchParams(params as Record<string, string>).toString();
+  events: (params?: {
+    status?: string;
+    villa_id?: string;
+    page?: number;
+    page_size?: number;
+  }) => {
+    const q = new URLSearchParams(
+      params as Record<string, string>
+    ).toString();
     return api.get<PaginatedEvents>(`/access/events${q ? "?" + q : ""}`);
   },
-  openGate: (villa_id: string, notes?: string) => api.post("/access/open-gate", { villa_id, notes }),
-  openDoor: (villa_id: string, notes?: string) => api.post("/access/open-door", { villa_id, notes }),
+  openGate: (villa_id: string, notes?: string) =>
+    api.post("/access/open-gate", { villa_id, notes }),
+  openDoor: (villa_id: string, notes?: string) =>
+    api.post("/access/open-door", { villa_id, notes }),
 };
 
-// Cameras
 export const camerasApi = {
   list: () => api.get<Camera[]>("/cameras"),
 };
 
-// Logs
 export const logsApi = {
-  list: (params?: { log_type?: string; villa_id?: string; page?: number; page_size?: number }) => {
-    const q = new URLSearchParams(params as Record<string, string>).toString();
+  list: (params?: {
+    log_type?: string;
+    villa_id?: string;
+    page?: number;
+    page_size?: number;
+  }) => {
+    const q = new URLSearchParams(
+      params as Record<string, string>
+    ).toString();
     return api.get<PaginatedLogs>(`/logs${q ? "?" + q : ""}`);
   },
 };
 
-// Types
+// ─── Shared types ─────────────────────────────────────────────────────────────
+
 export interface User {
   id: string;
   username: string;

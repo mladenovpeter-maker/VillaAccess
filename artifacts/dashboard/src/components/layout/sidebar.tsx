@@ -105,7 +105,7 @@ export function Sidebar() {
             variant="ghost"
             size="sm"
             className="w-full justify-start text-muted-foreground hover:text-destructive"
-            onClick={logout}
+            onClick={() => void logout()}
           >
             <LogOut className="w-4 h-4 mr-2" />
             Sign out
