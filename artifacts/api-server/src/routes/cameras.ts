@@ -2,7 +2,7 @@ import { Router } from "express";
 import { db } from "@workspace/db";
 import { camerasTable, entrancesTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
-import { requireAuth } from "./auth";
+import { requireAuth, requireWriteAccess } from "./auth";
 import { createAdapter } from "../lib/cameras/factory";
 import { eventBus } from "../lib/events";
 
@@ -67,7 +67,7 @@ router.get("/:id", requireAuth, async (req, res) => {
 
 // ─── POST /cameras ────────────────────────────────────────────────────────────
 
-router.post("/", requireAuth, async (req, res) => {
+router.post("/", requireAuth, requireWriteAccess, async (req, res) => {
   const {
     name, ip_address, rtsp_url, entrance_id, model,
     protocol, http_port, username, password,
@@ -110,7 +110,7 @@ router.post("/", requireAuth, async (req, res) => {
 
 // ─── PATCH /cameras/:id ───────────────────────────────────────────────────────
 
-router.patch("/:id", requireAuth, async (req, res) => {
+router.patch("/:id", requireAuth, requireWriteAccess, async (req, res) => {
   const c = await loadCamera(req.params.id);
   if (!c) { res.status(404).json({ detail: "Camera not found" }); return; }
 
@@ -135,7 +135,7 @@ router.patch("/:id", requireAuth, async (req, res) => {
 
 // ─── DELETE /cameras/:id ──────────────────────────────────────────────────────
 
-router.delete("/:id", requireAuth, async (req, res) => {
+router.delete("/:id", requireAuth, requireWriteAccess, async (req, res) => {
   const c = await loadCamera(req.params.id);
   if (!c) { res.status(404).json({ detail: "Camera not found" }); return; }
   await db.delete(camerasTable).where(eq(camerasTable.id, req.params.id));

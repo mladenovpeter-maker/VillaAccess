@@ -1,22 +1,32 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  camerasApi,
+  camerasApi, entrancesApi,
   type Camera, type CameraStatusResult, type CameraActionResult,
 } from "@/lib/api";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel,
+  AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
+  AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Camera as CameraIcon, Wifi, WifiOff, AlertCircle, RefreshCw,
   DoorOpen, GitMerge, ImageIcon, Activity, ChevronDown, ChevronUp,
-  Clock, Cpu, Radio,
+  Clock, Cpu, Radio, Plus, Pencil, Trash2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
+import { useAuth } from "@/lib/auth-context";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -31,6 +41,28 @@ const PROTOCOL_LABELS: Record<string, string> = {
   dahua:     "Dahua HTTP",
   onvif:     "ONVIF",
   rtsp:      "RTSP",
+};
+
+// ─── Form types ───────────────────────────────────────────────────────────────
+
+interface CameraFormData {
+  name: string;
+  ip_address: string;
+  http_port: string;
+  username: string;
+  password: string;
+  protocol: string;
+  channel_no: string;
+  entrance_id: string;
+  use_access_control: boolean;
+  gate_no: string;
+  door_no: string;
+}
+
+const defaultCameraForm: CameraFormData = {
+  name: "", ip_address: "", http_port: "80", username: "admin",
+  password: "", protocol: "hikvision", channel_no: "1",
+  entrance_id: "", use_access_control: false, gate_no: "1", door_no: "2",
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -73,9 +105,216 @@ function ActionButton({
   );
 }
 
+// ─── Camera form dialog ────────────────────────────────────────────────────────
+
+function CameraFormDialog({
+  open, onClose, editTarget, entrances,
+}: {
+  open: boolean;
+  onClose: () => void;
+  editTarget: Camera | null;
+  entrances: { id: string; name: string }[];
+}) {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  const [form, setForm] = useState<CameraFormData>(defaultCameraForm);
+  const [changePassword, setChangePassword] = useState(false);
+
+  // Reset form when dialog opens
+  useState(() => {
+    if (open && editTarget) {
+      setForm({
+        name:               editTarget.name,
+        ip_address:         editTarget.ip_address,
+        http_port:          String(editTarget.http_port ?? 80),
+        username:           editTarget.username ?? "admin",
+        password:           "",
+        protocol:           editTarget.protocol ?? "hikvision",
+        channel_no:         String(editTarget.channel_no ?? 1),
+        entrance_id:        editTarget.entrance_id ?? "",
+        use_access_control: editTarget.use_access_control ?? false,
+        gate_no:            String(editTarget.gate_no ?? 1),
+        door_no:            String(editTarget.door_no ?? 2),
+      });
+      setChangePassword(false);
+    } else if (open) {
+      setForm(defaultCameraForm);
+      setChangePassword(true);
+    }
+  });
+
+  const createMut = useMutation({
+    mutationFn: (data: any) => camerasApi.create(data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["cameras"] });
+      toast({ title: "Camera added" });
+      onClose();
+    },
+    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
+
+  const updateMut = useMutation({
+    mutationFn: (data: any) => camerasApi.update(editTarget!.id, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["cameras"] });
+      toast({ title: "Camera updated" });
+      onClose();
+    },
+    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
+
+  function handleSave() {
+    const payload: Record<string, unknown> = {
+      name:               form.name.trim(),
+      ip_address:         form.ip_address.trim(),
+      http_port:          Number(form.http_port) || 80,
+      username:           form.username.trim() || "admin",
+      protocol:           form.protocol,
+      channel_no:         Number(form.channel_no) || 1,
+      entrance_id:        form.entrance_id || null,
+      use_access_control: form.use_access_control,
+      gate_no:            Number(form.gate_no) || 1,
+      door_no:            Number(form.door_no) || 2,
+    };
+    if (!editTarget || changePassword) {
+      payload.password = form.password;
+    }
+    if (editTarget) updateMut.mutate(payload);
+    else createMut.mutate(payload);
+  }
+
+  const loading = createMut.isPending || updateMut.isPending;
+  const canSave = form.name.trim() && form.ip_address.trim();
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{editTarget ? "Edit Camera" : "Add Camera"}</DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-4 py-2">
+          {/* Basic */}
+          <fieldset className="space-y-3 border border-border rounded-lg p-3">
+            <legend className="text-xs text-muted-foreground px-1">Connection</legend>
+            <div className="space-y-1.5">
+              <label className="text-xs text-muted-foreground">Name *</label>
+              <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. Gate A — Hikvision DS-2CD" />
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              <div className="col-span-2 space-y-1.5">
+                <label className="text-xs text-muted-foreground">IP Address *</label>
+                <Input value={form.ip_address} onChange={(e) => setForm({ ...form, ip_address: e.target.value })} placeholder="192.168.1.100" className="font-mono" />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs text-muted-foreground">HTTP Port</label>
+                <Input type="number" value={form.http_port} onChange={(e) => setForm({ ...form, http_port: e.target.value })} className="font-mono" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1.5">
+                <label className="text-xs text-muted-foreground">Username</label>
+                <Input value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} placeholder="admin" />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs text-muted-foreground">
+                  Password {editTarget && !changePassword && <button type="button" onClick={() => setChangePassword(true)} className="text-primary hover:underline">(change)</button>}
+                </label>
+                <Input
+                  type="password"
+                  value={form.password}
+                  onChange={(e) => setForm({ ...form, password: e.target.value })}
+                  disabled={!!editTarget && !changePassword}
+                  placeholder={editTarget && !changePassword ? "••••••••" : "Camera password"}
+                />
+              </div>
+            </div>
+          </fieldset>
+
+          {/* Protocol + channel */}
+          <fieldset className="space-y-3 border border-border rounded-lg p-3">
+            <legend className="text-xs text-muted-foreground px-1">Protocol</legend>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1.5">
+                <label className="text-xs text-muted-foreground">Protocol</label>
+                <select
+                  value={form.protocol}
+                  onChange={(e) => setForm({ ...form, protocol: e.target.value })}
+                  className="w-full h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm"
+                >
+                  <option value="hikvision">Hikvision ISAPI</option>
+                  <option value="dahua">Dahua HTTP</option>
+                  <option value="onvif">ONVIF</option>
+                  <option value="rtsp">RTSP only</option>
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs text-muted-foreground">Channel No.</label>
+                <Input type="number" value={form.channel_no} onChange={(e) => setForm({ ...form, channel_no: e.target.value })} className="font-mono" min={1} />
+              </div>
+            </div>
+          </fieldset>
+
+          {/* Location */}
+          <fieldset className="space-y-3 border border-border rounded-lg p-3">
+            <legend className="text-xs text-muted-foreground px-1">Location &amp; Relay</legend>
+            <div className="space-y-1.5">
+              <label className="text-xs text-muted-foreground">Entrance</label>
+              <select
+                value={form.entrance_id}
+                onChange={(e) => setForm({ ...form, entrance_id: e.target.value })}
+                className="w-full h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm"
+              >
+                <option value="">— None —</option>
+                {entrances.map((e) => (
+                  <option key={e.id} value={e.id}>{e.name}</option>
+                ))}
+              </select>
+            </div>
+            <label className="flex items-center gap-2 cursor-pointer text-sm">
+              <input
+                type="checkbox"
+                checked={form.use_access_control}
+                onChange={(e) => setForm({ ...form, use_access_control: e.target.checked })}
+                className="accent-primary"
+              />
+              Use Hikvision Access Control relay (vs I/O output)
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1.5">
+                <label className="text-xs text-muted-foreground">Gate relay no.</label>
+                <Input type="number" value={form.gate_no} onChange={(e) => setForm({ ...form, gate_no: e.target.value })} className="font-mono" min={1} />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs text-muted-foreground">Door relay no.</label>
+                <Input type="number" value={form.door_no} onChange={(e) => setForm({ ...form, door_no: e.target.value })} className="font-mono" min={1} />
+              </div>
+            </div>
+          </fieldset>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button onClick={handleSave} disabled={loading || !canSave}>
+            {loading ? "Saving…" : editTarget ? "Save Changes" : "Add Camera"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // ─── CameraCard ───────────────────────────────────────────────────────────────
 
-function CameraCard({ camera }: { camera: Camera }) {
+function CameraCard({
+  camera, canWrite,
+  onEdit, onDelete,
+}: {
+  camera: Camera;
+  canWrite: boolean;
+  onEdit: (c: Camera) => void;
+  onDelete: (c: Camera) => void;
+}) {
   const qc = useQueryClient();
   const { toast } = useToast();
   const { t } = useTranslation();
@@ -179,6 +418,29 @@ function CameraCard({ camera }: { camera: Camera }) {
             {formatLatency(camera.last_status_latency_ms)}
           </div>
         )}
+
+        {/* Edit / Delete overlay — top-left when offline, only for write access */}
+        {canWrite && (
+          <div className={cn(
+            "absolute bottom-2 left-2 flex gap-1",
+            camera.status === "online" && "top-2 left-auto right-24",
+          )}>
+            <button
+              onClick={() => onEdit(camera)}
+              className="h-6 w-6 flex items-center justify-center rounded bg-black/60 text-white/70 hover:text-white hover:bg-black/80 transition-colors"
+              title="Edit camera"
+            >
+              <Pencil className="w-3 h-3" />
+            </button>
+            <button
+              onClick={() => onDelete(camera)}
+              className="h-6 w-6 flex items-center justify-center rounded bg-black/60 text-white/70 hover:text-red-400 hover:bg-black/80 transition-colors"
+              title="Delete camera"
+            >
+              <Trash2 className="w-3 h-3" />
+            </button>
+          </div>
+        )}
       </div>
 
       <CardContent className="p-3 space-y-3">
@@ -267,17 +529,51 @@ function CameraCard({ camera }: { camera: Camera }) {
   );
 }
 
+// ─── Empty state ───────────────────────────────────────────────────────────────
+
+function EmptyState({ canWrite, onAdd }: { canWrite: boolean; onAdd: () => void }) {
+  return (
+    <Card>
+      <CardContent className="py-16 text-center space-y-4">
+        <CameraIcon className="w-12 h-12 mx-auto text-muted-foreground/30" />
+        <div>
+          <p className="text-muted-foreground font-medium">No cameras configured</p>
+          <p className="text-sm text-muted-foreground/60 mt-1">
+            Add your Hikvision (or other) cameras to start monitoring entrances.
+          </p>
+        </div>
+        {canWrite && (
+          <Button onClick={onAdd} className="gap-2">
+            <Plus className="w-4 h-4" />Add First Camera
+          </Button>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function CamerasPage() {
   const { toast } = useToast();
   const { t } = useTranslation();
   const qc = useQueryClient();
+  const { user } = useAuth();
+  const canWrite = user?.role !== "viewer";
+
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editTarget, setEditTarget] = useState<Camera | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Camera | null>(null);
 
   const { data: cameras = [], isLoading } = useQuery({
     queryKey: ["cameras"],
     queryFn: camerasApi.list,
     refetchInterval: 30_000,
+  });
+
+  const { data: entrances = [] } = useQuery({
+    queryKey: ["entrances"],
+    queryFn: entrancesApi.list,
   });
 
   const online  = cameras.filter((c) => c.status === "online").length;
@@ -295,20 +591,41 @@ export default function CamerasPage() {
     },
   });
 
+  const deleteMut = useMutation({
+    mutationFn: (id: string) => camerasApi.delete(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["cameras"] });
+      toast({ title: "Camera removed" });
+      setDeleteTarget(null);
+    },
+    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
+
+  function openAdd() { setEditTarget(null); setDialogOpen(true); }
+  function openEdit(c: Camera) { setEditTarget(c); setDialogOpen(true); }
+  function closeDialog() { setDialogOpen(false); setEditTarget(null); }
+
   return (
     <AppLayout
       title={t("cameras.title")}
       subtitle={`${cameras.length} ${t("cameras.total")} · ${online} ${t("cameras.online")}`}
       actions={
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => pingAllMut.mutate()}
-          disabled={pingAllMut.isPending || cameras.length === 0}
-        >
-          <RefreshCw className={cn("w-4 h-4 mr-2", pingAllMut.isPending && "animate-spin")} />
-          {t("cameras.pingAll")}
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => pingAllMut.mutate()}
+            disabled={pingAllMut.isPending || cameras.length === 0}
+          >
+            <RefreshCw className={cn("w-4 h-4 mr-2", pingAllMut.isPending && "animate-spin")} />
+            {t("cameras.pingAll")}
+          </Button>
+          {canWrite && (
+            <Button size="sm" onClick={openAdd} className="gap-1.5">
+              <Plus className="w-4 h-4" />Add Camera
+            </Button>
+          )}
+        </div>
       }
     >
       <div className="max-w-7xl mx-auto space-y-5">
@@ -339,15 +656,17 @@ export default function CamerasPage() {
             ))}
           </div>
         ) : cameras.length === 0 ? (
-          <Card>
-            <CardContent className="py-16 text-center text-muted-foreground">
-              {t("cameras.noCameras")}
-            </CardContent>
-          </Card>
+          <EmptyState canWrite={canWrite} onAdd={openAdd} />
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {cameras.map((c) => (
-              <CameraCard key={c.id} camera={c} />
+              <CameraCard
+                key={c.id}
+                camera={c}
+                canWrite={canWrite}
+                onEdit={openEdit}
+                onDelete={setDeleteTarget}
+              />
             ))}
           </div>
         )}
@@ -367,6 +686,35 @@ export default function CamerasPage() {
           </div>
         </div>
       </div>
+
+      {/* Add / Edit dialog */}
+      <CameraFormDialog
+        open={dialogOpen}
+        onClose={closeDialog}
+        editTarget={editTarget}
+        entrances={entrances}
+      />
+
+      {/* Delete confirmation */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(v) => !v && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove camera?</AlertDialogTitle>
+            <AlertDialogDescription>
+              <strong>{deleteTarget?.name}</strong> ({deleteTarget?.ip_address}) will be permanently removed from the system. Existing access logs and events that referenced this camera will be retained.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deleteTarget && deleteMut.mutate(deleteTarget.id)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Remove Camera
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AppLayout>
   );
 }
