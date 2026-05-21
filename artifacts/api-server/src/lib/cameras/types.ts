@@ -26,6 +26,13 @@ export interface CameraConfig {
 export interface SnapshotResult {
   success: boolean;
   snapshot_url?: string;
+  /**
+   * Inline data URL of the snapshot ("data:image/jpeg;base64,...").
+   * Returned by the snapshot endpoint so the frontend can render the
+   * preview without touching nginx / static routing / proxy quirks.
+   * Not persisted to the database.
+   */
+  snapshot_base64?: string;
   mime_type?: string;
   file_size_bytes?: number;
   captured_at?: Date;

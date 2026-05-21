@@ -339,8 +339,10 @@ function CameraCard({
   const snapMut = useMutation({
     mutationFn: () => camerasApi.snapshot(camera.id),
     onSuccess: (r: CameraActionResult) => {
-      if (r.success && r.snapshot_url) {
-        setLiveSnap(r.snapshot_url);
+      if (r.success && (r.snapshot_base64 || r.snapshot_url)) {
+        // Prefer inline base64 data URL — bypasses nginx, static routing,
+        // SPA fallback, Safari edge cases, CORS, and mixed-content issues.
+        setLiveSnap(r.snapshot_base64 ?? r.snapshot_url ?? null);
         toast({ title: t("cameras.snapshotCaptured"), description: camera.name });
       } else {
         toast({ title: t("cameras.snapshotFailed"), description: r.error ?? "Camera did not respond", variant: "destructive" });

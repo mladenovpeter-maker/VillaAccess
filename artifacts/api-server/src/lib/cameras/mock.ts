@@ -1,3 +1,5 @@
+import path from "path";
+import { promises as fs } from "fs";
 import type { CameraAdapter, CameraConfig, GateResult, SnapshotResult, StatusResult } from "./types";
 import { saveMockSnapshot } from "../mock/snapshot-generator";
 
@@ -17,9 +19,26 @@ export class MockCameraAdapter implements CameraAdapter {
         confidence,
         detected: false,
       });
+
+      // Read the just-written SVG back from disk and inline it as a data URL.
+      // The url may be absolute (PUBLIC_UPLOADS_URL set) or relative; either
+      // way we can recover the on-disk path from the "/api/uploads/..." suffix.
+      let snapshot_base64: string | undefined;
+      try {
+        const m = url.match(/\/api\/uploads\/(.+)$/);
+        if (m) {
+          const abs = path.join(process.cwd(), "uploads", m[1]);
+          const buf = await fs.readFile(abs);
+          snapshot_base64 = `data:image/svg+xml;base64,${buf.toString("base64")}`;
+        }
+      } catch {
+        /* inline preview is best-effort; fall back to snapshot_url */
+      }
+
       return {
         success: true,
         snapshot_url: url,
+        snapshot_base64,
         mime_type: "image/svg+xml",
         file_size_bytes: 4096,
         captured_at: new Date(),

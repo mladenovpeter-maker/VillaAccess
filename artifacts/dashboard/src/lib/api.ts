@@ -523,6 +523,8 @@ export interface CameraActionResult {
   camera_name: string;
   success: boolean;
   snapshot_url?: string;
+  /** Inline data URL ("data:image/jpeg;base64,..."); preferred over snapshot_url for live preview. */
+  snapshot_base64?: string;
   action?: string;
   command?: string;
   target_no?: number;

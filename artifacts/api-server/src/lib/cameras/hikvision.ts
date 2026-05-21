@@ -53,8 +53,16 @@ export class HikvisionAdapter extends BaseCameraAdapter {
         : ".jpg";
 
       const { url, size } = await this.saveImageBuffer(buffer, ext);
+      const snapshot_base64 = `data:${contentType};base64,${buffer.toString("base64")}`;
 
-      return { success: true, snapshot_url: url, mime_type: contentType, file_size_bytes: size, captured_at };
+      return {
+        success: true,
+        snapshot_url: url,
+        snapshot_base64,
+        mime_type: contentType,
+        file_size_bytes: size,
+        captured_at,
+      };
     } catch (err: unknown) {
       return { success: false, captured_at, error: err instanceof Error ? err.message : String(err) };
     }
