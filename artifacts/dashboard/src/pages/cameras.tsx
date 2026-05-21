@@ -330,7 +330,43 @@ function CameraCard({
   const { toast } = useToast();
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
-  const [liveSnap, setLiveSnap] = useState<string | null>(null);
+
+  // Hydrate the live preview from localStorage on mount, so the last captured
+  // base64 snapshot persists across navigation and full page reloads — even
+  // when /api/uploads/* serving is flaky behind nginx/proxies.
+  const cacheKey = `cam-snap:${camera.id}`;
+  const [liveSnap, setLiveSnap] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    try {
+      const raw = window.localStorage.getItem(cacheKey);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw) as { dataUrl?: string };
+      return parsed.dataUrl ?? null;
+    } catch {
+      return null;
+    }
+  });
+
+  // If the camera object changes (e.g. refetch shows a newer last_snapshot
+  // than what we cached), drop our stale cache so we fall back to snapshot_url.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const raw = window.localStorage.getItem(cacheKey);
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as { ts?: string };
+      if (
+        camera.last_snapshot &&
+        parsed.ts &&
+        new Date(camera.last_snapshot).getTime() > new Date(parsed.ts).getTime()
+      ) {
+        window.localStorage.removeItem(cacheKey);
+        setLiveSnap(null);
+      }
+    } catch {
+      /* ignore */
+    }
+  }, [cacheKey, camera.last_snapshot]);
 
   const cfg = STATUS_KEYS[camera.status as keyof typeof STATUS_KEYS] ?? STATUS_KEYS.offline;
   const StatusIcon = cfg.Icon;
@@ -342,7 +378,43 @@ function CameraCard({
       if (r.success && (r.snapshot_base64 || r.snapshot_url)) {
         // Prefer inline base64 data URL — bypasses nginx, static routing,
         // SPA fallback, Safari edge cases, CORS, and mixed-content issues.
-        setLiveSnap(r.snapshot_base64 ?? r.snapshot_url ?? null);
+        const next = r.snapshot_base64 ?? r.snapshot_url ?? null;
+        setLiveSnap(next);
+
+        // Persist the base64 preview so it survives navigation and reload.
+        // (We only cache data URLs — never the http(s) snapshot_url, which
+        // doesn't need a cache and would just bloat localStorage.)
+        if (typeof window !== "undefined" && r.snapshot_base64) {
+          try {
+            window.localStorage.setItem(
+              cacheKey,
+              JSON.stringify({
+                dataUrl: r.snapshot_base64,
+                ts: r.captured_at ?? new Date().toISOString(),
+              }),
+            );
+          } catch {
+            // Quota exceeded — drop oldest entries and retry once.
+            try {
+              for (let i = window.localStorage.length - 1; i >= 0; i--) {
+                const k = window.localStorage.key(i);
+                if (k && k.startsWith("cam-snap:") && k !== cacheKey) {
+                  window.localStorage.removeItem(k);
+                }
+              }
+              window.localStorage.setItem(
+                cacheKey,
+                JSON.stringify({
+                  dataUrl: r.snapshot_base64,
+                  ts: r.captured_at ?? new Date().toISOString(),
+                }),
+              );
+            } catch {
+              /* still over quota — preview is in-memory only this session */
+            }
+          }
+        }
+
         toast({ title: t("cameras.snapshotCaptured"), description: camera.name });
       } else {
         toast({ title: t("cameras.snapshotFailed"), description: r.error ?? "Camera did not respond", variant: "destructive" });
