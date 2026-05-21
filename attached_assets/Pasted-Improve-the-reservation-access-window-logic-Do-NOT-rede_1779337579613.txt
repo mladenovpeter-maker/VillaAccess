@@ -1,0 +1,127 @@
+Improve the reservation access-window logic.
+
+Do NOT redesign architecture.
+Do NOT redesign reservations or access systems.
+
+This is an operational hospitality improvement only.
+
+====================================================
+CURRENT PROBLEM
+====================================================
+
+Reservations currently use only:
+- check-in date
+- check-out date
+
+This is not sufficient for real hospitality operations.
+
+Guests:
+- arrive early
+- leave late
+- need grace periods
+
+PIN access and OCR vehicle access must support this operational reality.
+
+====================================================
+REQUIRED CHANGES
+====================================================
+
+Reservations must support:
+
+- check_in_date
+- check_in_time
+- check_out_date
+- check_out_time
+
+====================================================
+DEFAULT VALUES
+====================================================
+
+Default:
+- check-in time = 14:00
+- check-out time = 11:00
+
+Operator must still be able to override manually.
+
+====================================================
+ACCESS VALIDITY WINDOW
+====================================================
+
+Both:
+- intercom PIN access
+- OCR vehicle access
+
+must become valid:
+
+1 hour BEFORE check-in datetime
+
+and expire:
+
+1 hour AFTER check-out datetime
+
+====================================================
+EXAMPLE
+====================================================
+
+Reservation:
+- check-in: 23 May 14:00
+- check-out: 25 May 11:00
+
+System access window:
+- starts: 23 May 13:00
+- ends: 25 May 12:00
+
+This applies to:
+- ANPR/OCR vehicle validation
+- Hikvision intercom PIN validity
+
+====================================================
+BACKEND LOGIC
+====================================================
+
+Backend remains source of truth.
+
+Add computed access window logic:
+
+access_valid_from =
+check_in_datetime - 1 hour
+
+access_valid_to =
+check_out_datetime + 1 hour
+
+Do NOT duplicate logic across services.
+
+Use one centralized access-window calculation.
+
+====================================================
+UI REQUIREMENTS
+====================================================
+
+Reservation form:
+- date picker
+- time picker
+
+Default auto-filled:
+- 14:00 check-in
+- 11:00 check-out
+
+Show calculated access window visually:
+
+Example:
+"Access active:
+23 May 13:00 → 25 May 12:00"
+
+====================================================
+IMPORTANT
+====================================================
+
+Do NOT redesign:
+- OCR logic
+- reservation architecture
+- intercom architecture
+- access engine
+
+This is only:
+- datetime precision
+- operational grace-period support
+- centralized access validity logic
