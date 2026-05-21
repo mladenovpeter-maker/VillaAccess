@@ -476,7 +476,14 @@ function CameraCard({
         <div className="flex flex-wrap gap-1.5">
           <ActionButton icon={ImageIcon} label={t("cameras.snapshot")} onClick={() => snapMut.mutate()} loading={snapMut.isPending} disabled={anyLoading} />
           <ActionButton icon={Activity} label={t("cameras.ping")} onClick={() => statusMut.mutate()} loading={statusMut.isPending} disabled={anyLoading} />
-          <ActionButton icon={GitMerge} label={t("cameras.gate")} onClick={() => gateMut.mutate()} loading={gateMut.isPending} disabled={anyLoading} variant="secondary" />
+          <ActionButton
+            icon={GitMerge}
+            label={gateMut.isPending ? t("cameras.gateOpening") : t("cameras.gate")}
+            onClick={() => gateMut.mutate()}
+            loading={gateMut.isPending}
+            disabled={anyLoading}
+            variant="secondary"
+          />
         </div>
 
         {/* Expandable device info */}

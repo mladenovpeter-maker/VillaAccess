@@ -218,22 +218,47 @@ router.post("/:id/gate", requireAuth, async (req: any, res) => {
   const c = await loadCamera(req.params.id);
   if (!c) { res.status(404).json({ detail: "Camera not found" }); return; }
 
+  const operator = req.user?.username ?? req.user?.email ?? "unknown";
+  const t0 = Date.now();
+
+  console.log(`[cameras.gate] ▶ ON  user=${operator} camera="${c.name}" (${c.id}) relay=${c.gate_no}`);
+
   const adapter = createAdapter(c);
   const result = await adapter.open_gate();
+  const elapsed_ms = Date.now() - t0;
 
+  console.log(
+    `[cameras.gate] ◀ OFF user=${operator} camera="${c.name}" ` +
+    `success=${result.success} elapsed=${elapsed_ms}ms` +
+    (result.error ? ` error=${result.error}` : ""),
+  );
+
+  // Audit event — "User X opened gate via Camera Y"
   void eventBus.publish({
     event_type: result.success ? "gate.opened" : "gate.failed",
     severity: result.success ? "info" : "error",
     camera_id: c.id,
     operator_id: req.user?.id,
     source: "dashboard",
-    payload: { ...result, camera_name: c.name, entrance_id: c.entrance_id },
+    payload: {
+      ...result,
+      camera_name: c.name,
+      entrance_id: c.entrance_id,
+      operator,
+      operator_id: req.user?.id,
+      method: "manual_pulse",
+      pulse_ms: 3000,
+      elapsed_ms,
+      message: `${operator} ${result.success ? "opened" : "tried to open"} gate via camera "${c.name}"`,
+    },
   });
 
   res.json({
     camera_id: c.id,
     camera_name: c.name,
-    triggered_by: req.user?.username ?? "unknown",
+    triggered_by: operator,
+    pulse_ms: 3000,
+    elapsed_ms,
     ...result,
   });
 });

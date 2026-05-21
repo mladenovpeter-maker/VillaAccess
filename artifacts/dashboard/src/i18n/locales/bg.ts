@@ -278,6 +278,7 @@ const bg = {
     lastSnap: "Последна снимка",
     snapshotCaptured: "Снимката е заснета",
     snapshotFailed: "Снимката е неуспешна",
+    gateOpening: "Отваряне на портата…",
     gateOpened: "Портата е отворена",
     gateFailed: "Портата е неуспешна",
     doorOpened: "Вратата е отворена",

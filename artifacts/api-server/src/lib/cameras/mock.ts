@@ -49,7 +49,10 @@ export class MockCameraAdapter implements CameraAdapter {
   }
 
   async open_gate(): Promise<GateResult> {
-    await delay(120 + Math.random() * 80);
+    // Simulate pulse: ON → 3s dwell → OFF, matching the real Hikvision adapter.
+    await delay(120 + Math.random() * 80); // ON
+    await delay(3000);                      // dwell
+    await delay(80 + Math.random() * 60);   // OFF
     return {
       success: true,
       target_no: this.config.gate_no,

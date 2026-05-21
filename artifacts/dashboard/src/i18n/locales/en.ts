@@ -278,6 +278,7 @@ const en = {
     lastSnap: "Last snap",
     snapshotCaptured: "Snapshot captured",
     snapshotFailed: "Snapshot failed",
+    gateOpening: "Opening gate…",
     gateOpened: "Gate opened",
     gateFailed: "Gate failed",
     doorOpened: "Door opened",

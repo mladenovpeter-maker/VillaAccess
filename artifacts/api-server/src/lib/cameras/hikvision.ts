@@ -70,35 +70,65 @@ export class HikvisionAdapter extends BaseCameraAdapter {
 
   // ── Gate (on-board I/O relay output) ────────────────────────────────────────
 
+  /**
+   * Safe pulse: relay ON → wait PULSE_MS → relay OFF.
+   *
+   * Uses explicit high/low control via ISAPI so the relay is NEVER left
+   * latched, even if the second request fails or the process is interrupted.
+   * The OFF command is sent in a `finally` block.
+   */
   async open_gate(): Promise<GateResult> {
     const outputNo = this.config.gate_no ?? 1;
-    try {
-      const body = `<?xml version="1.0" encoding="UTF-8"?>
+    const PULSE_MS = 3000;
+    const path = `/ISAPI/System/IO/outputs/${outputNo}/trigger`;
+    const xmlBody = (state: "high" | "low") => `<?xml version="1.0" encoding="UTF-8"?>
 <IOPortData version="2.0">
-  <outputState>trigger</outputState>
+  <outputState>${state}</outputState>
 </IOPortData>`;
-      const res = await this.fetchCamera(
-        "PUT",
-        `/ISAPI/System/IO/outputs/${outputNo}/trigger`,
-        body,
-        "application/xml",
-      );
-      const success = res.ok || res.status === 204;
-      return {
-        success,
-        target_no: outputNo,
-        mode: "io_relay",
-        raw_status: res.status,
-        ...(success ? {} : { error: `Camera returned HTTP ${res.status}` }),
-      };
-    } catch (err: unknown) {
-      return {
-        success: false,
-        target_no: outputNo,
-        mode: "io_relay",
-        error: err instanceof Error ? err.message : String(err),
-      };
+
+    let onStatus = 0;
+    let onError: string | undefined;
+    let offStatus = 0;
+    let offError: string | undefined;
+
+    try {
+      // 1) Relay ON
+      try {
+        const onRes = await this.fetchCamera("PUT", path, xmlBody("high"), "application/xml");
+        onStatus = onRes.status;
+        if (!onRes.ok && onRes.status !== 204) {
+          onError = `Relay ON returned HTTP ${onRes.status}`;
+        }
+      } catch (err: unknown) {
+        onError = `Relay ON failed: ${err instanceof Error ? err.message : String(err)}`;
+      }
+
+      // If ON failed, don't bother with the dwell — go straight to OFF for safety.
+      if (!onError) {
+        await new Promise((r) => setTimeout(r, PULSE_MS));
+      }
+    } finally {
+      // 2) Relay OFF — ALWAYS attempt, even if ON failed or threw.
+      try {
+        const offRes = await this.fetchCamera("PUT", path, xmlBody("low"), "application/xml");
+        offStatus = offRes.status;
+        if (!offRes.ok && offRes.status !== 204) {
+          offError = `Relay OFF returned HTTP ${offRes.status}`;
+        }
+      } catch (err: unknown) {
+        offError = `Relay OFF failed: ${err instanceof Error ? err.message : String(err)}`;
+      }
     }
+
+    const success = !onError && !offError;
+    const errorParts = [onError, offError].filter(Boolean);
+    return {
+      success,
+      target_no: outputNo,
+      mode: "io_relay",
+      raw_status: onStatus || offStatus,
+      ...(success ? {} : { error: errorParts.join("; ") }),
+    };
   }
 
   // ── Status ──────────────────────────────────────────────────────────────────
