@@ -58,47 +58,67 @@ router.get("/:id", requireAuth, async (req, res) => {
 
 // ─── POST /cameras ────────────────────────────────────────────────────────────
 
-router.post("/", requireAuth, requireWriteAccess, async (req, res) => {
-  const {
-    name, ip_address, rtsp_url, entrance_id, model,
-    protocol, http_port, username, password,
-    channel_no, gate_no,
-  } = req.body;
+router.post("/", requireAuth, requireWriteAccess(), async (req, res) => {
+  const t0 = Date.now();
+  console.log("[cameras.create] 1/6 route entered", { ip: req.body?.ip_address, name: req.body?.name });
+  try {
+    const {
+      name, ip_address, rtsp_url, entrance_id, model,
+      protocol, http_port, username, password,
+      channel_no, gate_no,
+    } = req.body;
 
-  if (!name || !ip_address) {
-    res.status(400).json({ detail: "name and ip_address are required" });
-    return;
+    if (!name || !ip_address) {
+      console.log("[cameras.create] validation failed: missing name/ip_address");
+      res.status(400).json({ detail: "name and ip_address are required" });
+      return;
+    }
+    console.log("[cameras.create] 2/6 validation ok");
+
+    if (entrance_id) {
+      console.log("[cameras.create] 3/6 entrance lookup start", { entrance_id });
+      const ent = await db.select({ id: entrancesTable.id }).from(entrancesTable)
+        .where(eq(entrancesTable.id, entrance_id)).limit(1);
+      console.log("[cameras.create] 3/6 entrance lookup done", { found: !!ent[0] });
+      if (!ent[0]) { res.status(400).json({ detail: "Entrance not found" }); return; }
+    } else {
+      console.log("[cameras.create] 3/6 entrance lookup skipped (no entrance_id)");
+    }
+
+    console.log("[cameras.create] 4/6 insert start");
+    const [c] = await db
+      .insert(camerasTable)
+      .values({
+        name,
+        ip_address,
+        rtsp_url: rtsp_url ?? null,
+        entrance_id: entrance_id ?? null,
+        model: model ?? null,
+        protocol: protocol ?? "hikvision",
+        http_port: http_port ?? 80,
+        username: username ?? "admin",
+        password: password ?? null,
+        channel_no: channel_no ?? 1,
+        gate_no: gate_no ?? 1,
+      })
+      .returning();
+    console.log("[cameras.create] 4/6 insert done", { id: c?.id });
+
+    console.log("[cameras.create] 5/6 serialize start");
+    const payload = serializeCamera(c);
+    console.log("[cameras.create] 5/6 serialize done");
+
+    res.status(201).json(payload);
+    console.log("[cameras.create] 6/6 response sent", { ms: Date.now() - t0 });
+  } catch (err) {
+    console.error("[cameras.create] ERROR", { ms: Date.now() - t0, err });
+    if (!res.headersSent) res.status(500).json({ detail: "Internal server error" });
   }
-
-  if (entrance_id) {
-    const ent = await db.select({ id: entrancesTable.id }).from(entrancesTable)
-      .where(eq(entrancesTable.id, entrance_id)).limit(1);
-    if (!ent[0]) { res.status(400).json({ detail: "Entrance not found" }); return; }
-  }
-
-  const [c] = await db
-    .insert(camerasTable)
-    .values({
-      name,
-      ip_address,
-      rtsp_url: rtsp_url ?? null,
-      entrance_id: entrance_id ?? null,
-      model: model ?? null,
-      protocol: protocol ?? "hikvision",
-      http_port: http_port ?? 80,
-      username: username ?? "admin",
-      password: password ?? null,
-      channel_no: channel_no ?? 1,
-      gate_no: gate_no ?? 1,
-    })
-    .returning();
-
-  res.status(201).json(serializeCamera(c));
 });
 
 // ─── PATCH /cameras/:id ───────────────────────────────────────────────────────
 
-router.patch("/:id", requireAuth, requireWriteAccess, async (req, res) => {
+router.patch("/:id", requireAuth, requireWriteAccess(), async (req, res) => {
   const c = await loadCamera(req.params.id);
   if (!c) { res.status(404).json({ detail: "Camera not found" }); return; }
 
@@ -123,7 +143,7 @@ router.patch("/:id", requireAuth, requireWriteAccess, async (req, res) => {
 
 // ─── DELETE /cameras/:id ──────────────────────────────────────────────────────
 
-router.delete("/:id", requireAuth, requireWriteAccess, async (req, res) => {
+router.delete("/:id", requireAuth, requireWriteAccess(), async (req, res) => {
   const c = await loadCamera(req.params.id);
   if (!c) { res.status(404).json({ detail: "Camera not found" }); return; }
   await db.delete(camerasTable).where(eq(camerasTable.id, req.params.id));
