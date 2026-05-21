@@ -21,9 +21,7 @@ export interface CameraRow {
   password?: string | null;
   protocol?: string | null;
   channel_no?: number | null;
-  use_access_control?: boolean | null;
   gate_no?: number | null;
-  door_no?: number | null;
   rtsp_url?: string | null;
 }
 
@@ -38,9 +36,7 @@ export function buildConfig(row: CameraRow): CameraConfig {
     password: row.password ?? "",
     protocol: (row.protocol ?? "hikvision") as CameraProtocol,
     channel_no: row.channel_no ?? 1,
-    use_access_control: row.use_access_control ?? false,
     gate_no: row.gate_no ?? 1,
-    door_no: row.door_no ?? 2,
     rtsp_url: row.rtsp_url ?? undefined,
   };
 }

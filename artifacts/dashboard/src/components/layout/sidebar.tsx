@@ -5,7 +5,7 @@ import {
   LayoutDashboard, CalendarDays, Car, ShieldCheck, Camera, ScrollText,
   Activity, LogOut, Menu, X, Building2, DoorOpen, FlaskConical,
   Stethoscope, Settings2, Images, HeartPulse, GitCommitHorizontal,
-  Download, Users, KeyRound,
+  Download, Users, KeyRound, Phone,
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -39,6 +39,7 @@ export function Sidebar() {
     { href: "/access",       label: t("nav.access"),       icon: ShieldCheck,          roles: ["admin", "operator", "viewer"] },
     { href: "/timeline",     label: t("nav.timeline"),     icon: GitCommitHorizontal,  roles: ["admin", "operator", "viewer"] },
     { href: "/cameras",      label: t("nav.cameras"),      icon: Camera,               roles: ["admin"] },
+    { href: "/intercoms",    label: t("nav.intercoms"),    icon: Phone,                roles: ["admin"] },
     { href: "/entrances",    label: t("nav.entrances"),    icon: DoorOpen,             roles: ["admin"] },
     { href: "/gallery",      label: t("nav.gallery"),      icon: Images,               roles: ["admin", "operator", "viewer"] },
     { href: "/events",       label: t("nav.events"),       icon: Activity,             roles: ["admin", "operator", "viewer"] },

@@ -99,7 +99,7 @@ export async function syncPinToIntercoms(
         http_port:  ic.http_port,
         username:   ic.username,
         password:   ic.password ?? "",
-        door_no:    ic.door_no,
+        relay_no:   ic.relay_no,
       });
 
       const r = await svc.pushPin({
@@ -177,7 +177,7 @@ export async function revokePinFromIntercoms(
         http_port:  ic.http_port,
         username:   ic.username,
         password:   ic.password ?? "",
-        door_no:    ic.door_no,
+        relay_no:   ic.relay_no,
       });
 
       const r = await svc.revokePin(employeeNo);

@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { entrancesTable, camerasTable, intercomsTable } from "@workspace/db";
+import { entrancesTable, camerasTable, intercomsTable, villasTable } from "@workspace/db";
 import { eq, sql } from "drizzle-orm";
 import { requireAuth } from "./auth";
 import { z } from "zod";
@@ -46,29 +46,32 @@ router.get("/:id", requireAuth, async (req, res) => {
 // ─── POST /entrances ──────────────────────────────────────────────────────────
 
 const createSchema = z.object({
-  name:               z.string().min(1),
-  description:        z.string().optional(),
-  location:           z.string().optional(),
-  status:             z.enum(["active", "inactive", "maintenance"]).optional(),
-  gate_relay_ip:      z.string().optional(),
-  gate_relay_port:    z.number().int().optional(),
-  gate_relay_channel: z.number().int().optional(),
-  notes:              z.string().optional(),
+  name:        z.string().min(1),
+  villa_id:    z.string().optional().nullable(),
+  description: z.string().optional().nullable(),
+  active:      z.boolean().optional(),
 });
+
+async function validateVilla(villa_id: string | null | undefined) {
+  if (!villa_id) return true;
+  const v = await db.select({ id: villasTable.id }).from(villasTable)
+    .where(eq(villasTable.id, villa_id)).limit(1);
+  return !!v[0];
+}
 
 router.post("/", requireAuth, async (req, res) => {
   const body = createSchema.safeParse(req.body);
   if (!body.success) { res.status(400).json({ detail: "Invalid request", errors: body.error.issues }); return; }
 
+  if (!(await validateVilla(body.data.villa_id))) {
+    res.status(400).json({ detail: "Villa not found" }); return;
+  }
+
   const [e] = await db.insert(entrancesTable).values({
-    name:               body.data.name,
-    description:        body.data.description ?? null,
-    location:           body.data.location ?? null,
-    status:             body.data.status ?? "active",
-    gate_relay_ip:      body.data.gate_relay_ip ?? null,
-    gate_relay_port:    body.data.gate_relay_port ?? null,
-    gate_relay_channel: body.data.gate_relay_channel ?? null,
-    notes:              body.data.notes ?? null,
+    name:        body.data.name,
+    villa_id:    body.data.villa_id ?? null,
+    description: body.data.description ?? null,
+    active:      body.data.active ?? true,
   }).returning();
 
   res.status(201).json(await enrichEntrance(e));
@@ -83,16 +86,16 @@ router.put("/:id", requireAuth, async (req, res) => {
   const body = createSchema.safeParse(req.body);
   if (!body.success) { res.status(400).json({ detail: "Invalid request", errors: body.error.issues }); return; }
 
+  if (!(await validateVilla(body.data.villa_id))) {
+    res.status(400).json({ detail: "Villa not found" }); return;
+  }
+
   const [updated] = await db.update(entrancesTable).set({
-    name:               body.data.name,
-    description:        body.data.description ?? null,
-    location:           body.data.location ?? null,
-    status:             body.data.status ?? rows[0].status,
-    gate_relay_ip:      body.data.gate_relay_ip ?? null,
-    gate_relay_port:    body.data.gate_relay_port ?? null,
-    gate_relay_channel: body.data.gate_relay_channel ?? null,
-    notes:              body.data.notes ?? null,
-    updated_at:         new Date(),
+    name:        body.data.name,
+    villa_id:    body.data.villa_id ?? null,
+    description: body.data.description ?? null,
+    active:      body.data.active ?? rows[0].active,
+    updated_at:  new Date(),
   }).where(eq(entrancesTable.id, req.params.id)).returning();
 
   res.json(await enrichEntrance(updated));

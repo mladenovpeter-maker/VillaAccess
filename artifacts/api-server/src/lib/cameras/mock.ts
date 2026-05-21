@@ -33,30 +33,14 @@ export class MockCameraAdapter implements CameraAdapter {
     await delay(120 + Math.random() * 80);
     return {
       success: true,
-      action: "gate",
-      command: "open",
       target_no: this.config.gate_no,
       mode: "io_relay",
-      executed_at: new Date(),
-    };
-  }
-
-  async open_door(): Promise<GateResult> {
-    await delay(80 + Math.random() * 60);
-    return {
-      success: true,
-      action: "door",
-      command: "open",
-      target_no: this.config.door_no,
-      mode: "io_relay",
-      executed_at: new Date(),
     };
   }
 
   async get_status(): Promise<StatusResult> {
     await delay(30 + Math.random() * 50);
     return {
-      success: true,
       online: true,
       device_info: {
         device_name: `Mock Camera — ${this.config.name}`,

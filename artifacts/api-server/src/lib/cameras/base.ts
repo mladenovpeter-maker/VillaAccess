@@ -165,6 +165,5 @@ export abstract class BaseCameraAdapter implements CameraAdapter {
 
   abstract get_snapshot(): ReturnType<CameraAdapter["get_snapshot"]>;
   abstract open_gate(): ReturnType<CameraAdapter["open_gate"]>;
-  abstract open_door(): ReturnType<CameraAdapter["open_door"]>;
   abstract get_status(): ReturnType<CameraAdapter["get_status"]>;
 }

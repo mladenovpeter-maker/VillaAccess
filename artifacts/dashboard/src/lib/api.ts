@@ -296,7 +296,6 @@ export const camerasApi = {
   snapshot: (id: string) => api.get<CameraActionResult>(`/cameras/${id}/snapshot`),
   status: (id: string) => api.get<CameraStatusResult>(`/cameras/${id}/status`),
   gate: (id: string) => api.post<CameraActionResult>(`/cameras/${id}/gate`, {}),
-  door: (id: string) => api.post<CameraActionResult>(`/cameras/${id}/door`, {}),
 };
 
 export const logsApi = {
@@ -385,12 +384,13 @@ export interface Intercom {
   ip_address: string;
   http_port: number;
   username: string;
-  protocol: string;
-  door_no: number;
+  protocol: "hikvision" | "dahua" | "sip" | "generic";
+  device_type: string | null;
+  relay_no: number;
   pin_sync_enabled: boolean;
   last_sync_status: string | null;
   last_sync_at: string | null;
-  status: string;
+  status: "online" | "offline" | "error";
   last_status_check: string | null;
   last_status_latency_ms: number | null;
   device_info: Record<string, unknown> | null;
@@ -459,15 +459,13 @@ export interface PaginatedSnapshots {
 export interface Entrance {
   id: string;
   name: string;
+  villa_id: string | null;
   description: string | null;
-  location: string | null;
-  status: "active" | "inactive" | "maintenance";
-  gate_relay_ip: string | null;
-  gate_relay_port: number;
-  gate_relay_channel: number;
-  notes: string | null;
+  active: boolean;
   camera_count?: number;
   intercom_count?: number;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface AccessEvent {
@@ -498,9 +496,7 @@ export interface Camera {
   http_port: number;
   username: string;
   channel_no: number;
-  use_access_control: boolean;
   gate_no: number;
-  door_no: number;
   // Runtime state
   status: "online" | "offline" | "error";
   last_snapshot: string | null;

@@ -4,7 +4,6 @@ import {
   timestamp,
   pgEnum,
   integer,
-  boolean,
   index,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
@@ -25,8 +24,16 @@ export const cameraProtocolEnum = pgEnum("camera_protocol", [
 ]);
 
 /**
- * Cameras — ANPR / surveillance cameras assigned to a shared Entrance.
- * Cameras are NOT tied to individual villas.
+ * Cameras — ANPR / surveillance / snapshot devices assigned to an Entrance.
+ *
+ * Cameras are imaging devices only. They expose:
+ *   - snapshot capture
+ *   - status / ping
+ *   - one optional gate relay output (gate_no) — for cameras with an on-board
+ *     I/O relay (e.g. Hikvision ANPR cameras with built-in alarm output).
+ *
+ * Cameras are NOT access terminals. PIN entry, door release, and access-control
+ * ISAPI calls live on the Intercoms table.
  */
 export const camerasTable = pgTable(
   "cameras",
@@ -37,7 +44,7 @@ export const camerasTable = pgTable(
     ip_address: text("ip_address").notNull(),
     rtsp_url: text("rtsp_url"),
 
-    // ── Location — cameras belong to an Entrance, not a Villa ────────────
+    // ── Location — cameras belong to an Entrance ─────────────────────────
     entrance_id: text("entrance_id").references(() => entrancesTable.id, {
       onDelete: "set null",
     }),
@@ -54,9 +61,7 @@ export const camerasTable = pgTable(
 
     // ── Stream & relay config ────────────────────────────────────────────
     channel_no: integer("channel_no").notNull().default(1),
-    use_access_control: boolean("use_access_control").notNull().default(false),
-    gate_no: integer("gate_no").notNull().default(1),
-    door_no: integer("door_no").notNull().default(2),
+    gate_no: integer("gate_no").notNull().default(1), // on-board relay output
 
     // ── Runtime status & snapshots ───────────────────────────────────────
     status: cameraStatusEnum("status").notNull().default("offline"),

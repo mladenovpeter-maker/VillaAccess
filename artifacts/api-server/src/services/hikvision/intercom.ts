@@ -22,7 +22,7 @@ export interface IntercomConfig {
   http_port: number;
   username: string;
   password: string;
-  door_no: number;
+  relay_no: number;
 }
 
 export interface PinPayload {
@@ -178,6 +178,28 @@ export class HikvisionIntercomService {
   }
 
   /**
+   * Remotely open the door/relay controlled by this intercom.
+   * Uses Hikvision Access-Control ISAPI:
+   *   PUT /ISAPI/AccessControl/RemoteControl/door/{relay_no}
+   *   body: { "RemoteControlDoor": { "cmd": "open" } }
+   */
+  async openDoor(): Promise<HikResult> {
+    try {
+      const r = await this.request(
+        "PUT",
+        `/ISAPI/AccessControl/RemoteControl/door/${this.config.relay_no}`,
+        { RemoteControlDoor: { cmd: "open" } },
+      );
+      if (!r.ok) {
+        return { success: false, raw_status: r.status, error: parseHikError(r.text) ?? `HTTP ${r.status}` };
+      }
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: err instanceof Error ? err.message : String(err) };
+    }
+  }
+
+  /**
    * Push a PIN user to the device.
    * Creates the user if it doesn't exist; updates it if it does.
    * Uses the reservation short-ID as employeeNo for idempotency.
@@ -196,7 +218,7 @@ export class HikvisionIntercomService {
             timeType:  "local",
           },
           doorRight: "1",
-          RightPlan: [{ doorNo: this.config.door_no, planTemplateNo: "1" }],
+          RightPlan: [{ doorNo: this.config.relay_no, planTemplateNo: "1" }],
           password: payload.pin,
         },
       };

@@ -56,7 +56,7 @@ export default function AccessControlPage() {
   const total = eventsData?.total ?? 0;
   const totalPages = Math.ceil(total / 25);
   const entranceMap = Object.fromEntries(entrances.map((e) => [e.id, e.name]));
-  const activeEntrances = entrances.filter((e) => e.status === "active");
+  const activeEntrances = entrances.filter((e) => e.active);
 
   return (
     <AppLayout title={t("access.title")} subtitle={t("access.subtitle")}>
@@ -76,7 +76,7 @@ export default function AccessControlPage() {
                 {activeEntrances.map((entrance) => (
                   <div key={entrance.id} className="border border-border rounded-xl p-3 space-y-2">
                     <div className="text-sm font-medium text-foreground truncate">{entrance.name}</div>
-                    <div className="text-xs text-muted-foreground truncate">{entrance.location ?? "—"}</div>
+                    <div className="text-xs text-muted-foreground truncate">{entrance.description ?? "—"}</div>
                     <div className="flex gap-2">
                       <Button size="sm" variant="outline" className="flex-1 text-xs h-8"
                         onClick={() => setGateDialog({ type: "gate", entrance })}>

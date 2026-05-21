@@ -19,106 +19,55 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { api, tokenStore } from "@/lib/api";
+import { entrancesApi, type Entrance, api } from "@/lib/api";
 import {
-  DoorOpen, Plus, Camera, Phone, MapPin, Pencil, Trash2,
-  CheckCircle2, XCircle, AlertTriangle, Loader2, Zap, Shield,
-  Wifi, WifiOff, Lock, ExternalLink, Activity,
+  DoorOpen, Plus, Camera, Phone, Pencil, Trash2,
+  CheckCircle2, XCircle, Loader2, Zap, Activity, Building2,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { cn } from "@/lib/utils";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-interface Entrance {
-  id: string;
-  name: string;
-  description: string | null;
-  location: string | null;
-  status: "active" | "inactive" | "maintenance";
-  camera_count: number;
-  intercom_count: number;
-  gate_relay_ip: string | null;
-  gate_relay_port: number | null;
-  gate_relay_channel: number | null;
-  notes: string | null;
-  created_at: string;
-  updated_at: string;
-}
+interface Villa { id: string; name: string }
 
 interface EntranceCamera {
-  id: string;
-  name: string;
-  ip_address: string;
-  protocol: string;
+  id: string; name: string; ip_address: string; protocol: string;
   status: "online" | "offline" | "error";
-  last_snapshot: string | null;
-  snapshot_url: string | null;
 }
 
 interface EntranceIntercom {
-  id: string;
-  name: string;
-  ip_address: string;
-  protocol: string;
-  pin_sync_enabled: boolean;
-  status: "online" | "offline" | "error";
+  id: string; name: string; ip_address: string; protocol: string;
+  pin_sync_enabled: boolean; status: "online" | "offline" | "error";
 }
 
 interface EntranceEvent {
-  id: string;
-  timestamp: string;
-  event_type: string;
-  status: string;
+  id: string; timestamp: string; event_type: string; status: string;
   license_plate: string | null;
-  confidence_score: number | null;
 }
 
 interface EntranceForm {
   name: string;
+  villa_id: string;
   description: string;
-  location: string;
-  status: "active" | "inactive" | "maintenance";
-  gate_relay_ip: string;
-  gate_relay_port: string;
-  notes: string;
+  active: boolean;
 }
 
 const defaultForm: EntranceForm = {
-  name: "", description: "", location: "", status: "active",
-  gate_relay_ip: "", gate_relay_port: "", notes: "",
+  name: "", villa_id: "", description: "", active: true,
 };
 
-// ─── API helpers ──────────────────────────────────────────────────────────────
+// ─── Status badges ────────────────────────────────────────────────────────────
 
-const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
-
-async function apiFetch(path: string, options?: RequestInit) {
-  const token = tokenStore.getAccess();
-  const res = await fetch(`${BASE}/api${path}`, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(options?.headers ?? {}),
-    },
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(err.detail ?? "Request failed");
-  }
-  if (res.status === 204) return null;
-  return res.json();
-}
-
-// ─── Status helpers ───────────────────────────────────────────────────────────
-
-function StatusBadge({ status }: { status: Entrance["status"] }) {
-  if (status === "active")
-    return <Badge className="bg-emerald-500/15 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/15"><CheckCircle2 className="w-3 h-3 mr-1" />Active</Badge>;
-  if (status === "maintenance")
-    return <Badge className="bg-amber-500/15 text-amber-400 border-amber-500/20 hover:bg-amber-500/15"><AlertTriangle className="w-3 h-3 mr-1" />Maintenance</Badge>;
-  return <Badge className="bg-zinc-500/15 text-zinc-400 border-zinc-500/20 hover:bg-zinc-500/15"><XCircle className="w-3 h-3 mr-1" />Inactive</Badge>;
+function StatusBadge({ active }: { active: boolean }) {
+  return active ? (
+    <Badge className="bg-emerald-500/15 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/15">
+      <CheckCircle2 className="w-3 h-3 mr-1" />Active
+    </Badge>
+  ) : (
+    <Badge className="bg-zinc-500/15 text-zinc-400 border-zinc-500/20 hover:bg-zinc-500/15">
+      <XCircle className="w-3 h-3 mr-1" />Inactive
+    </Badge>
+  );
 }
 
 function DeviceStatusDot({ status }: { status: string }) {
@@ -129,38 +78,42 @@ function DeviceStatusDot({ status }: { status: string }) {
 
 function EventStatusBadge({ status }: { status: string }) {
   if (status === "allowed") return <Badge className="bg-emerald-500/15 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/15 text-xs">Allowed</Badge>;
-  if (status === "denied") return <Badge className="bg-red-500/15 text-red-400 border-red-500/20 hover:bg-red-500/15 text-xs">Denied</Badge>;
+  if (status === "denied")  return <Badge className="bg-red-500/15 text-red-400 border-red-500/20 hover:bg-red-500/15 text-xs">Denied</Badge>;
   return <Badge className="bg-zinc-500/15 text-zinc-400 border-zinc-500/20 hover:bg-zinc-500/15 text-xs">{status}</Badge>;
 }
 
 // ─── Entrance Form Dialog ─────────────────────────────────────────────────────
 
-function EntranceDialog({ open, onClose, entrance }: { open: boolean; onClose: () => void; entrance: Entrance | null }) {
+function EntranceDialog({ open, onClose, entrance, villas }: {
+  open: boolean; onClose: () => void;
+  entrance: Entrance | null; villas: Villa[];
+}) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { t } = useTranslation();
   const [form, setForm] = useState<EntranceForm>(
     entrance ? {
-      name: entrance.name, description: entrance.description ?? "",
-      location: entrance.location ?? "", status: entrance.status,
-      gate_relay_ip: entrance.gate_relay_ip ?? "",
-      gate_relay_port: entrance.gate_relay_port?.toString() ?? "",
-      notes: entrance.notes ?? "",
-    } : defaultForm
+      name:        entrance.name,
+      villa_id:    entrance.villa_id ?? "",
+      description: entrance.description ?? "",
+      active:      entrance.active,
+    } : defaultForm,
   );
 
-  const set = (k: keyof EntranceForm, v: string) => setForm((f) => ({ ...f, [k]: v }));
+  const set = <K extends keyof EntranceForm>(k: K, v: EntranceForm[K]) =>
+    setForm((f) => ({ ...f, [k]: v }));
 
   const mutation = useMutation({
     mutationFn: async () => {
-      const body: Record<string, unknown> = {
-        name: form.name, description: form.description || null, location: form.location || null,
-        status: form.status, gate_relay_ip: form.gate_relay_ip || null,
-        gate_relay_port: form.gate_relay_port ? parseInt(form.gate_relay_port) : null,
-        notes: form.notes || null,
+      const body = {
+        name:        form.name,
+        villa_id:    form.villa_id || null,
+        description: form.description || null,
+        active:      form.active,
       };
-      if (entrance) return apiFetch(`/entrances/${entrance.id}`, { method: "PUT", body: JSON.stringify(body) });
-      return apiFetch("/entrances", { method: "POST", body: JSON.stringify(body) });
+      return entrance
+        ? entrancesApi.update(entrance.id, body as any)
+        : entrancesApi.create(body as any);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["entrances"] });
@@ -177,43 +130,40 @@ function EntranceDialog({ open, onClose, entrance }: { open: boolean; onClose: (
           <DialogTitle>{entrance ? t("entrances.editEntrance") : t("entrances.addEntrance")}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 py-2">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="col-span-2 space-y-1.5">
-              <Label>{t("entrances.entranceName")}</Label>
-              <Input placeholder="e.g. Main Gate" value={form.name} onChange={(e) => set("name", e.target.value)} />
-            </div>
-            <div className="col-span-2 space-y-1.5">
-              <Label>{t("entrances.description")}</Label>
-              <Input placeholder="Brief description" value={form.description} onChange={(e) => set("description", e.target.value)} />
-            </div>
-            <div className="col-span-2 space-y-1.5">
-              <Label>{t("entrances.location")}</Label>
-              <Input placeholder="e.g. Front gate on Jl. Utama" value={form.location} onChange={(e) => set("location", e.target.value)} />
-            </div>
-            <div className="space-y-1.5">
-              <Label>{t("common.status")}</Label>
-              <Select value={form.status} onValueChange={(v) => set("status", v)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="active">{t("entrances.status.active")}</SelectItem>
-                  <SelectItem value="inactive">{t("entrances.status.inactive")}</SelectItem>
-                  <SelectItem value="maintenance">{t("entrances.status.maintenance")}</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label>{t("entrances.gateRelayPort")}</Label>
-              <Input type="number" placeholder="80" value={form.gate_relay_port} onChange={(e) => set("gate_relay_port", e.target.value)} />
-            </div>
-            <div className="col-span-2 space-y-1.5">
-              <Label>{t("entrances.gateRelayIp")}</Label>
-              <Input placeholder="e.g. 192.168.1.50 (optional)" value={form.gate_relay_ip} onChange={(e) => set("gate_relay_ip", e.target.value)} />
-            </div>
-            <div className="col-span-2 space-y-1.5">
-              <Label>{t("common.notes")}</Label>
-              <Textarea placeholder="Additional notes…" className="resize-none" rows={3} value={form.notes} onChange={(e) => set("notes", e.target.value)} />
-            </div>
+          <div className="space-y-1.5">
+            <Label>{t("entrances.entranceName")}</Label>
+            <Input placeholder="e.g. Main Gate" value={form.name} onChange={(e) => set("name", e.target.value)} />
           </div>
+          <div className="space-y-1.5">
+            <Label>{t("entrances.villa")}</Label>
+            <Select value={form.villa_id || "__none__"} onValueChange={(v) => set("villa_id", v === "__none__" ? "" : v)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">{t("entrances.noVilla")}</SelectItem>
+                {villas.map((v) => (
+                  <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label>{t("entrances.description")}</Label>
+            <Textarea
+              placeholder="Brief description (optional)"
+              className="resize-none" rows={3}
+              value={form.description}
+              onChange={(e) => set("description", e.target.value)}
+            />
+          </div>
+          <label className="flex items-center gap-2 cursor-pointer text-sm">
+            <input
+              type="checkbox"
+              checked={form.active}
+              onChange={(e) => set("active", e.target.checked)}
+              className="accent-primary"
+            />
+            {t("entrances.active")}
+          </label>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>{t("common.cancel")}</Button>
@@ -229,8 +179,9 @@ function EntranceDialog({ open, onClose, entrance }: { open: boolean; onClose: (
 
 // ─── Entrance Detail Sheet ────────────────────────────────────────────────────
 
-function EntranceDetailSheet({ entrance, onClose, onEdit }: {
-  entrance: Entrance | null; onClose: () => void; onEdit: (e: Entrance) => void;
+function EntranceDetailSheet({ entrance, villas, onClose, onEdit }: {
+  entrance: Entrance | null; villas: Villa[];
+  onClose: () => void; onEdit: (e: Entrance) => void;
 }) {
   const { toast } = useToast();
   const { t } = useTranslation();
@@ -238,29 +189,28 @@ function EntranceDetailSheet({ entrance, onClose, onEdit }: {
 
   const { data: cameras = [], isLoading: camLoading } = useQuery<EntranceCamera[]>({
     queryKey: ["entrance-cameras", entrance?.id],
-    queryFn: () => apiFetch(`/entrances/${entrance!.id}/cameras`),
+    queryFn: () => api.get<EntranceCamera[]>(`/entrances/${entrance!.id}/cameras`),
     enabled: !!entrance,
   });
 
   const { data: intercoms = [], isLoading: intLoading } = useQuery<EntranceIntercom[]>({
     queryKey: ["entrance-intercoms", entrance?.id],
-    queryFn: () => apiFetch(`/entrances/${entrance!.id}/intercoms`),
+    queryFn: () => api.get<EntranceIntercom[]>(`/entrances/${entrance!.id}/intercoms`),
     enabled: !!entrance,
   });
 
   const { data: eventsData, isLoading: evLoading } = useQuery<{ items: EntranceEvent[] }>({
     queryKey: ["entrance-events", entrance?.id],
-    queryFn: () => apiFetch(`/access/events?entrance_id=${entrance!.id}&page_size=10`),
+    queryFn: () => api.get<{ items: EntranceEvent[] }>(`/access/events?entrance_id=${entrance!.id}&page_size=10`),
     enabled: !!entrance,
     refetchInterval: 15_000,
   });
-
   const events = eventsData?.items ?? [];
 
   async function testGate(cameraId: string) {
     setTestingGate(cameraId);
     try {
-      const res = await apiFetch(`/cameras/${cameraId}/gate`, { method: "POST" });
+      const res: any = await api.post(`/cameras/${cameraId}/gate`, {});
       toast({ title: res?.success ? t("cameras.gateOpened") : t("cameras.gateFailed") });
     } catch (e: any) {
       toast({ title: t("cameras.gateError"), description: e.message, variant: "destructive" });
@@ -270,6 +220,7 @@ function EntranceDetailSheet({ entrance, onClose, onEdit }: {
   }
 
   if (!entrance) return null;
+  const villaName = villas.find((v) => v.id === entrance.villa_id)?.name;
 
   return (
     <Sheet open={!!entrance} onOpenChange={(o) => !o && onClose()}>
@@ -282,27 +233,31 @@ function EntranceDetailSheet({ entrance, onClose, onEdit }: {
               </div>
               <div>
                 <SheetTitle className="text-base">{entrance.name}</SheetTitle>
-                {entrance.location && (
+                {villaName && (
                   <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
-                    <MapPin className="w-3 h-3" />{entrance.location}
+                    <Building2 className="w-3 h-3" />{villaName}
                   </div>
                 )}
               </div>
             </div>
-            <StatusBadge status={entrance.status} />
+            <StatusBadge active={entrance.active} />
           </div>
         </SheetHeader>
 
         <div className="pt-5 space-y-6">
+          {entrance.description && (
+            <p className="text-sm text-muted-foreground">{entrance.description}</p>
+          )}
+
           {/* Stats */}
           <div className="grid grid-cols-3 gap-3">
             <div className="bg-muted/40 rounded-lg p-3 text-center">
-              <div className="text-xl font-bold text-sky-400">{entrance.camera_count}</div>
-              <div className="text-xs text-muted-foreground mt-0.5">Cameras</div>
+              <div className="text-xl font-bold text-sky-400">{entrance.camera_count ?? 0}</div>
+              <div className="text-xs text-muted-foreground mt-0.5">{t("entrances.cameras")}</div>
             </div>
             <div className="bg-muted/40 rounded-lg p-3 text-center">
-              <div className="text-xl font-bold text-violet-400">{entrance.intercom_count}</div>
-              <div className="text-xs text-muted-foreground mt-0.5">Intercoms</div>
+              <div className="text-xl font-bold text-violet-400">{entrance.intercom_count ?? 0}</div>
+              <div className="text-xs text-muted-foreground mt-0.5">{t("entrances.intercoms")}</div>
             </div>
             <div className="bg-muted/40 rounded-lg p-3 text-center">
               <div className="text-xl font-bold text-foreground">{events.length}</div>
@@ -310,18 +265,10 @@ function EntranceDetailSheet({ entrance, onClose, onEdit }: {
             </div>
           </div>
 
-          {/* Relay info */}
-          {entrance.gate_relay_ip && (
-            <div className="bg-muted/30 rounded-lg px-3 py-2.5 flex items-center justify-between text-xs">
-              <span className="text-muted-foreground">Gate Relay</span>
-              <span className="font-mono text-foreground">{entrance.gate_relay_ip}:{entrance.gate_relay_port}</span>
-            </div>
-          )}
-
           {/* Cameras */}
           <div>
             <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-              <Camera className="w-4 h-4 text-sky-400" />Cameras
+              <Camera className="w-4 h-4 text-sky-400" />{t("entrances.cameras")}
             </h3>
             {camLoading ? (
               <div className="space-y-2">{[1,2].map((i) => <Skeleton key={i} className="h-12 rounded-lg" />)}</div>
@@ -342,8 +289,7 @@ function EntranceDetailSheet({ entrance, onClose, onEdit }: {
                       <Badge className="text-xs bg-muted text-muted-foreground border-border hover:bg-muted">{cam.protocol}</Badge>
                       {cam.status === "online" && (
                         <Button
-                          variant="outline"
-                          size="sm"
+                          variant="outline" size="sm"
                           className="h-7 px-2 text-xs gap-1 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/10"
                           onClick={() => testGate(cam.id)}
                           disabled={testingGate === cam.id}
@@ -362,10 +308,10 @@ function EntranceDetailSheet({ entrance, onClose, onEdit }: {
           {/* Intercoms */}
           <div>
             <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-              <Phone className="w-4 h-4 text-violet-400" />Intercoms
+              <Phone className="w-4 h-4 text-violet-400" />{t("entrances.intercoms")}
             </h3>
             {intLoading ? (
-              <div className="space-y-2">{[1].map((i) => <Skeleton key={i} className="h-12 rounded-lg" />)}</div>
+              <div className="space-y-2"><Skeleton className="h-12 rounded-lg" /></div>
             ) : intercoms.length === 0 ? (
               <p className="text-xs text-muted-foreground py-3 text-center">No intercoms assigned to this entrance</p>
             ) : (
@@ -418,22 +364,6 @@ function EntranceDetailSheet({ entrance, onClose, onEdit }: {
             )}
           </div>
 
-          {/* Smart Lock Placeholder */}
-          <div className="border border-dashed border-border rounded-xl p-4">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-8 h-8 rounded-lg bg-muted/50 flex items-center justify-center">
-                <Lock className="w-4 h-4 text-muted-foreground" />
-              </div>
-              <div>
-                <div className="text-sm font-medium text-foreground">Smart Locks</div>
-                <div className="text-xs text-muted-foreground">Coming soon — PIN locks, temporary access</div>
-              </div>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Smart locks will be assigned to this entrance and automatically synced with reservation PINs.
-            </p>
-          </div>
-
           {/* Actions */}
           <div className="pt-2 border-t border-border flex gap-2">
             <Button variant="outline" className="flex-1 gap-2" onClick={() => onEdit(entrance)}>
@@ -459,12 +389,17 @@ export default function EntrancesPage() {
 
   const { data: entrances = [], isLoading } = useQuery<Entrance[]>({
     queryKey: ["entrances"],
-    queryFn: () => apiFetch("/entrances"),
+    queryFn: () => entrancesApi.list(),
     refetchInterval: 30_000,
   });
 
+  const { data: villas = [] } = useQuery<Villa[]>({
+    queryKey: ["villas-min"],
+    queryFn: () => api.get<Villa[]>("/villas"),
+  });
+
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => apiFetch(`/entrances/${id}`, { method: "DELETE" }),
+    mutationFn: (id: string) => entrancesApi.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["entrances"] });
       toast({ title: t("entrances.deleted") });
@@ -474,9 +409,9 @@ export default function EntrancesPage() {
     onError: (e: Error) => toast({ title: t("common.error"), description: e.message, variant: "destructive" }),
   });
 
-  const active = entrances.filter((e) => e.status === "active").length;
-  const inactive = entrances.filter((e) => e.status !== "active").length;
-  const totalCameras = entrances.reduce((s, e) => s + e.camera_count, 0);
+  const active = entrances.filter((e) => e.active).length;
+  const inactive = entrances.length - active;
+  const totalCameras = entrances.reduce((s, e) => s + (e.camera_count ?? 0), 0);
 
   function openEdit(e: Entrance) { setEditTarget(e); setDetailEntrance(null); setDialogOpen(true); }
   function openCreate() { setEditTarget(null); setDialogOpen(true); }
@@ -496,9 +431,9 @@ export default function EntrancesPage() {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {[
             { label: t("entrances.totalEntrances"), value: entrances.length, color: "text-foreground" },
-            { label: t("entrances.active"), value: active, color: "text-emerald-400" },
-            { label: t("entrances.offlineMaintenance"), value: inactive, color: "text-zinc-400" },
-            { label: t("entrances.camerasDeployed"), value: totalCameras, color: "text-sky-400" },
+            { label: t("entrances.active"),         value: active,            color: "text-emerald-400" },
+            { label: t("entrances.inactive"),       value: inactive,          color: "text-zinc-400" },
+            { label: t("entrances.camerasDeployed"), value: totalCameras,     color: "text-sky-400" },
           ].map(({ label, value, color }) => (
             <div key={label} className="bg-card border border-border rounded-xl p-4">
               <div className={`text-2xl font-bold ${color}`}>{value}</div>
@@ -509,102 +444,67 @@ export default function EntrancesPage() {
 
         {/* List */}
         {isLoading ? (
-          <div className="flex items-center justify-center py-20 text-muted-foreground gap-2">
-            <Loader2 className="w-5 h-5 animate-spin" />{t("entrances.loading")}
-          </div>
+          <div className="space-y-3">{[1,2,3].map((i) => <Skeleton key={i} className="h-20 rounded-xl" />)}</div>
         ) : entrances.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-24 text-center space-y-3">
-            <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center">
-              <DoorOpen className="w-7 h-7 text-primary/60" />
-            </div>
-            <div>
-              <p className="font-medium text-foreground">{t("entrances.noEntrances")}</p>
-              <p className="text-sm text-muted-foreground">{t("entrances.noEntrancesDesc")}</p>
-            </div>
-            <Button onClick={openCreate} variant="outline" size="sm" className="gap-2">
-              <Plus className="w-4 h-4" />{t("entrances.addFirst")}
-            </Button>
+          <div className="bg-card border border-border rounded-xl p-12 text-center">
+            <DoorOpen className="w-12 h-12 mx-auto text-muted-foreground/30 mb-3" />
+            <h3 className="text-lg font-medium text-foreground">{t("entrances.noEntrances")}</h3>
+            <p className="text-sm text-muted-foreground mt-1 mb-4">{t("entrances.noEntrancesDesc")}</p>
+            <Button onClick={openCreate} className="gap-2"><Plus className="w-4 h-4" />{t("entrances.addFirst")}</Button>
           </div>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {entrances.map((entrance) => (
-              <div
-                key={entrance.id}
-                className="bg-card border border-border rounded-xl p-5 flex flex-col gap-4 hover:border-primary/30 transition-colors cursor-pointer"
-                onClick={() => setDetailEntrance(entrance)}
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                      <DoorOpen className="w-5 h-5 text-primary" />
+          <div className="space-y-2">
+            {entrances.map((e) => {
+              const villaName = villas.find((v) => v.id === e.villa_id)?.name;
+              return (
+                <div
+                  key={e.id}
+                  onClick={() => setDetailEntrance(e)}
+                  className="bg-card border border-border rounded-xl p-4 hover:border-primary/40 transition-colors cursor-pointer flex items-center gap-4"
+                >
+                  <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                    <DoorOpen className="w-5 h-5 text-primary" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <div className="font-medium text-foreground truncate">{e.name}</div>
+                      <StatusBadge active={e.active} />
                     </div>
-                    <div className="min-w-0">
-                      <div className="font-semibold text-sm text-foreground truncate">{entrance.name}</div>
-                      {entrance.description && (
-                        <div className="text-xs text-muted-foreground truncate">{entrance.description}</div>
-                      )}
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground mt-0.5">
+                      {villaName && <span className="flex items-center gap-1"><Building2 className="w-3 h-3" />{villaName}</span>}
+                      <span className="flex items-center gap-1"><Camera className="w-3 h-3" />{e.camera_count ?? 0}</span>
+                      <span className="flex items-center gap-1"><Phone className="w-3 h-3" />{e.intercom_count ?? 0}</span>
                     </div>
                   </div>
-                  <StatusBadge status={entrance.status} />
-                </div>
-
-                {entrance.location && (
-                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <MapPin className="w-3.5 h-3.5 shrink-0" />
-                    <span className="truncate">{entrance.location}</span>
+                  <div className="flex items-center gap-1 shrink-0" onClick={(ev) => ev.stopPropagation()}>
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(e)}>
+                      <Pencil className="w-4 h-4" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 hover:text-red-400" onClick={() => setDeleteTarget(e)}>
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
                   </div>
-                )}
-
-                <div className="flex items-center gap-4 pt-1 border-t border-border">
-                  <div className="flex items-center gap-1.5 text-sm">
-                    <Camera className="w-4 h-4 text-sky-400" />
-                    <span className="font-medium text-foreground">{entrance.camera_count}</span>
-                    <span className="text-muted-foreground text-xs">
-                      {entrance.camera_count === 1 ? t("entrances.camera_one") : t("entrances.camera_other")}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-1.5 text-sm">
-                    <Phone className="w-4 h-4 text-violet-400" />
-                    <span className="font-medium text-foreground">{entrance.intercom_count}</span>
-                    <span className="text-muted-foreground text-xs">
-                      {entrance.intercom_count === 1 ? t("entrances.intercom_one") : t("entrances.intercom_other")}
-                    </span>
-                  </div>
-                  {entrance.gate_relay_ip && (
-                    <div className="ml-auto text-xs text-muted-foreground font-mono truncate">
-                      {entrance.gate_relay_ip}
-                    </div>
-                  )}
                 </div>
-
-                <div className="flex gap-2 pt-1" onClick={(e) => e.stopPropagation()}>
-                  <Button variant="outline" size="sm" className="flex-1 gap-1.5" onClick={() => setDetailEntrance(entrance)}>
-                    <ExternalLink className="w-3.5 h-3.5" />Details
-                  </Button>
-                  <Button variant="outline" size="sm" className="gap-1.5" onClick={() => openEdit(entrance)}>
-                    <Pencil className="w-3.5 h-3.5" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/20"
-                    onClick={() => setDeleteTarget(entrance)}
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </Button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
 
-      <EntranceDialog open={dialogOpen} onClose={() => { setDialogOpen(false); setEditTarget(null); }} entrance={editTarget} />
+      {dialogOpen && (
+        <EntranceDialog
+          open={dialogOpen}
+          onClose={() => { setDialogOpen(false); setEditTarget(null); }}
+          entrance={editTarget}
+          villas={villas}
+        />
+      )}
 
       <EntranceDetailSheet
         entrance={detailEntrance}
+        villas={villas}
         onClose={() => setDetailEntrance(null)}
-        onEdit={(e) => openEdit(e)}
+        onEdit={openEdit}
       />
 
       <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
@@ -612,16 +512,16 @@ export default function EntrancesPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>{t("entrances.deleteTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
-              <strong>{deleteTarget?.name}</strong> {t("entrances.deleteDesc")}
+              <span className="font-medium text-foreground">{deleteTarget?.name}</span> {t("entrances.deleteDesc")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
             <AlertDialogAction
-              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
               onClick={() => deleteTarget && deleteMutation.mutate(deleteTarget.id)}
+              className="bg-red-600 hover:bg-red-700"
             >
-              {deleteMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : t("common.delete")}
+              {t("common.delete")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

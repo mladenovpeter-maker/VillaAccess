@@ -114,12 +114,12 @@ router.post("/camera/:id", requireAuth, async (req, res) => {
       error: snap.error ?? null,
       file_size_bytes: snap.file_size_bytes ?? null,
       mime_type: snap.mime_type ?? null,
-      latency_ms: snap.latency_ms ?? null,
     };
     if (snap.success && snap.snapshot_url) {
+      const capturedAt = snap.captured_at ? new Date(snap.captured_at) : new Date();
       await db
         .update(camerasTable)
-        .set({ snapshot_url: snap.snapshot_url, last_snapshot: new Date(snap.captured_at), updated_at: new Date() })
+        .set({ snapshot_url: snap.snapshot_url, last_snapshot: capturedAt, updated_at: new Date() })
         .where(eq(camerasTable.id, camera.id));
     }
   } catch (err: any) {

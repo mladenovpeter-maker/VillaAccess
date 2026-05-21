@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   Camera as CameraIcon, Wifi, WifiOff, AlertCircle, RefreshCw,
-  DoorOpen, GitMerge, ImageIcon, Activity, ChevronDown, ChevronUp,
+  GitMerge, ImageIcon, Activity, ChevronDown, ChevronUp,
   Clock, Cpu, Radio, Plus, Pencil, Trash2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -54,15 +54,13 @@ interface CameraFormData {
   protocol: string;
   channel_no: string;
   entrance_id: string;
-  use_access_control: boolean;
   gate_no: string;
-  door_no: string;
 }
 
 const defaultCameraForm: CameraFormData = {
   name: "", ip_address: "", http_port: "80", username: "admin",
   password: "", protocol: "hikvision", channel_no: "1",
-  entrance_id: "", use_access_control: false, gate_no: "1", door_no: "2",
+  entrance_id: "", gate_no: "1",
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -124,17 +122,15 @@ function CameraFormDialog({
   useState(() => {
     if (open && editTarget) {
       setForm({
-        name:               editTarget.name,
-        ip_address:         editTarget.ip_address,
-        http_port:          String(editTarget.http_port ?? 80),
-        username:           editTarget.username ?? "admin",
-        password:           "",
-        protocol:           editTarget.protocol ?? "hikvision",
-        channel_no:         String(editTarget.channel_no ?? 1),
-        entrance_id:        editTarget.entrance_id ?? "",
-        use_access_control: editTarget.use_access_control ?? false,
-        gate_no:            String(editTarget.gate_no ?? 1),
-        door_no:            String(editTarget.door_no ?? 2),
+        name:        editTarget.name,
+        ip_address:  editTarget.ip_address,
+        http_port:   String(editTarget.http_port ?? 80),
+        username:    editTarget.username ?? "admin",
+        password:    "",
+        protocol:    editTarget.protocol ?? "hikvision",
+        channel_no:  String(editTarget.channel_no ?? 1),
+        entrance_id: editTarget.entrance_id ?? "",
+        gate_no:     String(editTarget.gate_no ?? 1),
       });
       setChangePassword(false);
     } else if (open) {
@@ -165,16 +161,14 @@ function CameraFormDialog({
 
   function handleSave() {
     const payload: Record<string, unknown> = {
-      name:               form.name.trim(),
-      ip_address:         form.ip_address.trim(),
-      http_port:          Number(form.http_port) || 80,
-      username:           form.username.trim() || "admin",
-      protocol:           form.protocol,
-      channel_no:         Number(form.channel_no) || 1,
-      entrance_id:        form.entrance_id || null,
-      use_access_control: form.use_access_control,
-      gate_no:            Number(form.gate_no) || 1,
-      door_no:            Number(form.door_no) || 2,
+      name:        form.name.trim(),
+      ip_address:  form.ip_address.trim(),
+      http_port:   Number(form.http_port) || 80,
+      username:    form.username.trim() || "admin",
+      protocol:    form.protocol,
+      channel_no:  Number(form.channel_no) || 1,
+      entrance_id: form.entrance_id || null,
+      gate_no:     Number(form.gate_no) || 1,
     };
     if (!editTarget || changePassword) {
       payload.password = form.password;
@@ -271,24 +265,12 @@ function CameraFormDialog({
                 ))}
               </select>
             </div>
-            <label className="flex items-center gap-2 cursor-pointer text-sm">
-              <input
-                type="checkbox"
-                checked={form.use_access_control}
-                onChange={(e) => setForm({ ...form, use_access_control: e.target.checked })}
-                className="accent-primary"
-              />
-              Use Hikvision Access Control relay (vs I/O output)
-            </label>
-            <div className="grid grid-cols-2 gap-2">
-              <div className="space-y-1.5">
-                <label className="text-xs text-muted-foreground">Gate relay no.</label>
-                <Input type="number" value={form.gate_no} onChange={(e) => setForm({ ...form, gate_no: e.target.value })} className="font-mono" min={1} />
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-xs text-muted-foreground">Door relay no.</label>
-                <Input type="number" value={form.door_no} onChange={(e) => setForm({ ...form, door_no: e.target.value })} className="font-mono" min={1} />
-              </div>
+            <div className="space-y-1.5">
+              <label className="text-xs text-muted-foreground">Gate relay output no.</label>
+              <Input type="number" value={form.gate_no} onChange={(e) => setForm({ ...form, gate_no: e.target.value })} className="font-mono" min={1} />
+              <p className="text-[10px] text-muted-foreground/70">
+                On-board I/O alarm output number used to pulse the gate.
+              </p>
             </div>
           </fieldset>
         </div>
@@ -368,22 +350,8 @@ function CameraCard({
     onError: (e: any) => toast({ title: t("cameras.gateError"), description: e.message, variant: "destructive" }),
   });
 
-  const doorMut = useMutation({
-    mutationFn: () => camerasApi.door(camera.id),
-    onSuccess: (r: CameraActionResult) => {
-      toast({
-        title: r.success ? t("cameras.doorOpened") : t("cameras.doorFailed"),
-        description: r.success
-          ? `${camera.name} — relay ${r.target_no} (${r.mode})`
-          : r.error ?? "No response from camera",
-        variant: r.success ? "default" : "destructive",
-      });
-    },
-    onError: (e: any) => toast({ title: t("cameras.doorError"), description: e.message, variant: "destructive" }),
-  });
-
   const displaySnap = liveSnap ?? camera.snapshot_url;
-  const anyLoading = snapMut.isPending || statusMut.isPending || gateMut.isPending || doorMut.isPending;
+  const anyLoading = snapMut.isPending || statusMut.isPending || gateMut.isPending;
 
   return (
     <Card className={cn(
@@ -478,7 +446,6 @@ function CameraCard({
           <ActionButton icon={ImageIcon} label={t("cameras.snapshot")} onClick={() => snapMut.mutate()} loading={snapMut.isPending} disabled={anyLoading} />
           <ActionButton icon={Activity} label={t("cameras.ping")} onClick={() => statusMut.mutate()} loading={statusMut.isPending} disabled={anyLoading} />
           <ActionButton icon={GitMerge} label={t("cameras.gate")} onClick={() => gateMut.mutate()} loading={gateMut.isPending} disabled={anyLoading} variant="secondary" />
-          <ActionButton icon={DoorOpen} label={t("cameras.door")} onClick={() => doorMut.mutate()} loading={doorMut.isPending} disabled={anyLoading} variant="secondary" />
         </div>
 
         {/* Expandable device info */}
@@ -514,16 +481,9 @@ function CameraCard({
           </div>
         )}
 
-        {camera.use_access_control && (
-          <div className="text-[10px] text-blue-400 bg-blue-500/10 border border-blue-500/20 rounded px-2 py-1">
-            Access control mode · Door {camera.gate_no} / {camera.door_no}
-          </div>
-        )}
-        {!camera.use_access_control && (
-          <div className="text-[10px] text-muted-foreground/50">
-            I/O relay · Output {camera.gate_no} (gate) · {camera.door_no} (door)
-          </div>
-        )}
+        <div className="text-[10px] text-muted-foreground/50">
+          I/O relay · Output {camera.gate_no} (gate)
+        </div>
       </CardContent>
     </Card>
   );

@@ -16,8 +16,11 @@ function serializeIntercom(i: typeof intercomsTable.$inferSelect) {
     http_port: i.http_port,
     username: i.username,
     protocol: i.protocol,
-    door_no: i.door_no,
+    device_type: i.device_type,
+    relay_no: i.relay_no,
     pin_sync_enabled: i.pin_sync_enabled,
+    last_sync_status: i.last_sync_status,
+    last_sync_at: i.last_sync_at,
     status: i.status,
     last_status_check: i.last_status_check,
     last_status_latency_ms: i.last_status_latency_ms,
@@ -49,15 +52,16 @@ router.get("/:id", requireAuth, async (req, res) => {
 
 const createSchema = z.object({
   name:             z.string().min(1),
-  entrance_id:      z.string().optional(),
+  entrance_id:      z.string().optional().nullable(),
   ip_address:       z.string().min(1),
   http_port:        z.number().int().optional(),
   username:         z.string().optional(),
   password:         z.string().optional(),
   protocol:         z.enum(["hikvision", "dahua", "sip", "generic"]).optional(),
-  door_no:          z.number().int().optional(),
+  device_type:      z.string().optional().nullable(),
+  relay_no:         z.number().int().optional(),
   pin_sync_enabled: z.boolean().optional(),
-  notes:            z.string().optional(),
+  notes:            z.string().optional().nullable(),
 });
 
 router.post("/", requireAuth, async (req, res) => {
@@ -78,7 +82,8 @@ router.post("/", requireAuth, async (req, res) => {
     username:         body.data.username ?? "admin",
     password:         body.data.password ?? null,
     protocol:         body.data.protocol ?? "hikvision",
-    door_no:          body.data.door_no ?? 1,
+    device_type:      body.data.device_type ?? null,
+    relay_no:         body.data.relay_no ?? 1,
     pin_sync_enabled: body.data.pin_sync_enabled ?? true,
     notes:            body.data.notes ?? null,
   }).returning();
@@ -94,7 +99,7 @@ router.patch("/:id", requireAuth, async (req, res) => {
 
   const allowed = [
     "name", "entrance_id", "ip_address", "http_port", "username", "password",
-    "protocol", "door_no", "pin_sync_enabled", "notes",
+    "protocol", "device_type", "relay_no", "pin_sync_enabled", "notes",
   ];
   const patch: Record<string, unknown> = { updated_at: new Date() };
   for (const key of allowed) {
@@ -121,14 +126,30 @@ router.delete("/:id", requireAuth, async (req, res) => {
 router.post("/:id/open", requireAuth, async (req: any, res) => {
   const rows = await db.select().from(intercomsTable).where(eq(intercomsTable.id, req.params.id)).limit(1);
   if (!rows[0]) { res.status(404).json({ detail: "Intercom not found" }); return; }
+  const ic = rows[0];
 
-  res.json({
-    intercom_id: rows[0].id,
-    intercom_name: rows[0].name,
-    action: "open_door",
-    success: true,
-    triggered_by: req.user?.username ?? "unknown",
-    message: "Door release command sent",
+  const { HikvisionIntercomService } = await import("../services/hikvision/intercom");
+  const svc = new HikvisionIntercomService({
+    id:         ic.id,
+    name:       ic.name,
+    ip_address: ic.ip_address,
+    http_port:  ic.http_port,
+    username:   ic.username,
+    password:   ic.password ?? "",
+    relay_no:   ic.relay_no,
+  });
+
+  const result = await svc.openDoor();
+
+  res.status(result.success ? 200 : 502).json({
+    intercom_id:   ic.id,
+    intercom_name: ic.name,
+    action:        "open_door",
+    relay_no:      ic.relay_no,
+    success:       result.success,
+    error:         result.error ?? null,
+    raw_status:    result.raw_status ?? null,
+    triggered_by:  req.user?.username ?? "unknown",
   });
 });
 
@@ -147,7 +168,7 @@ router.post("/:id/test-connectivity", requireAuth, async (req, res) => {
     http_port:  ic.http_port,
     username:   ic.username,
     password:   ic.password ?? "",
-    door_no:    ic.door_no,
+    relay_no:   ic.relay_no,
   });
 
   const start = Date.now();
@@ -191,7 +212,7 @@ router.post("/:id/test-pin-sync", requireAuth, async (req, res) => {
     http_port:  ic.http_port,
     username:   ic.username,
     password:   ic.password ?? "",
-    door_no:    ic.door_no,
+    relay_no:   ic.relay_no,
   });
 
   const result = await svc.testPinSync();
