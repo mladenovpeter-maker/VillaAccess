@@ -29,26 +29,38 @@ function parseDigestChallenge(wwwAuth: string): DigestChallenge {
   };
 }
 
+function pickQop(qopHeader: string | undefined): "auth" | "auth-int" | undefined {
+  if (!qopHeader) return undefined;
+  const list = qopHeader.split(",").map((s) => s.trim().toLowerCase());
+  if (list.includes("auth")) return "auth";
+  if (list.includes("auth-int")) return "auth-int";
+  return undefined;
+}
+
 function buildDigestHeader(
   method: string,
   uri: string,
   challenge: DigestChallenge,
   username: string,
   password: string,
+  body: string,
 ): string {
-  const algorithm = (challenge.algorithm ?? "MD5").replace(/-sess$/i, "");
+  const algorithm = (challenge.algorithm ?? "MD5").replace(/-sess$/i, "").toLowerCase();
   const hash = (s: string) =>
-    crypto.createHash(algorithm.toLowerCase()).update(s).digest("hex");
+    crypto.createHash(algorithm).update(s).digest("hex");
 
+  const qop = pickQop(challenge.qop);
   const ha1 = hash(`${username}:${challenge.realm}:${password}`);
-  const ha2 = hash(`${method}:${uri}`);
+  const ha2 =
+    qop === "auth-int"
+      ? hash(`${method}:${uri}:${hash(body)}`)
+      : hash(`${method}:${uri}`);
   const nc = "00000001";
   const cnonce = crypto.randomBytes(8).toString("hex");
 
-  const response =
-    challenge.qop === "auth" || challenge.qop === "auth-int"
-      ? hash(`${ha1}:${challenge.nonce}:${nc}:${cnonce}:${challenge.qop}:${ha2}`)
-      : hash(`${ha1}:${challenge.nonce}:${ha2}`);
+  const response = qop
+    ? hash(`${ha1}:${challenge.nonce}:${nc}:${cnonce}:${qop}:${ha2}`)
+    : hash(`${ha1}:${challenge.nonce}:${ha2}`);
 
   const parts = [
     `Digest username="${username}"`,
@@ -57,7 +69,7 @@ function buildDigestHeader(
     `uri="${uri}"`,
     `response="${response}"`,
   ];
-  if (challenge.qop) parts.push(`qop=${challenge.qop}`, `nc=${nc}`, `cnonce="${cnonce}"`);
+  if (qop) parts.push(`qop=${qop}`, `nc=${nc}`, `cnonce="${cnonce}"`);
   if (challenge.opaque) parts.push(`opaque="${challenge.opaque}"`);
   if (challenge.algorithm) parts.push(`algorithm=${challenge.algorithm}`);
 
@@ -95,20 +107,24 @@ export abstract class BaseCameraAdapter implements CameraAdapter {
     const { username, password } = this.config;
     const timeoutMs = 10_000;
 
-    const headers: Record<string, string> = {
-      Authorization:
-        "Basic " + Buffer.from(`${username}:${password}`).toString("base64"),
+    const baseHeaders: Record<string, string> = {
+      Accept: "*/*",
       ...(contentType ? { "Content-Type": contentType } : {}),
     };
 
     const init: RequestInit = {
       method,
-      headers,
+      headers: {
+        ...baseHeaders,
+        Authorization:
+          "Basic " + Buffer.from(`${username}:${password}`).toString("base64"),
+      },
       signal: AbortSignal.timeout(timeoutMs),
       ...(body != null ? { body } : {}),
     };
 
     let res = await fetch(url, init);
+    console.log("[fetchCamera] basic", { method, path, status: res.status });
 
     // Attempt Digest auth if Basic was rejected
     if (
@@ -116,20 +132,27 @@ export abstract class BaseCameraAdapter implements CameraAdapter {
       res.headers.get("www-authenticate")?.toLowerCase().includes("digest")
     ) {
       const wwwAuth = res.headers.get("www-authenticate") ?? "";
-      const challenge = parseDigestChallenge(wwwAuth);
-      const digestHeader = buildDigestHeader(method, path, challenge, username, password);
+      // Drain the 401 body so the underlying socket is released cleanly
+      try { await res.arrayBuffer(); } catch { /* ignore */ }
 
-      const digestHeaders: Record<string, string> = {
-        Authorization: digestHeader,
-        ...(contentType ? { "Content-Type": contentType } : {}),
-      };
+      const challenge = parseDigestChallenge(wwwAuth);
+      const digestHeader = buildDigestHeader(
+        method, path, challenge, username, password, body ?? "",
+      );
+      console.log("[fetchCamera] digest retry", {
+        method, path,
+        realm: challenge.realm,
+        qop: challenge.qop,
+        algorithm: challenge.algorithm,
+      });
 
       res = await fetch(url, {
         method,
-        headers: digestHeaders,
+        headers: { ...baseHeaders, Authorization: digestHeader },
         signal: AbortSignal.timeout(timeoutMs),
         ...(body != null ? { body } : {}),
       });
+      console.log("[fetchCamera] digest", { method, path, status: res.status });
     }
 
     return res;
