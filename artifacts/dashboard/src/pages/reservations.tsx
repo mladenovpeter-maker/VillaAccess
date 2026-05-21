@@ -45,8 +45,19 @@ function formatDateTime(d: string | Date | null) {
   if (!d) return "—";
   return new Date(d).toLocaleString([], { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 }
-function toInputDate(d: string) {
+function toInputDate(d: string | Date) {
   return new Date(d).toISOString().slice(0, 10);
+}
+function toInputTime(d: string | Date) {
+  const dt = new Date(d);
+  return `${String(dt.getHours()).padStart(2, "0")}:${String(dt.getMinutes()).padStart(2, "0")}`;
+}
+function computeAccessWindowPreview(date: string, time: string, offsetHours: number): string {
+  if (!date || !time) return "";
+  const dt = new Date(`${date}T${time}:00`);
+  if (isNaN(dt.getTime())) return "";
+  dt.setHours(dt.getHours() + offsetHours);
+  return dt.toLocaleString([], { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 }
 
 // ─── Form types ───────────────────────────────────────────────────────────────
@@ -55,12 +66,16 @@ interface PlateEntry { plate: string; make: string; model: string; color: string
 
 interface ReservationFormData {
   guest_name: string; guest_phone: string; guest_email: string;
-  villa_id: string; check_in: string; check_out: string;
+  villa_id: string;
+  check_in: string; check_in_time: string;
+  check_out: string; check_out_time: string;
   notes: string; pin_code: string; license_plates: PlateEntry[];
 }
 const defaultForm: ReservationFormData = {
   guest_name: "", guest_phone: "", guest_email: "",
-  villa_id: "", check_in: "", check_out: "",
+  villa_id: "",
+  check_in: "", check_in_time: "14:00",
+  check_out: "", check_out_time: "11:00",
   notes: "", pin_code: "",
   license_plates: [{ plate: "", make: "", model: "", color: "" }],
 };
@@ -160,7 +175,11 @@ export default function ReservationsPage() {
       : [{ plate: "", make: "", model: "", color: "" }];
     setForm({
       guest_name: r.guest_name, guest_phone: r.guest_phone ?? "", guest_email: r.guest_email ?? "",
-      villa_id: r.villa_id, check_in: toInputDate(r.check_in), check_out: toInputDate(r.check_out),
+      villa_id: r.villa_id,
+      check_in:      toInputDate(r.check_in),
+      check_in_time: toInputTime(r.check_in),
+      check_out:      toInputDate(r.check_out),
+      check_out_time: toInputTime(r.check_out),
       notes: r.notes ?? "", pin_code: r.pin_code ?? "", license_plates: plates,
     });
     setDialogOpen(true);
@@ -174,7 +193,15 @@ export default function ReservationsPage() {
         ...(p.model.trim() ? { model: p.model.trim() } : {}),
         ...(p.color.trim() ? { color: p.color.trim() } : {}),
       }));
-    const payload = { ...form, license_plates: cleanPlates, pin_code: form.pin_code.trim() || undefined };
+    const checkIn  = form.check_in  ? `${form.check_in}T${form.check_in_time  || "14:00"}:00` : "";
+    const checkOut = form.check_out ? `${form.check_out}T${form.check_out_time || "11:00"}:00` : "";
+    const payload = {
+      ...form,
+      check_in:  checkIn,
+      check_out: checkOut,
+      license_plates: cleanPlates,
+      pin_code: form.pin_code.trim() || undefined,
+    };
     if (editTarget) updateMut.mutate({ id: editTarget.id, data: payload as any });
     else createMut.mutate(payload as any);
   }
@@ -321,10 +348,30 @@ export default function ReservationsPage() {
               <FormField label={t("reservations.checkIn")}>
                 <Input type="date" value={form.check_in} onChange={(e) => setForm({ ...form, check_in: e.target.value })} />
               </FormField>
+              <FormField label="Check-in Time">
+                <Input type="time" value={form.check_in_time} onChange={(e) => setForm({ ...form, check_in_time: e.target.value })} />
+              </FormField>
               <FormField label={t("reservations.checkOut")}>
                 <Input type="date" value={form.check_out} onChange={(e) => setForm({ ...form, check_out: e.target.value })} />
               </FormField>
+              <FormField label="Check-out Time">
+                <Input type="time" value={form.check_out_time} onChange={(e) => setForm({ ...form, check_out_time: e.target.value })} />
+              </FormField>
             </div>
+            {(form.check_in && form.check_out) && (() => {
+              const opens  = computeAccessWindowPreview(form.check_in,  form.check_in_time  || "14:00", -1);
+              const closes = computeAccessWindowPreview(form.check_out, form.check_out_time || "11:00", +1);
+              return opens && closes ? (
+                <div className="rounded-lg bg-blue-500/10 border border-blue-500/20 px-3 py-2.5 text-xs text-blue-400 flex items-start gap-2">
+                  <Clock className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                  <div>
+                    <span className="font-medium">Access active: </span>
+                    {opens} → {closes}
+                    <span className="block text-blue-400/60 mt-0.5">PIN and vehicle access valid ±1 h around check-in/out times</span>
+                  </div>
+                </div>
+              ) : null;
+            })()}
             <FormField label={t("reservations.vehiclesOptional")}>
               <div className="space-y-2">
                 {form.license_plates.map((entry, idx) => (
@@ -432,8 +479,21 @@ function ReservationDetail({
 
       {/* Guest info */}
       <Section title={t("reservations.guestDetail")}>
-        <InfoRow label={t("reservations.checkIn")} value={formatDate(r.check_in)} />
-        <InfoRow label={t("reservations.checkOut")} value={formatDate(r.check_out)} />
+        <InfoRow label={t("reservations.checkIn")} value={formatDateTime(r.check_in)} />
+        <InfoRow label={t("reservations.checkOut")} value={formatDateTime(r.check_out)} />
+        {(() => {
+          const opens  = new Date(new Date(r.check_in).getTime()  - 60 * 60 * 1000);
+          const closes = new Date(new Date(r.check_out).getTime() + 60 * 60 * 1000);
+          return (
+            <div className="rounded-lg bg-blue-500/10 border border-blue-500/20 px-3 py-2 text-xs text-blue-400 flex items-start gap-2 mt-1">
+              <Clock className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+              <div>
+                <span className="font-medium">Access active: </span>
+                {formatDateTime(opens)} → {formatDateTime(closes)}
+              </div>
+            </div>
+          );
+        })()}
         {r.guest_phone && <InfoRow label={t("reservations.phone")} value={r.guest_phone} />}
         {r.guest_email && <InfoRow label={t("reservations.email")} value={r.guest_email} />}
         {r.notes && <InfoRow label={t("common.notes")} value={r.notes} />}

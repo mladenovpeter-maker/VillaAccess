@@ -179,6 +179,7 @@ router.post("/", requireAuth, async (req: any, res) => {
     ? body.data.pin_code.trim()
     : Math.floor(1000 + Math.random() * 9000).toString();
 
+  const ACCESS_GRACE_MS = 60 * 60 * 1000;
   const [reservation] = await db.insert(reservationsTable).values({
     guest_name:     body.data.guest_name,
     guest_phone:    body.data.guest_phone  ?? null,
@@ -187,8 +188,8 @@ router.post("/", requireAuth, async (req: any, res) => {
     check_in:       checkIn,
     check_out:      checkOut,
     pin_code:       pinCode,
-    pin_valid_from: checkIn,
-    pin_valid_to:   checkOut,
+    pin_valid_from: new Date(checkIn.getTime()  - ACCESS_GRACE_MS),
+    pin_valid_to:   new Date(checkOut.getTime() + ACCESS_GRACE_MS),
     pin_sync_status: "pending",
     status:         "upcoming",
   }).returning();
@@ -281,6 +282,7 @@ router.put("/:id", requireAuth, async (req: any, res) => {
   const datesChanged = current[0] &&
     (current[0].check_in.getTime() !== checkIn.getTime() || current[0].check_out.getTime() !== checkOut.getTime());
 
+  const ACCESS_GRACE_MS = 60 * 60 * 1000;
   const rows = await db.update(reservationsTable).set({
     guest_name:     body.data.guest_name,
     guest_phone:    body.data.guest_phone ?? null,
@@ -289,8 +291,8 @@ router.put("/:id", requireAuth, async (req: any, res) => {
     check_in:       checkIn,
     check_out:      checkOut,
     notes:          body.data.notes ?? null,
-    pin_valid_from: checkIn,
-    pin_valid_to:   checkOut,
+    pin_valid_from: new Date(checkIn.getTime()  - ACCESS_GRACE_MS),
+    pin_valid_to:   new Date(checkOut.getTime() + ACCESS_GRACE_MS),
     ...(datesChanged ? { pin_sync_status: "pending" } : {}),
     updated_at:     new Date(),
   }).where(eq(reservationsTable.id, req.params.id)).returning();

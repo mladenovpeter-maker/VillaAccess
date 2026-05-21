@@ -7,8 +7,8 @@ import {
 } from "@workspace/db";
 import { eq, and, ne, lt, gt, inArray, desc } from "drizzle-orm";
 
-const CHECKIN_GRACE_MS  = 2 * 60 * 60 * 1000;
-const CHECKOUT_GRACE_MS = 2 * 60 * 60 * 1000;
+const CHECKIN_GRACE_MS  = 1 * 60 * 60 * 1000;
+const CHECKOUT_GRACE_MS = 1 * 60 * 60 * 1000;
 const MIN_STAY_MS       = 60 * 60 * 1000;
 const MAX_STAY_MS       = 365 * 24 * 60 * 60 * 1000;
 
