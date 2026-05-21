@@ -30,7 +30,7 @@ router.get("/stats", requireAuth, async (_req, res) => {
       .groupBy(camerasTable.status),
     db.select({ count: sql<number>`count(*)::int` })
       .from(entrancesTable)
-      .where(eq(entrancesTable.status, "active")),
+      .where(eq(entrancesTable.active, true)),
   ]);
 
   const totalEvents = eventsToday.reduce((acc, r) => acc + r.count, 0);

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   camerasApi, entrancesApi,
@@ -118,9 +118,12 @@ function CameraFormDialog({
   const [form, setForm] = useState<CameraFormData>(defaultCameraForm);
   const [changePassword, setChangePassword] = useState(false);
 
-  // Reset form when dialog opens
-  useState(() => {
-    if (open && editTarget) {
+  // Reset form whenever the dialog opens (or the edit target changes).
+  // NOTE: must be an effect — using a useState lazy initializer here only
+  // runs once on mount and never resets the form on subsequent opens.
+  useEffect(() => {
+    if (!open) return;
+    if (editTarget) {
       setForm({
         name:        editTarget.name,
         ip_address:  editTarget.ip_address,
@@ -133,11 +136,11 @@ function CameraFormDialog({
         gate_no:     String(editTarget.gate_no ?? 1),
       });
       setChangePassword(false);
-    } else if (open) {
+    } else {
       setForm(defaultCameraForm);
       setChangePassword(true);
     }
-  });
+  }, [open, editTarget]);
 
   const createMut = useMutation({
     mutationFn: (data: any) => camerasApi.create(data),
@@ -146,7 +149,15 @@ function CameraFormDialog({
       toast({ title: "Camera added" });
       onClose();
     },
-    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onError: (e: any) => {
+      // Surface the real error in the console so it can never be silently swallowed.
+      console.error("[cameras] create failed", e);
+      toast({
+        title: "Error adding camera",
+        description: e?.message ?? String(e),
+        variant: "destructive",
+      });
+    },
   });
 
   const updateMut = useMutation({
@@ -156,25 +167,43 @@ function CameraFormDialog({
       toast({ title: "Camera updated" });
       onClose();
     },
-    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onError: (e: any) => {
+      console.error("[cameras] update failed", e);
+      toast({
+        title: "Error saving camera",
+        description: e?.message ?? String(e),
+        variant: "destructive",
+      });
+    },
   });
 
   function handleSave() {
-    const payload: Record<string, unknown> = {
-      name:        form.name.trim(),
-      ip_address:  form.ip_address.trim(),
-      http_port:   Number(form.http_port) || 80,
-      username:    form.username.trim() || "admin",
-      protocol:    form.protocol,
-      channel_no:  Number(form.channel_no) || 1,
-      entrance_id: form.entrance_id || null,
-      gate_no:     Number(form.gate_no) || 1,
-    };
-    if (!editTarget || changePassword) {
-      payload.password = form.password;
+    try {
+      const payload: Record<string, unknown> = {
+        name:        form.name.trim(),
+        ip_address:  form.ip_address.trim(),
+        http_port:   Number(form.http_port) || 80,
+        username:    form.username.trim() || "admin",
+        protocol:    form.protocol,
+        channel_no:  Number(form.channel_no) || 1,
+        entrance_id: form.entrance_id || null,
+        gate_no:     Number(form.gate_no) || 1,
+      };
+      if (!editTarget || changePassword) {
+        payload.password = form.password;
+      }
+      if (editTarget) updateMut.mutate(payload);
+      else createMut.mutate(payload);
+    } catch (err: any) {
+      // Defensive: if anything throws synchronously while building the payload,
+      // show it instead of leaving the dialog locked.
+      console.error("[cameras] handleSave threw", err);
+      toast({
+        title: "Error",
+        description: err?.message ?? String(err),
+        variant: "destructive",
+      });
     }
-    if (editTarget) updateMut.mutate(payload);
-    else createMut.mutate(payload);
   }
 
   const loading = createMut.isPending || updateMut.isPending;
@@ -647,8 +676,9 @@ export default function CamerasPage() {
         </div>
       </div>
 
-      {/* Add / Edit dialog */}
+      {/* Add / Edit dialog — keyed so internal form state is always fresh */}
       <CameraFormDialog
+        key={dialogOpen ? (editTarget?.id ?? "new") : "closed"}
         open={dialogOpen}
         onClose={closeDialog}
         editTarget={editTarget}

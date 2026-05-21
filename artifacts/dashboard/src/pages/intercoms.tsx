@@ -110,7 +110,10 @@ function IntercomDialog({ open, onClose, target, entrances }: {
       toast({ title: target ? t("intercoms.updated") : t("intercoms.created") });
       onClose();
     },
-    onError: (e: Error) => toast({ title: t("common.error"), description: e.message, variant: "destructive" }),
+    onError: (e: Error) => {
+      console.error("[intercoms] save failed", e);
+      toast({ title: t("common.error"), description: e.message, variant: "destructive" });
+    },
   });
 
   const canSave = form.name.trim() && form.ip_address.trim();
@@ -370,7 +373,10 @@ export default function IntercomsPage() {
       toast({ title: t("intercoms.deleted") });
       setDeleteTarget(null);
     },
-    onError: (e: Error) => toast({ title: t("common.error"), description: e.message, variant: "destructive" }),
+    onError: (e: Error) => {
+      console.error("[intercoms] save failed", e);
+      toast({ title: t("common.error"), description: e.message, variant: "destructive" });
+    },
   });
 
   function openEdit(i: Intercom) { setEditTarget(i); setDialogOpen(true); }
@@ -415,6 +421,7 @@ export default function IntercomsPage() {
 
       {dialogOpen && (
         <IntercomDialog
+          key={dialogOpen ? (editTarget?.id ?? "new") : "closed"}
           open={dialogOpen}
           onClose={() => { setDialogOpen(false); setEditTarget(null); }}
           target={editTarget}
