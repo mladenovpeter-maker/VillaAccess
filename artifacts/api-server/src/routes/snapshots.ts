@@ -9,6 +9,7 @@ import { eq, and, sql, like, desc } from "drizzle-orm";
 import { requireAuth } from "./auth";
 import { z } from "zod";
 import { eventBus } from "../lib/events";
+import { uploadsUrl } from "../lib/public-url";
 
 const router = Router();
 
@@ -53,7 +54,7 @@ const upload = multer({
 /** Convert an absolute file path to a browser-accessible URL. */
 function filePathToUrl(absolutePath: string): string {
   const rel = path.relative(UPLOADS_ROOT, absolutePath).replace(/\\/g, "/");
-  return `/api/uploads/${rel}`;
+  return uploadsUrl(rel);
 }
 
 function serializeSnapshot(s: typeof vehicleSnapshotsTable.$inferSelect) {

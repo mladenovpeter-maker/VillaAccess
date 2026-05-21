@@ -1,5 +1,6 @@
 import * as path from "path";
 import { promises as fs } from "fs";
+import { uploadsUrl } from "../public-url";
 
 const UPLOADS_ROOT = path.resolve(process.cwd(), "uploads");
 const MOCK_DIR = path.join(UPLOADS_ROOT, "mock");
@@ -167,5 +168,5 @@ export async function saveMockSnapshot(opts: SnapshotOpts): Promise<string> {
   const filepath = path.join(dir, filename);
 
   await fs.writeFile(filepath, generateSvg(opts), "utf-8");
-  return `/api/uploads/mock/${y}/${m}/${d}/${filename}`;
+  return uploadsUrl(`mock/${y}/${m}/${d}/${filename}`);
 }

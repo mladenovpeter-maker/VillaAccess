@@ -2,6 +2,7 @@ import crypto from "crypto";
 import path from "path";
 import { promises as fs } from "fs";
 import type { CameraAdapter, CameraConfig } from "./types";
+import { uploadsUrl } from "../public-url";
 
 const UPLOADS_ROOT = path.resolve(process.cwd(), "uploads");
 
@@ -181,7 +182,7 @@ export abstract class BaseCameraAdapter implements CameraAdapter {
     await fs.writeFile(filePath, buffer);
 
     const rel = path.relative(UPLOADS_ROOT, filePath).replace(/\\/g, "/");
-    return { url: `/api/uploads/${rel}`, size: buffer.byteLength };
+    return { url: uploadsUrl(rel), size: buffer.byteLength };
   }
 
   // ── Abstract methods each adapter must implement ────────────────────────────
