@@ -52,12 +52,12 @@ ANPR_DEBUG_DIR = os.environ.get("ANPR_DEBUG_DIR", "").strip()  # e.g. /tmp/anpr_
 TESSERACT_LANG = os.environ.get("TESSERACT_LANG", "eng")
 TESSERACT_PSM = os.environ.get("TESSERACT_PSM", "7")
 TESSERACT_WHITELIST = os.environ.get(
-    "TESSERACT_WHITELIST", "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+    # Bulgarian plates use only the 13 Latin glyphs that match Cyrillic shapes
+    # (А В С Е К М Н О Р Т У Х) plus digits. Narrowing the whitelist this hard
+    # drops most of Tesseract's wrong-letter guesses (D, G, S, Z, …).
+    "TESSERACT_WHITELIST", "ABCEKMHOPCTYX0123456789"
 )
-# Tesseract config tuned for Bulgarian/EU plates: single text line (PSM 7),
-# LSTM engine (OEM 1), uppercase Latin + digits only. EU plates render as
-# Latin glyphs even when the country uses Cyrillic (BG: А В Е К М Н О Р С Т У Х
-# all have identical Latin shapes).
+# Single text line (PSM 7), LSTM engine (OEM 1).
 TESSERACT_CONFIG = (
     f"--oem 1 --psm {TESSERACT_PSM} "
     f"-c tessedit_char_whitelist={TESSERACT_WHITELIST}"
@@ -104,7 +104,11 @@ except Exception as e:
 
 # ─── Plate normalisation ───────────────────────────────────────────────────────
 
-_PLATE_CLEAN_RE = re.compile(r"[^A-Z0-9]")
+# Keep only characters that are valid on a Bulgarian-style plate.
+_PLATE_ALLOWED_CHARS = set("ABCEKMHOPCTYX0123456789")
+_PLATE_CLEAN_RE = re.compile(
+    r"[^" + re.escape("".join(sorted(_PLATE_ALLOWED_CHARS))) + r"]"
+)
 
 
 def normalise_plate(raw: str) -> str:
@@ -173,29 +177,45 @@ def post_detection(payload: dict) -> None:
 
 # ─── OCR pipeline ──────────────────────────────────────────────────────────────
 
-_SHARPEN_KERNEL = np.array([[0, -1, 0], [-1, 5, -1], [0, -1, 0]], dtype=np.float32)
+# Fraction of the plate crop's height to keep (top portion). EU/Bulgarian
+# plates often carry a small country-code / dealer line under the main
+# characters which feeds garbage like "HACTAWCEPBUG" into Tesseract. Keeping
+# the top 80 % drops that band while leaving padding around tall glyphs.
+PLATE_TOP_FRACTION = float(os.environ.get("ANPR_PLATE_TOP_FRACTION", "0.80"))
 
 
 def _preprocess_plate_crop(bgr: np.ndarray) -> np.ndarray:
-    """Grayscale → 3× upscale → bilateral filter → Otsu threshold → sharpen.
+    """Crop bottom band → grayscale → 3× upscale → light denoise → adaptive threshold.
 
-    Returns a single-channel image tuned for Tesseract on EU/Bulgarian
-    plates like ``CA3477MM`` / ``CB1234AB``.
+    Tuned for Bulgarian/EU plates (e.g. ``CA3477MM``). Edges are preserved
+    by skipping aggressive sharpening; adaptive thresholding handles uneven
+    lighting better than Otsu on real-world snapshots.
     """
     h, w = bgr.shape[:2]
     if h == 0 or w == 0:
         return bgr
+    # 1. Drop the small text band beneath the main plate characters.
+    keep_h = max(1, int(h * PLATE_TOP_FRACTION))
+    bgr = bgr[:keep_h, :, :]
+    # 2. Grayscale.
     gray = cv2.cvtColor(bgr, cv2.COLOR_BGR2GRAY)
+    # 3. 3× upscale with INTER_CUBIC for clean character strokes.
     upscaled = cv2.resize(gray, None, fx=3.0, fy=3.0, interpolation=cv2.INTER_CUBIC)
-    # bilateral filter denoises while preserving the sharp character edges
-    denoised = cv2.bilateralFilter(upscaled, d=11, sigmaColor=17, sigmaSpace=17)
-    # Otsu binarisation; if it picks the wrong polarity (white text on black),
-    # flip so Tesseract always sees dark text on a light background.
-    _, binar = cv2.threshold(denoised, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    # 4. Slight denoise that preserves character edges.
+    denoised = cv2.bilateralFilter(upscaled, d=5, sigmaColor=25, sigmaSpace=25)
+    # 5. Adaptive Gaussian threshold — robust to uneven lighting / glare.
+    binar = cv2.adaptiveThreshold(
+        denoised,
+        maxValue=255,
+        adaptiveMethod=cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+        thresholdType=cv2.THRESH_BINARY,
+        blockSize=31,
+        C=15,
+    )
+    # 6. Ensure dark text on light background for Tesseract.
     if np.mean(binar) < 127:
         binar = cv2.bitwise_not(binar)
-    sharp = cv2.filter2D(binar, -1, _SHARPEN_KERNEL)
-    return sharp
+    return binar
 
 
 _debug_seq = 0
