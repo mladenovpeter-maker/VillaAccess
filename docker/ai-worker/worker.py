@@ -255,7 +255,20 @@ _debug_seq = 0
 
 
 def _save_debug_crop(camera_id: str, raw_bgr: np.ndarray, prepped: np.ndarray) -> None:
-    """Write the raw YOLO crop and the preprocessed crop to ANPR_DEBUG_DIR."""
+    """Write the raw YOLO crop and the preprocessed crop.
+
+    Always overwrites /tmp/crop.jpg and /tmp/processed.jpg with the latest
+    detection attempt so an operator can `scp` / `docker cp` them off the
+    ai-worker container for visual inspection. If ANPR_DEBUG_DIR is set,
+    also dumps timestamped PNG history there.
+    """
+    # Always-on latest-frame snapshots.
+    try:
+        cv2.imwrite("/tmp/crop.jpg", raw_bgr)
+        cv2.imwrite("/tmp/processed.jpg", prepped)
+    except Exception as e:
+        log.warning("latest-frame debug save failed: %s", e)
+
     if not ANPR_DEBUG_DIR:
         return
     global _debug_seq
