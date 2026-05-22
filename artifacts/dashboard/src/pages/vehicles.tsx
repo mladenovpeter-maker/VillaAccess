@@ -54,13 +54,14 @@ interface VehicleForm {
   owner_name: string;
   plate_region: string;
   status: string;
+  access_type: "reservation" | "permanent";
   notes: string;
 }
 
 const defaultForm: VehicleForm = {
   license_plate: "", make: "", model: "", color: "",
   vehicle_type: "sedan", owner_name: "", plate_region: "",
-  status: "unknown", notes: "",
+  status: "unknown", access_type: "reservation", notes: "",
 };
 
 type DetailTab = "snapshots" | "events";
@@ -600,7 +601,8 @@ function VehicleFormDialog({
     license_plate: vehicle.license_plate, make: vehicle.make ?? "", model: vehicle.model ?? "",
     color: vehicle.color ?? "", vehicle_type: vehicle.vehicle_type ?? "sedan",
     owner_name: vehicle.owner_name ?? "", plate_region: vehicle.plate_region ?? "",
-    status: vehicle.status, notes: vehicle.notes ?? "",
+    status: vehicle.status, access_type: vehicle.access_type ?? "reservation",
+    notes: vehicle.notes ?? "",
   } : defaultForm);
 
   const mut = useMutation({
@@ -645,16 +647,35 @@ function VehicleFormDialog({
             <Field label={t("vehicles.owner")}><Input value={form.owner_name} onChange={f("owner_name")} /></Field>
             <Field label={t("vehicles.region")}><Input value={form.plate_region} onChange={f("plate_region")} placeholder="Sofia" /></Field>
           </div>
-          <Field label={t("common.status")}>
-            <Select value={form.status} onValueChange={(v) => setForm((p) => ({ ...p, status: v }))}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="known">{t("vehicles.status.known")}</SelectItem>
-                <SelectItem value="unknown">{t("vehicles.status.unknown")}</SelectItem>
-                <SelectItem value="blacklisted">{t("vehicles.status.blacklisted")}</SelectItem>
-              </SelectContent>
-            </Select>
-          </Field>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label={t("common.status")}>
+              <Select value={form.status} onValueChange={(v) => setForm((p) => ({ ...p, status: v }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="known">{t("vehicles.status.known")}</SelectItem>
+                  <SelectItem value="unknown">{t("vehicles.status.unknown")}</SelectItem>
+                  <SelectItem value="blacklisted">{t("vehicles.status.blacklisted")}</SelectItem>
+                </SelectContent>
+              </Select>
+            </Field>
+            <Field label="Access type">
+              <Select
+                value={form.access_type}
+                onValueChange={(v) => setForm((p) => ({ ...p, access_type: v as "reservation" | "permanent" }))}
+              >
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="reservation">Reservation-based (guest)</SelectItem>
+                  <SelectItem value="permanent">Permanent (staff / owner)</SelectItem>
+                </SelectContent>
+              </Select>
+            </Field>
+          </div>
+          {form.access_type === "permanent" && (
+            <p className="text-xs text-muted-foreground -mt-1">
+              Permanent vehicles are always allowed at the gate (unless blacklisted) — they bypass reservation windows.
+            </p>
+          )}
           <Field label={t("common.notes")}><Input value={form.notes} onChange={f("notes")} /></Field>
         </div>
         <div className="flex justify-end gap-2 pt-2">

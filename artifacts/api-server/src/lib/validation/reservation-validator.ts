@@ -304,6 +304,15 @@ export async function validateVehicleAccess(
     };
   }
 
+  // Permanent access (staff / owner / maintenance) — bypasses reservation window.
+  // Blacklist check above still takes precedence.
+  if ((vehicles[0] as any).access_type === "permanent") {
+    return {
+      allowed: true,
+      reason: "Permanent access vehicle",
+    };
+  }
+
   const links = await db
     .select({ reservation_id: reservationVehiclesTable.reservation_id })
     .from(reservationVehiclesTable)

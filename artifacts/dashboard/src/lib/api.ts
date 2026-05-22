@@ -425,6 +425,7 @@ export interface Vehicle {
   ai_fingerprint: AiFingerprint | null;
   confidence_score: number | null;
   status: string;
+  access_type: "reservation" | "permanent";
   blacklist_reason: string | null;
   blacklisted_at: string | null;
   blacklisted_by: string | null;

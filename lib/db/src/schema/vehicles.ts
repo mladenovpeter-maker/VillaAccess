@@ -27,6 +27,14 @@ export const vehicleStatusEnum = pgEnum("vehicle_status", [
   "blacklisted",
 ]);
 
+// Access tier — independent of `status`.
+//   "reservation" (default) — allowed only inside a matching reservation window
+//   "permanent"             — always allowed (staff / owner / maintenance)
+export const vehicleAccessTypeEnum = pgEnum("vehicle_access_type", [
+  "reservation",
+  "permanent",
+]);
+
 // ─── AI fingerprint shape stored in the jsonb column ─────────────────────────
 export interface AiFingerprint {
   embedding: number[];          // feature vector from AI model (e.g. 128-dim)
@@ -60,6 +68,7 @@ export const vehiclesTable = pgTable(
 
     // ── Status & blacklist ────────────────────────────────────────────────────
     status: vehicleStatusEnum("status").notNull().default("unknown"),
+    access_type: vehicleAccessTypeEnum("access_type").notNull().default("reservation"),
     blacklist_reason: text("blacklist_reason"),
     blacklisted_at: timestamp("blacklisted_at"),
     blacklisted_by: text("blacklisted_by"),      // operator user id
