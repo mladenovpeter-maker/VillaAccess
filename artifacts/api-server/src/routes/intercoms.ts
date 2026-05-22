@@ -231,10 +231,13 @@ router.post("/:id/test-connectivity", requireAuth, async (req, res) => {
 
   const now = new Date();
   const newStatus = result.success ? "online" : "offline";
-  await db.update(intercomsTable)
+  const [updated] = await db.update(intercomsTable)
     .set({ status: newStatus as any, last_status_check: now, last_status_latency_ms: latency_ms, updated_at: now })
-    .where(eq(intercomsTable.id, ic.id));
+    .where(eq(intercomsTable.id, ic.id))
+    .returning();
 
+  // Return the full updated intercom record so the frontend can replace the
+  // cache entry with authoritative DB data — no optimistic guessing needed.
   res.json({
     intercom_id:   ic.id,
     intercom_name: ic.name,
@@ -243,6 +246,7 @@ router.post("/:id/test-connectivity", requireAuth, async (req, res) => {
     device_name:   result.device_name,
     serial:        result.serial,
     error:         result.error,
+    intercom:      updated ? serializeIntercom(updated) : null,
   });
 });
 
@@ -272,16 +276,20 @@ router.post("/:id/test-pin-sync", requireAuth, async (req, res) => {
   const result = await svc.testPinSync();
 
   const now = new Date();
-  await db.update(intercomsTable)
+  const [updated] = await db.update(intercomsTable)
     .set({ last_sync_status: result.success ? "success" : "failed", last_sync_at: now, updated_at: now })
-    .where(eq(intercomsTable.id, ic.id));
+    .where(eq(intercomsTable.id, ic.id))
+    .returning();
 
+  // Return the full updated intercom record so the frontend can replace the
+  // cache entry with authoritative DB data — no optimistic guessing needed.
   res.json({
     intercom_id:   ic.id,
     intercom_name: ic.name,
     success:       result.success,
     latency_ms:    result.latency_ms,
     error:         result.error,
+    intercom:      updated ? serializeIntercom(updated) : null,
   });
 });
 

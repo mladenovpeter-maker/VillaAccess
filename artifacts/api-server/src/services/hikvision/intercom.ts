@@ -379,12 +379,14 @@ export class HikvisionIntercomService {
   async testPinSync(): Promise<HikResult & { latency_ms?: number }> {
     const start = Date.now();
     const testNo = `TEST_${Date.now()}`;
+    // Validity window must be in the future — Hikvision devices reject users
+    // whose validity period has already expired at the time of creation.
     const push = await this.pushPin({
       employeeNo: testNo,
       guestName:  "SyncTest",
       pin:        "0000",
-      validFrom:  new Date(Date.now() - 60_000),
-      validTo:    new Date(Date.now() - 30_000), // already expired
+      validFrom:  new Date(Date.now()),
+      validTo:    new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 h from now
     });
     if (!push.success) return { ...push, latency_ms: Date.now() - start };
     await this.revokePin(testNo);
