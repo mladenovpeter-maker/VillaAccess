@@ -1,5 +1,5 @@
 # ── Stage 1: builder — install deps + vite production build ───────────────────
-FROM node:22-alpine AS builder
+FROM node:22-bookworm-slim AS builder
 
 RUN npm install -g pnpm@10 --quiet
 
