@@ -390,8 +390,23 @@ export class HikvisionIntercomService {
       };
 
       const url = `${this.baseUrl}/ISAPI/AccessControl/UserInfo/SetUp?format=json`;
+      const bodyStr = JSON.stringify(body);
+      const bodyBytes = new TextEncoder().encode(bodyStr);
       console.log(`[acs.pushPin] ▶ PUT ${url}`);
-      console.log(`[acs.pushPin] payload:\n${JSON.stringify(body, null, 2)}`);
+      console.log(`[acs.pushPin] Content-Type: application/json`);
+      console.log(`[acs.pushPin] Content-Length: ${bodyBytes.byteLength}`);
+      console.log(`[acs.pushPin] payload (pretty):\n${JSON.stringify(body, null, 2)}`);
+      console.log(`[acs.pushPin] payload (raw bytes sent): ${bodyStr}`);
+      // ▼ Equivalent curl command — paste into Ubuntu terminal for side-by-side test
+      const curlBody = bodyStr.replace(/'/g, `'\\''`);
+      console.log(
+        `[acs.pushPin] equivalent curl:\n` +
+        `curl --digest -u ${this.config.username}:'${this.config.password}' \\\n` +
+        `  -X PUT \\\n` +
+        `  -H "Content-Type: application/json" \\\n` +
+        `  -d '${curlBody}' \\\n` +
+        `  '${url}'`,
+      );
 
       const r = await this.request("PUT", "/ISAPI/AccessControl/UserInfo/SetUp?format=json", body);
 
