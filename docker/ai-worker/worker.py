@@ -1,13 +1,13 @@
 """
-ANPR ai-worker — YOLOv8 plate detector + PaddleOCR recognizer (CPU, offline).
+ANPR ai-worker — YOLOv8 plate detector + Tesseract OCR recognizer (CPU).
 
 Loop (unchanged from V1):
   1. Refresh target list from GET /api/anpr/targets every N seconds.
   2. For each enabled camera, run a per-camera polling task:
        fetch snapshot (raw JPEG bytes from /api/anpr/snapshot/:id)
        run YOLOv8 plate detection → crop plate region(s)
-       preprocess crop (grayscale, upscale, CLAHE, sharpen)
-       run PaddleOCR on each cropped plate only
+       preprocess crop (grayscale, upscale, CLAHE, sharpen, threshold)
+       run Tesseract OCR on each cropped plate only
        pick best plausible plate candidate
        if confidence >= camera.ocr_min_confidence:
            local debounce check (camera_id + plate, cooldown window)
@@ -48,7 +48,19 @@ YOLO_PLATE_WEIGHTS = os.environ.get(
     "YOLO_PLATE_WEIGHTS", "/app/models/license_plate_detector.pt"
 )
 YOLO_CONF = float(os.environ.get("YOLO_CONF", "0.25"))
-PADDLE_LANG = os.environ.get("ANPR_PADDLE_LANG", "en")
+TESSERACT_LANG = os.environ.get("TESSERACT_LANG", "eng")
+TESSERACT_PSM = os.environ.get("TESSERACT_PSM", "7")
+TESSERACT_WHITELIST = os.environ.get(
+    "TESSERACT_WHITELIST", "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+)
+# Tesseract config tuned for Bulgarian/EU plates: single text line (PSM 7),
+# LSTM engine (OEM 1), uppercase Latin + digits only. EU plates render as
+# Latin glyphs even when the country uses Cyrillic (BG: А В Е К М Н О Р С Т У Х
+# all have identical Latin shapes).
+TESSERACT_CONFIG = (
+    f"--oem 1 --psm {TESSERACT_PSM} "
+    f"-c tessedit_char_whitelist={TESSERACT_WHITELIST}"
+)
 
 logging.basicConfig(
     level=logging.INFO,
@@ -72,23 +84,13 @@ except Exception as e:
     log.error("Failed to load YOLOv8 detector: %s", e)
     sys.exit(2)
 
-log.info("Loading PaddleOCR (lang=%s, CPU) ...", PADDLE_LANG)
+log.info("Initialising Tesseract OCR (lang=%s, psm=%s) ...", TESSERACT_LANG, TESSERACT_PSM)
 try:
-    from paddleocr import PaddleOCR  # heavy import
-    # enable_mkldnn=False + cpu_threads=1 avoid a known paddlepaddle 2.6.x
-    # MKL-DNN/OpenMP init deadlock on Debian-slim CPU runtimes that causes
-    # PaddleOCR() to hang indefinitely after the model download completes.
-    OCR = PaddleOCR(
-        lang=PADDLE_LANG,
-        use_angle_cls=False,
-        show_log=False,
-        use_gpu=False,
-        enable_mkldnn=False,
-        cpu_threads=1,
-    )
-    log.info("PaddleOCR ready")
+    import pytesseract  # thin wrapper around the tesseract binary
+    tess_version = pytesseract.get_tesseract_version()
+    log.info("Tesseract OCR ready (version=%s)", tess_version)
 except Exception as e:
-    log.error("Failed to load PaddleOCR: %s", e)
+    log.error("Failed to initialise Tesseract OCR: %s", e)
     sys.exit(2)
 
 # ─── Plate normalisation ───────────────────────────────────────────────────────
@@ -163,7 +165,11 @@ def post_detection(payload: dict) -> None:
 # ─── OCR pipeline ──────────────────────────────────────────────────────────────
 
 def _preprocess_plate_crop(bgr: np.ndarray) -> np.ndarray:
-    """Grayscale → upscale → CLAHE → unsharp; return 3-channel for PaddleOCR."""
+    """Grayscale → upscale → CLAHE → unsharp → Otsu threshold.
+
+    Returns a single-channel binarised image (black text on white) tuned for
+    Tesseract on EU/Bulgarian plates.
+    """
     h, w = bgr.shape[:2]
     if h == 0 or w == 0:
         return bgr
@@ -178,33 +184,46 @@ def _preprocess_plate_crop(bgr: np.ndarray) -> np.ndarray:
     gray = clahe.apply(gray)
     blurred = cv2.GaussianBlur(gray, (0, 0), sigmaX=1.0)
     sharp = cv2.addWeighted(gray, 1.6, blurred, -0.6, 0)
-    return cv2.cvtColor(sharp, cv2.COLOR_GRAY2BGR)
+    # Otsu binarisation; if it picks the wrong polarity (white text on black),
+    # flip so Tesseract always sees dark text on a light background.
+    _, binar = cv2.threshold(sharp, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    if np.mean(binar) < 127:
+        binar = cv2.bitwise_not(binar)
+    return binar
 
 
-def _run_paddle_ocr(crop_bgr: np.ndarray) -> list[tuple[str, float]]:
-    """Return list of (text, prob_0_1) from PaddleOCR on the given crop."""
+def _run_tesseract_ocr(crop: np.ndarray) -> list[tuple[str, float]]:
+    """Return list of (text, prob_0_1) from Tesseract on the given crop."""
     try:
-        result = OCR.ocr(crop_bgr, cls=False)
+        data = pytesseract.image_to_data(
+            crop,
+            lang=TESSERACT_LANG,
+            config=TESSERACT_CONFIG,
+            output_type=pytesseract.Output.DICT,
+        )
     except Exception as e:
-        log.warning("PaddleOCR failed: %s", e)
+        log.warning("Tesseract OCR failed: %s", e)
         return []
     out: list[tuple[str, float]] = []
-    for page in (result or []):
-        if not page:
+    texts = data.get("text", [])
+    confs = data.get("conf", [])
+    for text, conf in zip(texts, confs):
+        text = (text or "").strip()
+        if not text:
             continue
-        for entry in page:
-            try:
-                text = str(entry[1][0])
-                prob = float(entry[1][1])
-            except Exception:
-                continue
-            out.append((text, prob))
+        try:
+            c = float(conf)
+        except (TypeError, ValueError):
+            continue
+        if c < 0:  # tesseract uses -1 for words it couldn't score
+            continue
+        out.append((text, c / 100.0))
     return out
 
 
 def ocr_plate(jpeg_bytes: bytes) -> Optional[tuple[str, float, str]]:
     """
-    YOLOv8 detect → crop → preprocess → PaddleOCR.
+    YOLOv8 detect → crop → preprocess → Tesseract OCR.
     Returns (normalised_plate, confidence_0_100, raw_text) or None.
     """
     try:
@@ -244,7 +263,7 @@ def ocr_plate(jpeg_bytes: bytes) -> Optional[tuple[str, float, str]]:
                 continue
             crop = bgr[y1:y2, x1:x2]
             prepped = _preprocess_plate_crop(crop)
-            for text, prob in _run_paddle_ocr(prepped):
+            for text, prob in _run_tesseract_ocr(prepped):
                 norm = normalise_plate(text)
                 if not is_plausible_plate(norm):
                     continue

@@ -1,19 +1,20 @@
-# ANPR ai-worker — YOLOv8 plate detector + PaddleOCR recognizer (CPU, offline).
+# ANPR ai-worker — YOLOv8 plate detector + Tesseract OCR recognizer (CPU).
 #
 # Pipeline:
-#   snapshot bytes → YOLOv8 plate detection → crop → preprocess → PaddleOCR
+#   snapshot bytes → YOLOv8 plate detection → crop → preprocess → Tesseract
 #
 # Required env:
 #   API_BASE_URL          e.g. http://api-server:8080
 #   ANPR_WORKER_TOKEN     shared secret (must match api-server)
 # Optional:
 #   ANPR_REFRESH_TARGETS_SECONDS  default 30
-#   ANPR_PADDLE_LANG              default "en" (Bulgarian plates use Latin)
 #   YOLO_PLATE_WEIGHTS            default /app/models/license_plate_detector.pt
 #   YOLO_CONF                     default 0.25
+#   TESSERACT_PSM                 default 7 (single-line text)
+#   TESSERACT_LANG                default "eng" (Bulgarian/EU plates use Latin glyphs)
 #
-# Models are baked into the image at build time so the container needs no
-# outbound network for inference (only to talk to the api-server).
+# YOLO weights are baked into the image; tesseract eng traineddata ships with
+# the tesseract-ocr-eng apt package — fully offline at runtime.
 
 FROM python:3.11-slim
 
@@ -28,34 +29,23 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libgl1 \
     curl \
     ca-certificates \
+    tesseract-ocr \
+    tesseract-ocr-eng \
     && rm -rf /var/lib/apt/lists/*
 
 COPY docker/ai-worker/requirements.txt ./requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
-# --- Pre-download models so runtime is offline -------------------------------
-# YOLOv8 plate detector weights (small, ~6 MB). Override via --build-arg if you
-# host the weights internally.
+# --- Pre-download YOLOv8 plate detector weights (small, ~6 MB) --------------
+# Override via --build-arg if you host the weights internally.
 ARG YOLO_PLATE_WEIGHTS_URL=https://github.com/Muhammad-Zeerak-Khan/Automatic-License-Plate-Recognition-using-YOLOv8/raw/main/license_plate_detector.pt
 RUN mkdir -p /app/models && \
     curl -fsSL "$YOLO_PLATE_WEIGHTS_URL" -o /app/models/license_plate_detector.pt && \
     test -s /app/models/license_plate_detector.pt
 
-# PaddleOCR is NOT warmed at build time: the paddlepaddle CPU runtime
-# segfaults during `python -c "from paddleocr import PaddleOCR; PaddleOCR(...)"`
-# inside the slim image's build sandbox. PaddleOCR initialises fine at
-# container runtime, so we let it lazy-download its det+rec models on first
-# use. That requires brief outbound network on first container start; the
-# YOLO detector remains fully offline (weights baked above).
-
 COPY docker/ai-worker/worker.py ./worker.py
 
 ENV PYTHONUNBUFFERED=1 \
-    YOLO_PLATE_WEIGHTS=/app/models/license_plate_detector.pt \
-    OMP_NUM_THREADS=1 \
-    MKL_NUM_THREADS=1 \
-    CPU_NUM=1 \
-    FLAGS_use_mkldnn=0 \
-    KMP_DUPLICATE_LIB_OK=TRUE
+    YOLO_PLATE_WEIGHTS=/app/models/license_plate_detector.pt
 
 CMD ["python", "-u", "worker.py"]
