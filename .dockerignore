@@ -23,4 +23,3 @@ replit.nix
 .upm
 
 docker/nginx
-docker/ai-worker
