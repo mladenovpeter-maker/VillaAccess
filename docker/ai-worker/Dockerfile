@@ -41,8 +41,12 @@ RUN mkdir -p /app/models && \
     curl -fsSL "$YOLO_PLATE_WEIGHTS_URL" -o /app/models/license_plate_detector.pt && \
     test -s /app/models/license_plate_detector.pt
 
-# Warm PaddleOCR so its detection + recognition models are cached in the image.
-RUN python -c "from paddleocr import PaddleOCR; PaddleOCR(lang='en', use_angle_cls=False, show_log=False)"
+# PaddleOCR is NOT warmed at build time: the paddlepaddle CPU runtime
+# segfaults during `python -c "from paddleocr import PaddleOCR; PaddleOCR(...)"`
+# inside the slim image's build sandbox. PaddleOCR initialises fine at
+# container runtime, so we let it lazy-download its det+rec models on first
+# use. That requires brief outbound network on first container start; the
+# YOLO detector remains fully offline (weights baked above).
 
 COPY docker/ai-worker/worker.py ./worker.py
 
