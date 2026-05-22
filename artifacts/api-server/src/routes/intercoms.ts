@@ -187,17 +187,21 @@ router.post("/:id/open", requireAuth, async (req: any, res) => {
     },
   });
 
+  // 200 = open command succeeded (door released).
+  // 502 = open command itself failed — close failure is a non-fatal warning.
   res.status(result.success ? 200 : 502).json({
-    intercom_id:   ic.id,
-    intercom_name: ic.name,
-    action:        "open_door",
-    door_no:       ic.relay_no,
-    pulse_ms:      3000,
-    elapsed_ms:    result.elapsed_ms,
-    triggered_by:  operator,
-    success:       result.success,
-    error:         result.error ?? null,
-    raw_status:    result.raw_status ?? null,
+    intercom_id:    ic.id,
+    intercom_name:  ic.name,
+    action:         "open_door",
+    door_no:        ic.relay_no,
+    pulse_ms:       3000,
+    elapsed_ms:     result.elapsed_ms,
+    triggered_by:   operator,
+    success:        result.success,
+    error:          result.error          ?? null,
+    close_warning:  result.close_warning  ?? null,
+    raw_status:     result.raw_status     ?? null,
+    upstream_body:  result.upstream_body  ?? null,
   });
 });
 

@@ -37,7 +37,9 @@ export interface PinPayload {
 export interface HikResult {
   success: boolean;
   error?: string;
+  close_warning?: string;
   raw_status?: number;
+  upstream_body?: string;
 }
 
 // ─── Digest Auth helpers — identical to lib/cameras/base.ts ──────────────────
@@ -248,19 +250,26 @@ export class HikvisionIntercomService {
       `<?xml version="1.0" encoding="UTF-8"?>\n<RemoteControlDoor version="2.0" xmlns="http://www.isapi.org/ver20/XMLSchema">\n  <cmd>${cmd}</cmd>\n</RemoteControlDoor>`;
 
     let openError: string | undefined;
+    let openUpstreamBody = "";
     let openStatus = 0;
-    let closeError: string | undefined;
+    let closeWarning: string | undefined;
 
     try {
-      // 1) Open command
+      // 1) Open command — this ALONE determines success.
+      //    Many ACS terminals use a device-configured door-open timer and do
+      //    not support cmd:close at all. Treat close failure as a warning only.
       try {
         const body = doorXml("open");
-        console.log(`[acs.openDoor] ▶ PUT ${this.baseUrl}${doorPath}`);
-        console.log(`[acs.openDoor] body: ${body}`);
+        const targetUrl = `${this.baseUrl}${doorPath}`;
+        console.log(`[acs.openDoor] ▶ PUT ${targetUrl}`);
+        console.log(`[acs.openDoor] Content-Type: application/xml`);
+        console.log(`[acs.openDoor] body:\n${body}`);
         const r = await this.request("PUT", doorPath, body, "application/xml");
         openStatus = r.status;
-        console.log(`[acs.openDoor] open status=${r.status} body=${r.text.slice(0, 500)}`);
-        if (!r.ok) openError = parseHikError(r.text) ?? `HTTP ${r.status}`;
+        openUpstreamBody = r.text;
+        console.log(`[acs.openDoor] open → HTTP ${r.status}`);
+        console.log(`[acs.openDoor] open ← upstream body: ${r.text}`);
+        if (!r.ok) openError = parseHikError(r.text) ?? `HTTP ${r.status}: ${r.text.slice(0, 200)}`;
       } catch (err) {
         console.error("[acs.openDoor] open threw:", err);
         openError = err instanceof Error ? err.message : String(err);
@@ -271,27 +280,37 @@ export class HikvisionIntercomService {
         await new Promise((resolve) => setTimeout(resolve, PULSE_MS));
       }
     } finally {
-      // 2) Close command — ALWAYS attempt
+      // 2) Close command — best-effort safety only; failure is a WARNING not an error.
+      //    Device may enforce its own close via hardware timer — that is fine.
       try {
         const body = doorXml("close");
-        console.log(`[acs.openDoor] ◀ PUT ${this.baseUrl}${doorPath} (close)`);
+        console.log(`[acs.openDoor] ◀ PUT ${this.baseUrl}${doorPath} (close, best-effort)`);
         const r = await this.request("PUT", doorPath, body, "application/xml");
-        console.log(`[acs.openDoor] close status=${r.status} body=${r.text.slice(0, 200)}`);
-        if (!r.ok) closeError = parseHikError(r.text) ?? `HTTP ${r.status}`;
+        console.log(`[acs.openDoor] close → HTTP ${r.status} ← ${r.text.slice(0, 200)}`);
+        if (!r.ok) {
+          closeWarning = parseHikError(r.text) ?? `HTTP ${r.status}`;
+          console.warn(`[acs.openDoor] close warning (non-fatal): ${closeWarning}`);
+        }
       } catch (err) {
-        console.error("[acs.openDoor] close threw:", err);
-        closeError = err instanceof Error ? err.message : String(err);
+        closeWarning = err instanceof Error ? err.message : String(err);
+        console.warn(`[acs.openDoor] close threw (non-fatal): ${closeWarning}`);
       }
     }
 
-    const success = !openError && !closeError;
-    const errorParts = [openError, closeError].filter(Boolean);
-    console.log(`[acs.openDoor] result: success=${success} elapsed=${Date.now() - t0}ms${success ? "" : ` error=${errorParts.join("; ")}`}`);
+    // Success is determined ONLY by the open command.
+    const success = !openError;
+    console.log(
+      `[acs.openDoor] result: success=${success} elapsed=${Date.now() - t0}ms` +
+      (openError ? ` openError=${openError}` : "") +
+      (closeWarning ? ` closeWarning=${closeWarning}` : ""),
+    );
     return {
       success,
       raw_status: openStatus,
+      upstream_body: openUpstreamBody || undefined,
       elapsed_ms: Date.now() - t0,
-      ...(success ? {} : { error: errorParts.join("; ") }),
+      ...(openError ? { error: openError } : {}),
+      ...(closeWarning ? { close_warning: closeWarning } : {}),
     };
   }
 
