@@ -40,7 +40,9 @@ export interface HikResult {
   raw_status?: number;
 }
 
-// ─── Digest Auth helpers (identical to camera base adapter) ───────────────────
+// ─── Digest Auth helpers — identical to lib/cameras/base.ts ──────────────────
+// DO NOT simplify. Hikvision ACS terminals require full RFC 7616 digest auth
+// with proper qop list parsing and auth-int body hashing.
 
 interface DigestChallenge {
   realm: string;
@@ -57,10 +59,23 @@ function parseDigestChallenge(wwwAuth: string): DigestChallenge {
   return {
     realm: g("realm") ?? "",
     nonce: g("nonce") ?? "",
-    qop: g("qop"),
+    qop:       g("qop"),
     algorithm: g("algorithm"),
-    opaque: g("opaque"),
+    opaque:    g("opaque"),
   };
+}
+
+/**
+ * Pick the best qop from the WWW-Authenticate header value.
+ * The header may list multiple options, e.g. qop="auth,auth-int".
+ * Prefer "auth" over "auth-int" (simpler, no body hashing needed).
+ */
+function pickQop(qopHeader: string | undefined): "auth" | "auth-int" | undefined {
+  if (!qopHeader) return undefined;
+  const list = qopHeader.split(",").map((s) => s.trim().toLowerCase());
+  if (list.includes("auth")) return "auth";
+  if (list.includes("auth-int")) return "auth-int";
+  return undefined;
 }
 
 function buildDigestHeader(
@@ -69,18 +84,25 @@ function buildDigestHeader(
   challenge: DigestChallenge,
   username: string,
   password: string,
+  body: string,
 ): string {
-  const algorithm = (challenge.algorithm ?? "MD5").replace(/-sess$/i, "");
+  const algorithm = (challenge.algorithm ?? "MD5").replace(/-sess$/i, "").toLowerCase();
   const hash = (s: string) =>
-    crypto.createHash(algorithm.toLowerCase()).update(s).digest("hex");
+    crypto.createHash(algorithm).update(s).digest("hex");
+
+  const qop = pickQop(challenge.qop);
   const ha1 = hash(`${username}:${challenge.realm}:${password}`);
-  const ha2 = hash(`${method}:${uri}`);
+  const ha2 =
+    qop === "auth-int"
+      ? hash(`${method}:${uri}:${hash(body)}`)
+      : hash(`${method}:${uri}`);
   const nc = "00000001";
   const cnonce = crypto.randomBytes(8).toString("hex");
-  const response =
-    challenge.qop === "auth" || challenge.qop === "auth-int"
-      ? hash(`${ha1}:${challenge.nonce}:${nc}:${cnonce}:${challenge.qop}:${ha2}`)
-      : hash(`${ha1}:${challenge.nonce}:${ha2}`);
+
+  const response = qop
+    ? hash(`${ha1}:${challenge.nonce}:${nc}:${cnonce}:${qop}:${ha2}`)
+    : hash(`${ha1}:${challenge.nonce}:${ha2}`);
+
   const parts = [
     `Digest username="${username}"`,
     `realm="${challenge.realm}"`,
@@ -88,7 +110,7 @@ function buildDigestHeader(
     `uri="${uri}"`,
     `response="${response}"`,
   ];
-  if (challenge.qop) parts.push(`qop=${challenge.qop}`, `nc=${nc}`, `cnonce="${cnonce}"`);
+  if (qop) parts.push(`qop=${qop}`, `nc=${nc}`, `cnonce="${cnonce}"`);
   if (challenge.opaque) parts.push(`opaque="${challenge.opaque}"`);
   if (challenge.algorithm) parts.push(`algorithm=${challenge.algorithm}`);
   return parts.join(", ");
@@ -115,33 +137,52 @@ export class HikvisionIntercomService {
     const url = `${this.baseUrl}${path}`;
     const { username, password } = this.config;
     const bodyStr = body != null ? JSON.stringify(body) : undefined;
-    const contentType = "application/json";
     const timeoutMs = 10_000;
 
-    const makeHeaders = (auth: string): Record<string, string> => ({
-      Authorization: auth,
-      ...(bodyStr != null ? { "Content-Type": contentType } : {}),
-    });
+    const baseHeaders: Record<string, string> = {
+      Accept: "*/*",
+      ...(bodyStr != null ? { "Content-Type": "application/json" } : {}),
+    };
 
-    // First attempt: Basic auth
-    const basicAuth = "Basic " + Buffer.from(`${username}:${password}`).toString("base64");
+    // ── Attempt 1: Basic auth ─────────────────────────────────────────────────
     let res = await fetch(url, {
       method,
-      headers: makeHeaders(basicAuth),
+      headers: {
+        ...baseHeaders,
+        Authorization: "Basic " + Buffer.from(`${username}:${password}`).toString("base64"),
+      },
       signal: AbortSignal.timeout(timeoutMs),
       ...(bodyStr != null ? { body: bodyStr } : {}),
     });
+    console.log("[acs] basic", { method, path, status: res.status });
 
-    // Fallback: Digest auth
-    if (res.status === 401 && res.headers.get("www-authenticate")?.toLowerCase().includes("digest")) {
-      const challenge = parseDigestChallenge(res.headers.get("www-authenticate") ?? "");
-      const digestAuth = buildDigestHeader(method, path, challenge, username, password);
+    // ── Attempt 2: Digest auth on 401 ─────────────────────────────────────────
+    if (
+      res.status === 401 &&
+      res.headers.get("www-authenticate")?.toLowerCase().includes("digest")
+    ) {
+      const wwwAuth = res.headers.get("www-authenticate") ?? "";
+      // Drain body so the underlying TCP socket is released cleanly
+      try { await res.arrayBuffer(); } catch { /* ignore */ }
+
+      const challenge = parseDigestChallenge(wwwAuth);
+      const digestHeader = buildDigestHeader(
+        method, path, challenge, username, password, bodyStr ?? "",
+      );
+      console.log("[acs] digest retry", {
+        method, path,
+        realm: challenge.realm,
+        qop: challenge.qop,
+        algorithm: challenge.algorithm,
+      });
+
       res = await fetch(url, {
         method,
-        headers: makeHeaders(digestAuth),
+        headers: { ...baseHeaders, Authorization: digestHeader },
         signal: AbortSignal.timeout(timeoutMs),
         ...(bodyStr != null ? { body: bodyStr } : {}),
       });
+      console.log("[acs] digest", { method, path, status: res.status });
     }
 
     const text = await res.text().catch(() => "");
