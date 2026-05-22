@@ -285,23 +285,32 @@ function IntercomCard({ intercom, entranceName, onEdit, onDelete }: {
       qc.invalidateQueries({ queryKey: ["intercoms"] });
       toast({
         title: r?.success ? t("intercoms.doorOpened") : t("intercoms.doorFailed"),
-        description: r?.error ? `${intercom.name}: ${r.error}` : intercom.name,
+        description: r?.close_warning
+          ? `${intercom.name} · relay closed (${r.close_warning})`
+          : intercom.name,
         variant: r?.success ? "default" : "destructive",
       });
     },
-    onError: (e: any) => toast({ title: t("intercoms.doorFailed"), description: e.message, variant: "destructive" }),
+    // api.request throws on 502; e.message = detail field = actual device error
+    onError: (e: any) => toast({
+      title: t("intercoms.doorFailed"),
+      description: `${intercom.name}: ${e.message}`,
+      variant: "destructive",
+    }),
   });
 
   const pingMut = useMutation({
     mutationFn: () => intercomsApi.testConnectivity(intercom.id),
     onSuccess: (r: any) => {
-      // Immediately reflect new status in cache — don't wait 30s for poll
+      // Patch cache immediately — do NOT trigger a competing refetch that
+      // could race with and overwrite this optimistic update. Mark stale
+      // so the next natural poll (30s) picks up the authoritative DB value.
       patchCache({
         status: r?.success ? "online" : "offline",
         last_status_check: new Date().toISOString(),
         ...(r?.latency_ms != null ? { last_status_latency_ms: r.latency_ms } : {}),
       } as any);
-      qc.invalidateQueries({ queryKey: ["intercoms"] });
+      qc.invalidateQueries({ queryKey: ["intercoms"], refetchType: "none" });
       toast({
         title: r?.success ? t("intercoms.connectivityOk") : t("intercoms.connectivityFailed"),
         description: r?.device_name
@@ -316,11 +325,12 @@ function IntercomCard({ intercom, entranceName, onEdit, onDelete }: {
   const syncMut = useMutation({
     mutationFn: () => intercomsApi.testPinSync(intercom.id),
     onSuccess: (r: any) => {
+      // Same pattern: patch cache immediately, mark stale for next poll.
       patchCache({
         last_sync_status: r?.success ? "success" : "failed",
         last_sync_at: new Date().toISOString(),
       } as any);
-      qc.invalidateQueries({ queryKey: ["intercoms"] });
+      qc.invalidateQueries({ queryKey: ["intercoms"], refetchType: "none" });
       toast({
         title: r?.success ? t("intercoms.syncOk") : t("intercoms.syncFailed"),
         description: r?.error ?? `${r?.latency_ms ?? "?"}ms`,
