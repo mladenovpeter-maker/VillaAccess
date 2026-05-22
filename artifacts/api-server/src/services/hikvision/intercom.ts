@@ -153,47 +153,78 @@ export class HikvisionIntercomService {
       ...(ct ? { "Content-Type": ct } : {}),
     };
 
-    // ── Attempt 1: Basic auth ─────────────────────────────────────────────────
-    let res = await fetch(url, {
-      method,
-      headers: {
-        ...baseHeaders,
-        Authorization: "Basic " + Buffer.from(`${username}:${password}`).toString("base64"),
-      },
-      signal: AbortSignal.timeout(timeoutMs),
-      ...(bodyStr != null ? { body: bodyStr } : {}),
-    });
-    console.log("[acs] basic", { method, path, status: res.status });
+    // Body bytes — sent as Uint8Array so undici emits Content-Length, NOT
+    // Transfer-Encoding: chunked. Hikvision firmware rejects chunked PUT
+    // bodies with statusString="Invalid Operation".
+    const bodyBytes = bodyStr != null ? new TextEncoder().encode(bodyStr) : undefined;
 
-    // ── Attempt 2: Digest auth on 401 ─────────────────────────────────────────
-    if (
-      res.status === 401 &&
-      res.headers.get("www-authenticate")?.toLowerCase().includes("digest")
-    ) {
-      const wwwAuth = res.headers.get("www-authenticate") ?? "";
-      // Drain body so the underlying TCP socket is released cleanly
-      try { await res.arrayBuffer(); } catch { /* ignore */ }
-
-      const challenge = parseDigestChallenge(wwwAuth);
-      const digestHeader = buildDigestHeader(
-        method, path, challenge, username, password, bodyStr ?? "",
-      );
-      console.log("[acs] digest retry", {
-        method, path,
-        realm: challenge.realm,
-        qop: challenge.qop,
-        algorithm: challenge.algorithm,
-      });
-
-      res = await fetch(url, {
-        method,
-        headers: { ...baseHeaders, Authorization: digestHeader },
+    // ── Phase 1: Probe for the Digest challenge with a body-less GET ─────────
+    //   This matches `curl --digest` behaviour exactly: never send the real
+    //   write body without already having a valid Digest Authorization header.
+    //   Sending Basic auth on attempt 1 (the old code) caused the terminal
+    //   to enter a state where the authenticated retry returned "Invalid
+    //   Operation". Probing with /System/deviceInfo is safe and idempotent.
+    let challenge: DigestChallenge | undefined;
+    try {
+      const probe = await fetch(`${this.baseUrl}/ISAPI/System/deviceInfo`, {
+        method: "GET",
+        headers: { Accept: "*/*" },
         signal: AbortSignal.timeout(timeoutMs),
-        ...(bodyStr != null ? { body: bodyStr } : {}),
       });
-      console.log("[acs] digest", { method, path, status: res.status });
+      try { await probe.arrayBuffer(); } catch { /* drain */ }
+      const wwwAuth = probe.headers.get("www-authenticate") ?? "";
+      if (probe.status === 401 && wwwAuth.toLowerCase().includes("digest")) {
+        challenge = parseDigestChallenge(wwwAuth);
+        console.log("[acs] digest challenge", {
+          realm: challenge.realm,
+          qop: challenge.qop,
+          algorithm: challenge.algorithm,
+          nonceLen: challenge.nonce.length,
+        });
+      } else {
+        console.log("[acs] probe returned non-401", { status: probe.status, wwwAuth: wwwAuth.slice(0, 80) });
+      }
+    } catch (err) {
+      console.warn("[acs] probe failed:", err instanceof Error ? err.message : err);
     }
 
+    // ── Phase 2: Send the real request, authenticated from the start ─────────
+    const authHeader = challenge
+      ? buildDigestHeader(method, path, challenge, username, password, bodyStr ?? "")
+      : "Basic " + Buffer.from(`${username}:${password}`).toString("base64");
+
+    console.log("[acs] request", {
+      method, path,
+      auth: challenge ? "digest" : "basic-fallback",
+      contentType: ct,
+      contentLength: bodyBytes?.byteLength ?? 0,
+    });
+
+    let res = await fetch(url, {
+      method,
+      headers: { ...baseHeaders, Authorization: authHeader },
+      signal: AbortSignal.timeout(timeoutMs),
+      ...(bodyBytes != null ? { body: bodyBytes } : {}),
+    });
+
+    // ── Phase 3: One retry on 401 (e.g. nonce expired between probe & request)
+    if (res.status === 401) {
+      const wwwAuth = res.headers.get("www-authenticate") ?? "";
+      try { await res.arrayBuffer(); } catch { /* drain */ }
+      if (wwwAuth.toLowerCase().includes("digest")) {
+        const fresh = parseDigestChallenge(wwwAuth);
+        const digestHeader = buildDigestHeader(method, path, fresh, username, password, bodyStr ?? "");
+        console.log("[acs] retry with fresh nonce", { method, path });
+        res = await fetch(url, {
+          method,
+          headers: { ...baseHeaders, Authorization: digestHeader },
+          signal: AbortSignal.timeout(timeoutMs),
+          ...(bodyBytes != null ? { body: bodyBytes } : {}),
+        });
+      }
+    }
+
+    console.log("[acs] response", { method, path, status: res.status });
     const text = await res.text().catch(() => "");
     return { ok: res.ok, status: res.status, text };
   }
