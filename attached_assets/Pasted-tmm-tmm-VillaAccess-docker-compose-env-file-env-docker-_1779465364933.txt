@@ -1,0 +1,46 @@
+tmm@tmm:~/VillaAccess$ docker compose --env-file .env.docker build ai-worker
+WARN[0000] /home/tmm/VillaAccess/docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion 
+[+] Building 290.6s (11/13)                                                     
+ => [internal] load local bake definitions                                 0.0s
+ => => reading from stdin 1.39kB                                           0.0s
+ => [internal] load build definition from Dockerfile                       0.0s
+ => => transferring dockerfile: 2.00kB                                     0.0s
+ => [internal] load metadata for docker.io/library/python:3.11-slim        0.8s
+ => [internal] load .dockerignore                                          0.0s
+ => => transferring context: 251B                                          0.0s
+ => [1/8] FROM docker.io/library/python:3.11-slim@sha256:a3ab0b966bc4e915  0.0s
+ => => resolve docker.io/library/python:3.11-slim@sha256:a3ab0b966bc4e915  0.0s
+ => [internal] load build context                                          0.0s
+ => => transferring context: 13.40kB                                       0.0s
+ => CACHED [2/8] WORKDIR /app                                              0.0s
+ => [3/8] RUN apt-get update && apt-get install -y --no-install-recommen  15.2s
+ => [4/8] COPY docker/ai-worker/requirements.txt ./requirements.txt        0.0s 
+ => [5/8] RUN pip install --no-cache-dir -r requirements.txt             273.2s 
+ => ERROR [6/8] RUN mkdir -p /app/models &&     curl -fsSL "https://githu  1.2s 
+------                                                                          
+ > [6/8] RUN mkdir -p /app/models &&     curl -fsSL "https://github.com/computervisioneng/automatic-number-plate-recognition-python-yolov8/raw/main/license_plate_detector.pt" -o /app/models/license_plate_detector.pt &&     test -s /app/models/license_plate_detector.pt:                                                   
+1.118 curl: (22) The requested URL returned error: 404
+------
+[+] build 0/3
+ ⠙ Image villaaccess-migrate   Building                                   290.6s
+ ⠙ Image villaaccess-backend   Building                                   290.6s
+ ⠙ Image villaaccess-ai-worker Building                                   290.6s
+Dockerfile:40
+
+--------------------
+
+  39 |     ARG YOLO_PLATE_WEIGHTS_URL=https://github.com/computervisioneng/automatic-number-plate-recognition-python-yolov8/raw/main/license_plate_detector.pt
+
+  40 | >>> RUN mkdir -p /app/models && \
+
+  41 | >>>     curl -fsSL "$YOLO_PLATE_WEIGHTS_URL" -o /app/models/license_plate_detector.pt && \
+
+  42 | >>>     test -s /app/models/license_plate_detector.pt
+
+  43 |     
+
+--------------------
+
+failed to solve: process "/bin/sh -c mkdir -p /app/models &&     curl -fsSL \"$YOLO_PLATE_WEIGHTS_URL\" -o /app/models/license_plate_detector.pt &&     test -s /app/models/license_plate_detector.pt" did not complete successfully: exit code: 22
+
+tmm@tmm:~/VillaAccess$ 

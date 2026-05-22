@@ -36,7 +36,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 # --- Pre-download models so runtime is offline -------------------------------
 # YOLOv8 plate detector weights (small, ~6 MB). Override via --build-arg if you
 # host the weights internally.
-ARG YOLO_PLATE_WEIGHTS_URL=https://github.com/computervisioneng/automatic-number-plate-recognition-python-yolov8/raw/main/license_plate_detector.pt
+ARG YOLO_PLATE_WEIGHTS_URL=https://github.com/Muhammad-Zeerak-Khan/Automatic-License-Plate-Recognition-using-YOLOv8/raw/main/license_plate_detector.pt
 RUN mkdir -p /app/models && \
     curl -fsSL "$YOLO_PLATE_WEIGHTS_URL" -o /app/models/license_plate_detector.pt && \
     test -s /app/models/license_plate_detector.pt
