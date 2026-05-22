@@ -1,0 +1,89 @@
+After understanding the current architecture much more clearly, I think we should evolve the system carefully and minimally — without breaking the now-stable working flows.
+
+Current reservation + PIN flow is already excellent and should remain untouched.
+
+I want the architecture to evolve toward this behavior:
+
+1. Reservations remain the main source of truth
+A reservation already contains:
+- guest
+- villa
+- date/time range
+- license plates
+- auto-generated PIN
+
+This is correct and should stay exactly as-is.
+
+2. Vehicles should automatically become temporary whitelist entries
+When a reservation is created:
+- the reservation license plate(s) should automatically become ALLOWED only during the reservation validity window
+- after reservation expiry/cancel/delete → vehicle access should automatically expire too
+
+Goal:
+future OCR/barrier cameras should use this directly.
+
+Example:
+Reservation:
+- Villa 1
+- 22.05 → 24.05
+- plate: CA1234AB
+
+Result:
+validateVehicleAccess() should allow that plate only during that time window.
+
+This should be implemented carefully using the existing reservation + vehicle architecture, not a redesign.
+
+3. Permanent vehicles / staff vehicles
+We also need a future-safe concept for:
+- cleaning staff
+- maintenance
+- owner vehicles
+- permanent whitelist vehicles
+
+Minimal approach preferred:
+- maybe vehicle_access_type
+- or always_allow=true
+- or permanent_access=true
+
+No redesign needed.
+Just a minimal extension to the current validateVehicleAccess() logic.
+
+4. Entrances
+Based on the current architecture explanation:
+Entrances are currently passive metadata/grouping and are not part of automated decision logic.
+
+I think we should avoid building more dependency on Entrances for now.
+
+5. Door Controllers
+This should remain the main concept for Hikvision terminals/intercoms.
+
+The current behavior is actually what we want:
+one reservation PIN syncs to all active Door Controllers.
+
+That is intentional.
+
+Goal:
+guest can open all villa-related doors using the same PIN from any entrance/controller.
+
+Please keep this behavior.
+
+6. Access Control + Access Timeline
+From the current architecture explanation:
+these appear to mainly be:
+- audit/event feeds
+- manual override panels
+
+Not core business logic.
+
+Question:
+Can these simply be hidden from the sidebar/UI for now without removing backend functionality?
+
+I do NOT want a major refactor.
+Everything is finally stable and working well.
+
+Please propose:
+- the safest/minimal implementation plan
+- what should remain untouched
+- what should be lightly extended
+- what can safely be hidden from the UI
+without destabilizing the current system.
