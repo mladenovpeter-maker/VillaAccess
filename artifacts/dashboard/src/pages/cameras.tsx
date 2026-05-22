@@ -55,12 +55,19 @@ interface CameraFormData {
   channel_no: string;
   entrance_id: string;
   gate_no: string;
+  // ANPR / OCR (V1)
+  ocr_enabled: boolean;
+  polling_interval_ms: string;
+  ocr_min_confidence: string;
+  anpr_cooldown_seconds: string;
 }
 
 const defaultCameraForm: CameraFormData = {
   name: "", ip_address: "", http_port: "80", username: "admin",
   password: "", protocol: "hikvision", channel_no: "1",
   entrance_id: "", gate_no: "1",
+  ocr_enabled: false, polling_interval_ms: "1500",
+  ocr_min_confidence: "70", anpr_cooldown_seconds: "30",
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -134,6 +141,10 @@ function CameraFormDialog({
         channel_no:  String(editTarget.channel_no ?? 1),
         entrance_id: editTarget.entrance_id ?? "",
         gate_no:     String(editTarget.gate_no ?? 1),
+        ocr_enabled:           editTarget.ocr_enabled ?? false,
+        polling_interval_ms:   String(editTarget.polling_interval_ms ?? 1500),
+        ocr_min_confidence:    String(editTarget.ocr_min_confidence ?? 70),
+        anpr_cooldown_seconds: String(editTarget.anpr_cooldown_seconds ?? 30),
       });
       setChangePassword(false);
     } else {
@@ -188,6 +199,10 @@ function CameraFormDialog({
         channel_no:  Number(form.channel_no) || 1,
         entrance_id: form.entrance_id || null,
         gate_no:     Number(form.gate_no) || 1,
+        ocr_enabled:           form.ocr_enabled,
+        polling_interval_ms:   Math.max(500, Number(form.polling_interval_ms) || 1500),
+        ocr_min_confidence:    Math.min(100, Math.max(0, Number(form.ocr_min_confidence) || 70)),
+        anpr_cooldown_seconds: Math.max(1, Number(form.anpr_cooldown_seconds) || 30),
       };
       if (!editTarget || changePassword) {
         payload.password = form.password;
@@ -301,6 +316,61 @@ function CameraFormDialog({
                 On-board I/O alarm output number used to pulse the gate.
               </p>
             </div>
+          </fieldset>
+
+          {/* ANPR / OCR (V1) */}
+          <fieldset className="space-y-3 border border-border rounded-lg p-3">
+            <legend className="text-xs text-muted-foreground px-1">ANPR / Plate recognition</legend>
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={form.ocr_enabled}
+                onChange={(e) => setForm({ ...form, ocr_enabled: e.target.checked })}
+                className="h-4 w-4"
+              />
+              <span className="text-sm">Enable OCR polling on this camera</span>
+            </label>
+            <div className="grid grid-cols-3 gap-2">
+              <div className="space-y-1.5">
+                <label className="text-[11px] text-muted-foreground">Poll interval (ms)</label>
+                <Input
+                  type="number"
+                  value={form.polling_interval_ms}
+                  onChange={(e) => setForm({ ...form, polling_interval_ms: e.target.value })}
+                  className="font-mono"
+                  min={500}
+                  step={100}
+                  disabled={!form.ocr_enabled}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[11px] text-muted-foreground">Min confidence</label>
+                <Input
+                  type="number"
+                  value={form.ocr_min_confidence}
+                  onChange={(e) => setForm({ ...form, ocr_min_confidence: e.target.value })}
+                  className="font-mono"
+                  min={0}
+                  max={100}
+                  disabled={!form.ocr_enabled}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[11px] text-muted-foreground">Cooldown (s)</label>
+                <Input
+                  type="number"
+                  value={form.anpr_cooldown_seconds}
+                  onChange={(e) => setForm({ ...form, anpr_cooldown_seconds: e.target.value })}
+                  className="font-mono"
+                  min={1}
+                  disabled={!form.ocr_enabled}
+                />
+              </div>
+            </div>
+            <p className="text-[10px] text-muted-foreground/70">
+              Worker polls the snapshot endpoint, runs OCR, and triggers this camera's gate relay
+              when a known/allowed plate is detected. Snapshots are processed in memory only.
+            </p>
           </fieldset>
         </div>
 

@@ -65,6 +65,12 @@ export interface GateResult {
 
 export interface CameraAdapter {
   get_snapshot(): Promise<SnapshotResult>;
+  /**
+   * Fetch a snapshot WITHOUT persisting it to disk. Used by the ANPR
+   * polling loop so high-frequency frames don't fill the uploads volume.
+   * Optional — adapters that don't implement it fall back to get_snapshot().
+   */
+  get_snapshot_ephemeral?(): Promise<SnapshotResult>;
   get_status(): Promise<StatusResult>;
   /** Trigger the on-board I/O relay output to pulse a gate. */
   open_gate(): Promise<GateResult>;

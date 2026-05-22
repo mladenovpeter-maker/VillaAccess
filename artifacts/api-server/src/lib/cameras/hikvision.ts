@@ -28,6 +28,17 @@ export class HikvisionAdapter extends BaseCameraAdapter {
   // ── Snapshot ────────────────────────────────────────────────────────────────
 
   async get_snapshot(): Promise<SnapshotResult> {
+    return this.fetchSnapshot({ persist: true });
+  }
+
+  /**
+   * Memory-only variant for ANPR polling — never writes to disk.
+   */
+  async get_snapshot_ephemeral(): Promise<SnapshotResult> {
+    return this.fetchSnapshot({ persist: false });
+  }
+
+  private async fetchSnapshot(opts: { persist: boolean }): Promise<SnapshotResult> {
     const captured_at = new Date();
     const ch = this.config.channel_no ?? 1;
     const channelPath = `/ISAPI/Streaming/channels/${ch}01/picture`;
@@ -52,9 +63,19 @@ export class HikvisionAdapter extends BaseCameraAdapter {
         : contentType.includes("webp") ? ".webp"
         : ".jpg";
 
-      const { url, size } = await this.saveImageBuffer(buffer, ext);
       const snapshot_base64 = `data:${contentType};base64,${buffer.toString("base64")}`;
 
+      if (!opts.persist) {
+        return {
+          success: true,
+          snapshot_base64,
+          mime_type: contentType,
+          file_size_bytes: buffer.length,
+          captured_at,
+        };
+      }
+
+      const { url, size } = await this.saveImageBuffer(buffer, ext);
       return {
         success: true,
         snapshot_url: url,

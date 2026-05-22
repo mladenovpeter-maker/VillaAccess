@@ -509,6 +509,13 @@ export interface Camera {
   last_status_check: string | null;
   last_status_latency_ms: number | null;
   device_info: CameraDeviceInfo | null;
+  // ANPR / OCR (V1)
+  ocr_enabled: boolean;
+  polling_interval_ms: number;
+  ocr_min_confidence: number;
+  anpr_cooldown_seconds: number;
+  last_anpr_plate: string | null;
+  last_anpr_at: string | null;
   created_at: string;
   updated_at: string;
 }

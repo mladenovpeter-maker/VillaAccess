@@ -9,6 +9,7 @@ import { reservationsRouter } from "./reservations";
 import { vehiclesRouter } from "./vehicles";
 import { accessRouter } from "./access";
 import { camerasRouter } from "./cameras";
+import { anprRouter } from "./anpr";
 import { logsRouter } from "./logs";
 import { snapshotsRouter } from "./snapshots";
 import { eventsRouter } from "./events";
@@ -50,5 +51,9 @@ router.use("/export",           requireAuth, adminOnly, exportRouter);
 router.use("/users",            requireAuth, adminOnly, usersRouter);
 router.use("/temp-credentials", requireAuth, adminOnly, tempCredentialsRouter);
 router.use("/mock",             requireAuth, adminOnly, mockRouter);
+
+// ANPR — worker-token-authed (no user session). Mounted last to avoid
+// any accidental requireAuth middleware inheritance.
+router.use("/anpr", anprRouter);
 
 export default router;

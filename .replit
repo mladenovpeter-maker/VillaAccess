@@ -37,3 +37,8 @@ externalPort = 3000
 
 [nix]
 channel = "stable-25_05"
+
+[userenv]
+
+[userenv.shared]
+ANPR_WORKER_TOKEN = "25177ad72019555ab9217f9b414aba707d32aa4597962733afc6434196203840"

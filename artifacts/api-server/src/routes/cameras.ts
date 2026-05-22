@@ -31,6 +31,12 @@ function serializeCamera(c: typeof camerasTable.$inferSelect) {
     device_info: c.device_info ? (() => {
       try { return JSON.parse(c.device_info!); } catch { return null; }
     })() : null,
+    ocr_enabled: c.ocr_enabled,
+    polling_interval_ms: c.polling_interval_ms,
+    ocr_min_confidence: c.ocr_min_confidence,
+    anpr_cooldown_seconds: c.anpr_cooldown_seconds,
+    last_anpr_plate: c.last_anpr_plate,
+    last_anpr_at: c.last_anpr_at,
     created_at: c.created_at,
     updated_at: c.updated_at,
   };
@@ -126,10 +132,29 @@ router.patch("/:id", requireAuth, requireWriteAccess(), async (req, res) => {
     "name", "ip_address", "rtsp_url", "entrance_id", "model",
     "protocol", "http_port", "username", "password",
     "channel_no", "gate_no",
+    "ocr_enabled", "polling_interval_ms", "ocr_min_confidence",
+    "anpr_cooldown_seconds",
   ];
   const patch: Record<string, unknown> = { updated_at: new Date() };
   for (const key of allowed) {
     if (key in req.body) patch[key] = req.body[key];
+  }
+
+  // Server-side bounds for ANPR config (UI clamps too, but never trust client).
+  if ("polling_interval_ms" in patch) {
+    const v = Number(patch["polling_interval_ms"]);
+    patch["polling_interval_ms"] = Number.isFinite(v) ? Math.max(500, Math.min(60000, Math.round(v))) : 1500;
+  }
+  if ("ocr_min_confidence" in patch) {
+    const v = Number(patch["ocr_min_confidence"]);
+    patch["ocr_min_confidence"] = Number.isFinite(v) ? Math.max(0, Math.min(100, Math.round(v))) : 70;
+  }
+  if ("anpr_cooldown_seconds" in patch) {
+    const v = Number(patch["anpr_cooldown_seconds"]);
+    patch["anpr_cooldown_seconds"] = Number.isFinite(v) ? Math.max(1, Math.min(3600, Math.round(v))) : 30;
+  }
+  if ("ocr_enabled" in patch) {
+    patch["ocr_enabled"] = Boolean(patch["ocr_enabled"]);
   }
 
   const [updated] = await db
