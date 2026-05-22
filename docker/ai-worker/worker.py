@@ -63,7 +63,10 @@ ANPR_OCR_THRESH_BLOCK = int(os.environ.get("ANPR_OCR_THRESH_BLOCK", "25"))
 ANPR_OCR_THRESH_C = int(os.environ.get("ANPR_OCR_THRESH_C", "10"))
 ANPR_DEBUG_DIR = os.environ.get("ANPR_DEBUG_DIR", "").strip()  # e.g. /tmp/anpr_debug
 TESSERACT_LANG = os.environ.get("TESSERACT_LANG", "eng")
-TESSERACT_PSM = os.environ.get("TESSERACT_PSM", "7")
+# Plates are a single word/token, not a sentence line, so PSM 8 ("treat the
+# image as a single word") usually beats PSM 7. Flip to "13" (raw line, no
+# layout analysis) without a rebuild if PSM 8 is still weak.
+TESSERACT_PSM = os.environ.get("TESSERACT_PSM", "8")
 TESSERACT_WHITELIST = os.environ.get(
     # Bulgarian plates use only the 13 Latin glyphs that match Cyrillic shapes
     # (А В С Е К М Н О Р Т У Х) plus digits. Narrowing the whitelist this hard
