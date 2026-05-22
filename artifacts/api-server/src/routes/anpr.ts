@@ -23,16 +23,32 @@ const router = Router();
 // ─── Worker auth middleware ──────────────────────────────────────────────────
 
 function requireWorkerToken(req: any, res: any, next: any) {
-  const expected = process.env["ANPR_WORKER_TOKEN"];
-  if (!expected) {
+  const expectedRaw = process.env["ANPR_WORKER_TOKEN"];
+  if (!expectedRaw) {
     res.status(503).json({
       detail: "ANPR_WORKER_TOKEN is not configured on the server",
     });
     return;
   }
-  const header = req.headers["authorization"] ?? "";
-  const token = header.startsWith("Bearer ") ? header.slice(7) : "";
-  if (token !== expected) {
+  const expected = expectedRaw.trim();
+
+  // Accept either:
+  //   Authorization: Bearer <token>
+  //   X-Anpr-Token: <token>
+  // Express lowercases all incoming header names.
+  const authHeader = String(req.headers["authorization"] ?? "").trim();
+  const xHeader = String(req.headers["x-anpr-token"] ?? "").trim();
+  const bearer = authHeader.toLowerCase().startsWith("bearer ")
+    ? authHeader.slice(7).trim()
+    : "";
+  const token = bearer || xHeader;
+
+  if (!token || token !== expected) {
+    console.warn(
+      `[anpr] auth reject path=${req.path} ` +
+        `expected_len=${expected.length} bearer_len=${bearer.length} ` +
+        `xtoken_len=${xHeader.length}`,
+    );
     res.status(401).json({ detail: "Invalid worker token" });
     return;
   }
