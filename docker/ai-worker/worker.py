@@ -106,6 +106,10 @@ def fetch_snapshot(camera_id: str) -> Optional[bytes]:
         if r.status_code != 200:
             log.warning("snapshot %s → HTTP %s", camera_id, r.status_code)
             return None
+        ct = r.headers.get("Content-Type", "")
+        if ct.startswith("image/"):
+            return r.content
+        # Backwards-compat: older backend returned JSON with data URL.
         data_url = r.json().get("snapshot_base64", "")
         if "," not in data_url:
             return None

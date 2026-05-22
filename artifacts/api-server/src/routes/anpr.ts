@@ -108,13 +108,17 @@ router.get("/snapshot/:id", async (req, res) => {
     return;
   }
 
-  res.json({
-    camera_id: cam.id,
-    captured_at: result.captured_at,
-    mime_type: result.mime_type ?? "image/jpeg",
-    file_size_bytes: result.file_size_bytes ?? null,
-    snapshot_base64: result.snapshot_base64, // "data:image/jpeg;base64,..."
-  });
+  // snapshot_base64 is a data URL: "data:image/jpeg;base64,<payload>"
+  const comma = result.snapshot_base64.indexOf(",");
+  if (comma < 0) {
+    res.status(502).json({ detail: "Malformed snapshot data URL" });
+    return;
+  }
+  const buf = Buffer.from(result.snapshot_base64.slice(comma + 1), "base64");
+  res.setHeader("Content-Type", result.mime_type ?? "image/jpeg");
+  res.setHeader("Content-Length", String(buf.length));
+  res.setHeader("X-Captured-At", result.captured_at ?? "");
+  res.status(200).end(buf);
 });
 
 // ─── POST /api/anpr/detection ────────────────────────────────────────────────
