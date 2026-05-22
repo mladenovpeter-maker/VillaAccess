@@ -56,6 +56,11 @@ YOLO_CONF = float(os.environ.get("YOLO_CONF", "0.25"))
 #              bottom country/dealer bands)
 ANPR_CROP_SHRINK_X = float(os.environ.get("ANPR_CROP_SHRINK_X", "0.12"))
 ANPR_CROP_SHRINK_Y = float(os.environ.get("ANPR_CROP_SHRINK_Y", "0.20"))
+# Gentle preprocessing knobs. Defaults chosen to preserve grayscale edges
+# and avoid over-binarisation that was killing Tesseract recall.
+ANPR_OCR_UPSCALE = float(os.environ.get("ANPR_OCR_UPSCALE", "2.0"))
+ANPR_OCR_THRESH_BLOCK = int(os.environ.get("ANPR_OCR_THRESH_BLOCK", "25"))
+ANPR_OCR_THRESH_C = int(os.environ.get("ANPR_OCR_THRESH_C", "10"))
 ANPR_DEBUG_DIR = os.environ.get("ANPR_DEBUG_DIR", "").strip()  # e.g. /tmp/anpr_debug
 TESSERACT_LANG = os.environ.get("TESSERACT_LANG", "eng")
 TESSERACT_PSM = os.environ.get("TESSERACT_PSM", "7")
@@ -205,29 +210,40 @@ def _shrink_box(x1: int, y1: int, x2: int, y2: int, W: int, H: int) -> tuple[int
 
 
 def _preprocess_plate_crop(bgr: np.ndarray) -> np.ndarray:
-    """Grayscale → 3× upscale → light denoise → adaptive threshold.
+    """Minimal, edge-preserving preprocessing for Tesseract.
 
-    The bounding-box shrink already strips the surrounding car/frame and the
-    top/bottom country bands, so preprocessing focuses purely on producing
-    clean black-on-white text for Tesseract.
+    Pipeline (gentle on purpose — heavy thresholding/morphology was destroying
+    character readability and producing 0 OCR candidates):
+      1. grayscale
+      2. 2× INTER_CUBIC upscale
+      3. mild bilateral filter (preserves edges, removes noise)
+      4. light adaptive Gaussian threshold (blockSize=25, C=10)
+      5. polarity flip so glyphs are dark on light background
+
+    No erosion, no dilation, no sharpening, no global Otsu.
     """
     h, w = bgr.shape[:2]
     if h == 0 or w == 0:
         return bgr
     # 1. Grayscale.
     gray = cv2.cvtColor(bgr, cv2.COLOR_BGR2GRAY)
-    # 2. 3× upscale with INTER_CUBIC for clean character strokes.
-    upscaled = cv2.resize(gray, None, fx=3.0, fy=3.0, interpolation=cv2.INTER_CUBIC)
-    # 3. Slight denoise that preserves character edges.
-    denoised = cv2.bilateralFilter(upscaled, d=5, sigmaColor=25, sigmaSpace=25)
-    # 4. Adaptive Gaussian threshold — robust to uneven lighting / glare.
+    # 2. Mild upscale.
+    upscaled = cv2.resize(
+        gray, None, fx=ANPR_OCR_UPSCALE, fy=ANPR_OCR_UPSCALE,
+        interpolation=cv2.INTER_CUBIC,
+    )
+    # 3. Edge-preserving denoise.
+    denoised = cv2.bilateralFilter(upscaled, d=7, sigmaColor=50, sigmaSpace=50)
+    # 4. Light adaptive threshold (must be odd, >= 3).
+    block = ANPR_OCR_THRESH_BLOCK if ANPR_OCR_THRESH_BLOCK % 2 == 1 else ANPR_OCR_THRESH_BLOCK + 1
+    block = max(3, block)
     binar = cv2.adaptiveThreshold(
         denoised,
         maxValue=255,
         adaptiveMethod=cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
         thresholdType=cv2.THRESH_BINARY,
-        blockSize=31,
-        C=15,
+        blockSize=block,
+        C=ANPR_OCR_THRESH_C,
     )
     # 5. Ensure dark text on light background for Tesseract.
     if np.mean(binar) < 127:
