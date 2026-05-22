@@ -241,10 +241,11 @@ export class HikvisionIntercomService {
     const doorPath = `/ISAPI/AccessControl/RemoteControl/door/${this.config.relay_no}`;
     const t0 = Date.now();
 
-    // Hikvision ACS ISAPI RemoteControl/door requires XML — same as camera relay ISAPI.
-    // JSON bodies are silently rejected with statusString:"deviceBusy" or HTTP 400.
+    // Hikvision ACS ISAPI RemoteControl/door requires XML with the Hikvision
+    // namespace declaration. Without xmlns the device returns an error even
+    // though the manual curl (which includes it) succeeds.
     const doorXml = (cmd: "open" | "close") =>
-      `<?xml version="1.0" encoding="UTF-8"?>\n<RemoteControlDoor version="2.0">\n  <cmd>${cmd}</cmd>\n</RemoteControlDoor>`;
+      `<?xml version="1.0" encoding="UTF-8"?>\n<RemoteControlDoor version="2.0" xmlns="http://www.isapi.org/ver20/XMLSchema">\n  <cmd>${cmd}</cmd>\n</RemoteControlDoor>`;
 
     let openError: string | undefined;
     let openStatus = 0;
