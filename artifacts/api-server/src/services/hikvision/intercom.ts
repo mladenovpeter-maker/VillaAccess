@@ -55,9 +55,11 @@ interface DigestChallenge {
 }
 
 function parseDigestChallenge(wwwAuth: string): DigestChallenge {
+  // Case-insensitive: RFC 7235 says parameter names in WWW-Authenticate are
+  // case-insensitive. Hikvision typically sends lowercase but we must not assume.
   const g = (key: string) =>
-    wwwAuth.match(new RegExp(`${key}="([^"]+)"`))?.[1] ??
-    wwwAuth.match(new RegExp(`${key}=([^,\\s]+)`))?.[1];
+    wwwAuth.match(new RegExp(`${key}="([^"]+)"`, "i"))?.[1] ??
+    wwwAuth.match(new RegExp(`${key}=([^,\\s]+)`, "i"))?.[1];
   return {
     realm: g("realm") ?? "",
     nonce: g("nonce") ?? "",
@@ -205,8 +207,24 @@ export class HikvisionIntercomService {
   async testConnectivity(): Promise<HikResult & { device_name?: string; serial?: string }> {
     try {
       const r = await this.request("GET", "/ISAPI/System/deviceInfo");
-      if (!r.ok) return { success: false, raw_status: r.status, error: `HTTP ${r.status}` };
-      // Parse minimal fields from JSON or XML response
+      console.log(`[acs.testConnectivity] HTTP ${r.status} body=${r.text.slice(0, 200)}`);
+
+      // Connectivity = device is reachable on the network.
+      // Any HTTP response (1xx–4xx) means the device answered — it is ONLINE.
+      // Only 5xx (device fault) or an exception (timeout/refused) means OFFLINE.
+      // Auth failures (401) confirm the device is present; credentials are a
+      // separate concern handled by openDoor and pushPin.
+      if (r.status >= 500) {
+        return { success: false, raw_status: r.status, error: `Device fault: HTTP ${r.status}` };
+      }
+
+      // Non-200 but still online (e.g. 401 auth challenge) — report reachable, no device info
+      if (!r.ok) {
+        console.log(`[acs.testConnectivity] device reachable but non-OK (${r.status}) — marking online`);
+        return { success: true, raw_status: r.status };
+      }
+
+      // 200 — parse device name / serial from JSON or XML
       let device_name: string | undefined;
       let serial: string | undefined;
       try {
@@ -221,7 +239,9 @@ export class HikvisionIntercomService {
       }
       return { success: true, device_name, serial };
     } catch (err) {
-      return { success: false, error: err instanceof Error ? err.message : String(err) };
+      const msg = err instanceof Error ? err.message : String(err);
+      console.log(`[acs.testConnectivity] exception — device unreachable: ${msg}`);
+      return { success: false, error: msg };
     }
   }
 
