@@ -75,11 +75,16 @@ except Exception as e:
 log.info("Loading PaddleOCR (lang=%s, CPU) ...", PADDLE_LANG)
 try:
     from paddleocr import PaddleOCR  # heavy import
+    # enable_mkldnn=False + cpu_threads=1 avoid a known paddlepaddle 2.6.x
+    # MKL-DNN/OpenMP init deadlock on Debian-slim CPU runtimes that causes
+    # PaddleOCR() to hang indefinitely after the model download completes.
     OCR = PaddleOCR(
         lang=PADDLE_LANG,
         use_angle_cls=False,
         show_log=False,
         use_gpu=False,
+        enable_mkldnn=False,
+        cpu_threads=1,
     )
     log.info("PaddleOCR ready")
 except Exception as e:

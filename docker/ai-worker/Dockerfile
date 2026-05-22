@@ -51,6 +51,11 @@ RUN mkdir -p /app/models && \
 COPY docker/ai-worker/worker.py ./worker.py
 
 ENV PYTHONUNBUFFERED=1 \
-    YOLO_PLATE_WEIGHTS=/app/models/license_plate_detector.pt
+    YOLO_PLATE_WEIGHTS=/app/models/license_plate_detector.pt \
+    OMP_NUM_THREADS=1 \
+    MKL_NUM_THREADS=1 \
+    CPU_NUM=1 \
+    FLAGS_use_mkldnn=0 \
+    KMP_DUPLICATE_LIB_OK=TRUE
 
 CMD ["python", "-u", "worker.py"]
