@@ -48,6 +48,14 @@ YOLO_PLATE_WEIGHTS = os.environ.get(
     "YOLO_PLATE_WEIGHTS", "/app/models/license_plate_detector.pt"
 )
 YOLO_CONF = float(os.environ.get("YOLO_CONF", "0.25"))
+# Shrink the YOLO bounding box inward before OCR so Tesseract only sees the
+# actual plate characters, not the surrounding bumper/frame text. Values are
+# fractions of the YOLO box width / height removed from EACH side.
+#   x = 0.12 → keep middle 76 % horizontally
+#   y = 0.20 → keep middle 60 % vertically (more aggressive — strips top and
+#              bottom country/dealer bands)
+ANPR_CROP_SHRINK_X = float(os.environ.get("ANPR_CROP_SHRINK_X", "0.12"))
+ANPR_CROP_SHRINK_Y = float(os.environ.get("ANPR_CROP_SHRINK_Y", "0.20"))
 ANPR_DEBUG_DIR = os.environ.get("ANPR_DEBUG_DIR", "").strip()  # e.g. /tmp/anpr_debug
 TESSERACT_LANG = os.environ.get("TESSERACT_LANG", "eng")
 TESSERACT_PSM = os.environ.get("TESSERACT_PSM", "7")
@@ -177,33 +185,42 @@ def post_detection(payload: dict) -> None:
 
 # ─── OCR pipeline ──────────────────────────────────────────────────────────────
 
-# Fraction of the plate crop's height to keep (top portion). EU/Bulgarian
-# plates often carry a small country-code / dealer line under the main
-# characters which feeds garbage like "HACTAWCEPBUG" into Tesseract. Keeping
-# the top 80 % drops that band while leaving padding around tall glyphs.
-PLATE_TOP_FRACTION = float(os.environ.get("ANPR_PLATE_TOP_FRACTION", "0.80"))
+def _shrink_box(x1: int, y1: int, x2: int, y2: int, W: int, H: int) -> tuple[int, int, int, int]:
+    """Shrink a YOLO bounding box inward by ANPR_CROP_SHRINK_{X,Y}.
+
+    Returns the shrunken (x1, y1, x2, y2) clipped to image bounds. If the
+    shrink would collapse the box, falls back to the original.
+    """
+    bw = max(1, x2 - x1)
+    bh = max(1, y2 - y1)
+    dx = int(bw * ANPR_CROP_SHRINK_X)
+    dy = int(bh * ANPR_CROP_SHRINK_Y)
+    nx1 = max(0, x1 + dx)
+    ny1 = max(0, y1 + dy)
+    nx2 = min(W, x2 - dx)
+    ny2 = min(H, y2 - dy)
+    if nx2 - nx1 < 8 or ny2 - ny1 < 8:
+        return x1, y1, x2, y2
+    return nx1, ny1, nx2, ny2
 
 
 def _preprocess_plate_crop(bgr: np.ndarray) -> np.ndarray:
-    """Crop bottom band → grayscale → 3× upscale → light denoise → adaptive threshold.
+    """Grayscale → 3× upscale → light denoise → adaptive threshold.
 
-    Tuned for Bulgarian/EU plates (e.g. ``CA3477MM``). Edges are preserved
-    by skipping aggressive sharpening; adaptive thresholding handles uneven
-    lighting better than Otsu on real-world snapshots.
+    The bounding-box shrink already strips the surrounding car/frame and the
+    top/bottom country bands, so preprocessing focuses purely on producing
+    clean black-on-white text for Tesseract.
     """
     h, w = bgr.shape[:2]
     if h == 0 or w == 0:
         return bgr
-    # 1. Drop the small text band beneath the main plate characters.
-    keep_h = max(1, int(h * PLATE_TOP_FRACTION))
-    bgr = bgr[:keep_h, :, :]
-    # 2. Grayscale.
+    # 1. Grayscale.
     gray = cv2.cvtColor(bgr, cv2.COLOR_BGR2GRAY)
-    # 3. 3× upscale with INTER_CUBIC for clean character strokes.
+    # 2. 3× upscale with INTER_CUBIC for clean character strokes.
     upscaled = cv2.resize(gray, None, fx=3.0, fy=3.0, interpolation=cv2.INTER_CUBIC)
-    # 4. Slight denoise that preserves character edges.
+    # 3. Slight denoise that preserves character edges.
     denoised = cv2.bilateralFilter(upscaled, d=5, sigmaColor=25, sigmaSpace=25)
-    # 5. Adaptive Gaussian threshold — robust to uneven lighting / glare.
+    # 4. Adaptive Gaussian threshold — robust to uneven lighting / glare.
     binar = cv2.adaptiveThreshold(
         denoised,
         maxValue=255,
@@ -212,7 +229,7 @@ def _preprocess_plate_crop(bgr: np.ndarray) -> np.ndarray:
         blockSize=31,
         C=15,
     )
-    # 6. Ensure dark text on light background for Tesseract.
+    # 5. Ensure dark text on light background for Tesseract.
     if np.mean(binar) < 127:
         binar = cv2.bitwise_not(binar)
     return binar
@@ -295,15 +312,14 @@ def ocr_plate(jpeg_bytes: bytes, camera_id: str = "unknown") -> Optional[tuple[s
             continue
         for box in boxes:
             try:
-                x1, y1, x2, y2 = [int(v) for v in box.xyxy[0].tolist()]
+                rx1, ry1, rx2, ry2 = [int(v) for v in box.xyxy[0].tolist()]
                 det_conf = float(box.conf[0].item()) if hasattr(box, "conf") else -1.0
             except Exception:
                 continue
-            # small padding helps recognition on tight crops
-            pad_x = max(2, (x2 - x1) // 20)
-            pad_y = max(2, (y2 - y1) // 10)
-            x1 = max(0, x1 - pad_x); y1 = max(0, y1 - pad_y)
-            x2 = min(W, x2 + pad_x); y2 = min(H, y2 + pad_y)
+            # Shrink the YOLO box inward so Tesseract only sees the plate
+            # characters (not bumper/frame text on either side or country
+            # bands above/below).
+            x1, y1, x2, y2 = _shrink_box(rx1, ry1, rx2, ry2, W, H)
             if x2 <= x1 or y2 <= y1:
                 continue
             crop = bgr[y1:y2, x1:x2]
@@ -311,8 +327,8 @@ def ocr_plate(jpeg_bytes: bytes, camera_id: str = "unknown") -> Optional[tuple[s
             _save_debug_crop(camera_id, crop, prepped)
             candidates = _run_tesseract_ocr(prepped)
             log.info(
-                "[%s] YOLO box=(%d,%d,%d,%d) det_conf=%.2f → %d OCR candidate(s)",
-                camera_id, x1, y1, x2, y2, det_conf, len(candidates),
+                "[%s] YOLO box=(%d,%d,%d,%d) shrunk=(%d,%d,%d,%d) det_conf=%.2f → %d OCR candidate(s)",
+                camera_id, rx1, ry1, rx2, ry2, x1, y1, x2, y2, det_conf, len(candidates),
             )
             for text, prob in candidates:
                 norm = normalise_plate(text)
