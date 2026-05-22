@@ -132,16 +132,21 @@ export class HikvisionIntercomService {
   private async request(
     method: string,
     path: string,
-    body?: unknown,
+    body?: string | unknown,
+    contentType?: string,
   ): Promise<{ ok: boolean; status: number; text: string }> {
     const url = `${this.baseUrl}${path}`;
     const { username, password } = this.config;
-    const bodyStr = body != null ? JSON.stringify(body) : undefined;
+    const bodyStr =
+      body == null     ? undefined
+      : typeof body === "string" ? body
+      : JSON.stringify(body);
+    const ct = contentType ?? (bodyStr != null ? "application/json" : undefined);
     const timeoutMs = 10_000;
 
     const baseHeaders: Record<string, string> = {
       Accept: "*/*",
-      ...(bodyStr != null ? { "Content-Type": "application/json" } : {}),
+      ...(ct ? { "Content-Type": ct } : {}),
     };
 
     // ── Attempt 1: Basic auth ─────────────────────────────────────────────────
@@ -236,6 +241,11 @@ export class HikvisionIntercomService {
     const doorPath = `/ISAPI/AccessControl/RemoteControl/door/${this.config.relay_no}`;
     const t0 = Date.now();
 
+    // Hikvision ACS ISAPI RemoteControl/door requires XML — same as camera relay ISAPI.
+    // JSON bodies are silently rejected with statusString:"deviceBusy" or HTTP 400.
+    const doorXml = (cmd: "open" | "close") =>
+      `<?xml version="1.0" encoding="UTF-8"?>\n<RemoteControlDoor version="2.0">\n  <cmd>${cmd}</cmd>\n</RemoteControlDoor>`;
+
     let openError: string | undefined;
     let openStatus = 0;
     let closeError: string | undefined;
@@ -243,10 +253,15 @@ export class HikvisionIntercomService {
     try {
       // 1) Open command
       try {
-        const r = await this.request("PUT", doorPath, { RemoteControlDoor: { cmd: "open" } });
+        const body = doorXml("open");
+        console.log(`[acs.openDoor] ▶ PUT ${this.baseUrl}${doorPath}`);
+        console.log(`[acs.openDoor] body: ${body}`);
+        const r = await this.request("PUT", doorPath, body, "application/xml");
         openStatus = r.status;
+        console.log(`[acs.openDoor] open status=${r.status} body=${r.text.slice(0, 500)}`);
         if (!r.ok) openError = parseHikError(r.text) ?? `HTTP ${r.status}`;
       } catch (err) {
+        console.error("[acs.openDoor] open threw:", err);
         openError = err instanceof Error ? err.message : String(err);
       }
 
@@ -257,15 +272,20 @@ export class HikvisionIntercomService {
     } finally {
       // 2) Close command — ALWAYS attempt
       try {
-        const r = await this.request("PUT", doorPath, { RemoteControlDoor: { cmd: "close" } });
+        const body = doorXml("close");
+        console.log(`[acs.openDoor] ◀ PUT ${this.baseUrl}${doorPath} (close)`);
+        const r = await this.request("PUT", doorPath, body, "application/xml");
+        console.log(`[acs.openDoor] close status=${r.status} body=${r.text.slice(0, 200)}`);
         if (!r.ok) closeError = parseHikError(r.text) ?? `HTTP ${r.status}`;
       } catch (err) {
+        console.error("[acs.openDoor] close threw:", err);
         closeError = err instanceof Error ? err.message : String(err);
       }
     }
 
     const success = !openError && !closeError;
     const errorParts = [openError, closeError].filter(Boolean);
+    console.log(`[acs.openDoor] result: success=${success} elapsed=${Date.now() - t0}ms${success ? "" : ` error=${errorParts.join("; ")}`}`);
     return {
       success,
       raw_status: openStatus,

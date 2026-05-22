@@ -271,19 +271,36 @@ function IntercomCard({ intercom, entranceName, onEdit, onDelete }: {
   const { t } = useTranslation();
   const qc = useQueryClient();
 
+  // Patch a single intercom's fields in the cached list immediately, without
+  // waiting for a background refetch. Prevents stale "offline/failed" after a
+  // successful server-side operation.
+  const patchCache = (patch: Partial<Intercom>) =>
+    qc.setQueryData<Intercom[]>(["intercoms"], (old) =>
+      old?.map((ic) => (ic.id === intercom.id ? { ...ic, ...patch } : ic)),
+    );
+
   const openMut = useMutation({
     mutationFn: () => intercomsApi.open(intercom.id),
-    onSuccess: (r: any) => toast({
-      title: r?.success ? t("intercoms.doorOpened") : t("intercoms.doorFailed"),
-      description: intercom.name,
-      variant: r?.success ? "default" : "destructive",
-    }),
+    onSuccess: (r: any) => {
+      qc.invalidateQueries({ queryKey: ["intercoms"] });
+      toast({
+        title: r?.success ? t("intercoms.doorOpened") : t("intercoms.doorFailed"),
+        description: r?.error ? `${intercom.name}: ${r.error}` : intercom.name,
+        variant: r?.success ? "default" : "destructive",
+      });
+    },
     onError: (e: any) => toast({ title: t("intercoms.doorFailed"), description: e.message, variant: "destructive" }),
   });
 
   const pingMut = useMutation({
     mutationFn: () => intercomsApi.testConnectivity(intercom.id),
     onSuccess: (r: any) => {
+      // Immediately reflect new status in cache — don't wait 30s for poll
+      patchCache({
+        status: r?.success ? "online" : "offline",
+        last_status_check: new Date().toISOString(),
+        ...(r?.latency_ms != null ? { last_status_latency_ms: r.latency_ms } : {}),
+      } as any);
       qc.invalidateQueries({ queryKey: ["intercoms"] });
       toast({
         title: r?.success ? t("intercoms.connectivityOk") : t("intercoms.connectivityFailed"),
@@ -299,6 +316,10 @@ function IntercomCard({ intercom, entranceName, onEdit, onDelete }: {
   const syncMut = useMutation({
     mutationFn: () => intercomsApi.testPinSync(intercom.id),
     onSuccess: (r: any) => {
+      patchCache({
+        last_sync_status: r?.success ? "success" : "failed",
+        last_sync_at: new Date().toISOString(),
+      } as any);
       qc.invalidateQueries({ queryKey: ["intercoms"] });
       toast({
         title: r?.success ? t("intercoms.syncOk") : t("intercoms.syncFailed"),
