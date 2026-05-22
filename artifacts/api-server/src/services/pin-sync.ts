@@ -86,6 +86,14 @@ export async function syncPinToIntercoms(
 
   const intercoms = await getSyncTargets();
 
+  console.log(`[pin-sync] ──────────────────────────────────────────────────────`);
+  console.log(`[pin-sync] reservation=${reservation.id}`);
+  console.log(`[pin-sync] guest="${reservation.guest_name}"`);
+  console.log(`[pin-sync] pin=${pin}`);
+  console.log(`[pin-sync] employeeNo=${employeeNo}  (length=${employeeNo.length})`);
+  console.log(`[pin-sync] validFrom=${validFrom.toISOString()}  →  ${validTo.toISOString()}`);
+  console.log(`[pin-sync] targets: ${intercoms.length} intercom(s) [${intercoms.map((i) => i.name).join(", ")}]`);
+
   const results: SyncResult[] = await Promise.all(
     intercoms.map(async (ic) => {
       if (ic.protocol !== "hikvision") {

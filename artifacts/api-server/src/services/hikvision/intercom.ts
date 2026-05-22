@@ -389,14 +389,38 @@ export class HikvisionIntercomService {
         },
       };
 
-      const r = await this.request("PUT", "/ISAPI/AccessControl/UserInfo/SetUp?format=JSON", body);
+      const url = `${this.baseUrl}/ISAPI/AccessControl/UserInfo/SetUp?format=json`;
+      console.log(`[acs.pushPin] ▶ PUT ${url}`);
+      console.log(`[acs.pushPin] payload:\n${JSON.stringify(body, null, 2)}`);
+
+      const r = await this.request("PUT", "/ISAPI/AccessControl/UserInfo/SetUp?format=json", body);
+
+      console.log(`[acs.pushPin] ← HTTP ${r.status}`);
+      console.log(`[acs.pushPin] ← upstream body: ${r.text}`);
 
       if (!r.ok) {
-        return { success: false, raw_status: r.status, error: parseHikError(r.text) ?? `HTTP ${r.status}` };
+        const parsed = parseHikError(r.text) ?? `HTTP ${r.status}`;
+        console.error(`[acs.pushPin] FAILED: ${parsed}`);
+        return { success: false, raw_status: r.status, error: parsed, upstream_body: r.text };
       }
+
+      // Hikvision often returns 200 OK with a body that still indicates failure
+      // (e.g. statusCode != 1). Inspect the parsed status to catch that case.
+      try {
+        const j = JSON.parse(r.text);
+        if (j.statusCode != null && j.statusCode !== 1) {
+          const msg = j.statusString ?? j.subStatusCode ?? `statusCode=${j.statusCode}`;
+          console.error(`[acs.pushPin] FAILED (200 but error body): ${msg}`);
+          return { success: false, raw_status: r.status, error: msg, upstream_body: r.text };
+        }
+      } catch { /* not JSON, treat as success */ }
+
+      console.log(`[acs.pushPin] OK`);
       return { success: true };
     } catch (err) {
-      return { success: false, error: err instanceof Error ? err.message : String(err) };
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`[acs.pushPin] threw: ${msg}`);
+      return { success: false, error: msg };
     }
   }
 
