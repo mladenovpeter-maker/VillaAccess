@@ -328,10 +328,20 @@ router.put("/:id", requireAuth, async (req: any, res) => {
 
 // ── DELETE /:id ───────────────────────────────────────────────────────────────
 
-router.delete("/:id", requireAuth, async (req, res) => {
+router.delete("/:id", requireAuth, async (req: any, res) => {
   const rows = await db.select().from(reservationsTable).where(eq(reservationsTable.id, req.params.id)).limit(1);
   if (rows[0]) {
-    void revokePinFromIntercoms(rows[0]);
+    // Await revoke so any device-side failure is surfaced in logs BEFORE the
+    // row is gone. We still proceed to delete the reservation even if revoke
+    // fails — the expiry sweep will retry the orphaned device-side record.
+    try {
+      const result = await revokePinFromIntercoms(rows[0], req.user?.id);
+      if (result.failed > 0) {
+        console.warn(`[reservations.delete] revoke had ${result.failed} failure(s) for reservation ${rows[0].id}`);
+      }
+    } catch (err) {
+      console.error(`[reservations.delete] revoke threw for reservation ${rows[0].id}:`, err);
+    }
   }
   await db.delete(reservationsTable).where(eq(reservationsTable.id, req.params.id));
   res.status(204).send();
@@ -425,8 +435,17 @@ router.post("/:id/cancel", requireAuth, async (req: any, res) => {
     payload: { guest_name: updated.guest_name, reason: body.success ? (body.data.reason ?? null) : null },
   });
 
-  // Revoke PIN on cancellation
-  void revokePinFromIntercoms(updated, req.user?.id);
+  // Revoke PIN on cancellation — await so the device-side state matches the
+  // DB state before we respond. Failure is logged but does not block the
+  // cancellation (sweep will retry the orphaned device record).
+  try {
+    const result = await revokePinFromIntercoms(updated, req.user?.id);
+    if (result.failed > 0) {
+      console.warn(`[reservations.cancel] revoke had ${result.failed} failure(s) for reservation ${updated.id}`);
+    }
+  } catch (err) {
+    console.error(`[reservations.cancel] revoke threw for reservation ${updated.id}:`, err);
+  }
 
   res.json(await enrichReservation(updated, true));
 });

@@ -23,7 +23,7 @@
 
 import { db } from "@workspace/db";
 import { intercomsTable, reservationsTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { and, eq, inArray, isNotNull } from "drizzle-orm";
 import { createHash } from "node:crypto";
 import { HikvisionIntercomService } from "./hikvision/intercom";
 import { eventBus } from "../lib/events";
@@ -216,9 +216,15 @@ export async function revokePinFromIntercoms(
   const failed    = results.filter((r) => !r.success).length;
   const overall   = succeeded === results.length ? "synced" : succeeded === 0 ? "failed" : "partial";
 
+  // Only mark fully-revoked when every intercom succeeded. Partial/total
+  // failures must remain retry-eligible so the expiry sweep can pick them up.
   await db
     .update(reservationsTable)
-    .set({ pin_sync_status: "revoked", pin_last_synced_at: new Date(), updated_at: new Date() })
+    .set({
+      pin_sync_status:    failed === 0 ? "revoked" : "failed",
+      pin_last_synced_at: new Date(),
+      updated_at:         new Date(),
+    })
     .where(eq(reservationsTable.id, reservation.id));
 
   void eventBus.publish({
@@ -232,4 +238,96 @@ export async function revokePinFromIntercoms(
   });
 
   return { total: results.length, succeeded, failed, results, overall_status: overall };
+}
+
+// ─── Expiry sweep ─────────────────────────────────────────────────────────────
+
+/**
+ * Sweep expired/cancelled/completed reservations and revoke any PIN records
+ * still marked as `synced` on a device.
+ *
+ * Note on security: Hikvision DS-K terminals natively enforce the `Valid.endTime`
+ * window — a PIN whose validity has passed is rejected at the keypad even if the
+ * user record still exists on the device. This sweep is therefore a *housekeeping*
+ * pass, not a security control:
+ *   - keeps device user-slot count low (terminals cap at ~10k users)
+ *   - cleans up records left orphaned by transient revoke failures
+ *     (network blips during delete/cancel/checkout)
+ *   - flips reservation.pin_sync_status from "synced" → "revoked" so the
+ *     dashboard reflects reality
+ *
+ * Idempotent: revokePin treats "no matched user" as success, so re-running is safe.
+ */
+export async function sweepExpiredPins(): Promise<{ scanned: number; revoked: number; failed: number }> {
+  const now = new Date();
+
+  // Candidates: flagged synced OR failed (failed = previous revoke didn't fully
+  // succeed — must keep retrying), with a PIN code set. Then filter to:
+  //   (a) validity window has passed, OR
+  //   (b) reservation was cancelled/completed (any leftover device record is orphaned)
+  const expired = await db
+    .select()
+    .from(reservationsTable)
+    .where(
+      and(
+        inArray(reservationsTable.pin_sync_status, ["synced", "failed"]),
+        isNotNull(reservationsTable.pin_code),
+      ),
+    );
+
+  const due = expired.filter((r) => {
+    if (r.status === "cancelled" || r.status === "completed") return true;
+    if (r.pin_valid_to && r.pin_valid_to.getTime() < now.getTime()) return true;
+    return false;
+  });
+
+  if (due.length === 0) return { scanned: expired.length, revoked: 0, failed: 0 };
+
+  console.log(`[pin-sweep] ${due.length} expired/orphaned PIN(s) to revoke (of ${expired.length} synced)`);
+
+  let revoked = 0;
+  let failed  = 0;
+  for (const r of due) {
+    try {
+      const result = await revokePinFromIntercoms(r);
+      if (result.failed === 0) revoked++;
+      else failed++;
+    } catch (err) {
+      console.error(`[pin-sweep] revoke threw for ${r.id}:`, err);
+      failed++;
+    }
+  }
+
+  console.log(`[pin-sweep] done: revoked=${revoked} failed=${failed}`);
+  return { scanned: expired.length, revoked, failed };
+}
+
+/**
+ * Start the periodic sweep. Safe to call once at server boot.
+ * Returns the interval handle so callers can clearTimeout on shutdown if needed.
+ *
+ * Reentrancy: if a previous sweep is still running (e.g. device slow / many
+ * expired rows), the next tick is skipped to avoid hammering the device with
+ * overlapping revoke storms.
+ */
+let sweepInFlight = false;
+async function runSweepGuarded(label: string) {
+  if (sweepInFlight) {
+    console.log(`[pin-sweep] ${label} skipped — previous sweep still running`);
+    return;
+  }
+  sweepInFlight = true;
+  try {
+    await sweepExpiredPins();
+  } catch (err) {
+    console.error(`[pin-sweep] ${label} failed:`, err);
+  } finally {
+    sweepInFlight = false;
+  }
+}
+
+export function startExpirySweep(intervalMs = 5 * 60 * 1000): NodeJS.Timeout {
+  // Kick once shortly after boot (delayed so seeders / migrations settle), then on interval.
+  setTimeout(() => void runSweepGuarded("initial run"), 30_000);
+  return setInterval(() => void runSweepGuarded("periodic run"), intervalMs);
 }

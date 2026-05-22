@@ -450,16 +450,43 @@ export class HikvisionIntercomService {
         },
       };
 
-      const r = await this.request("PUT", "/ISAPI/AccessControl/UserInfo/Delete?format=JSON", body);
+      // Match pushPin's working casing: lowercase ?format=json.
+      // Hikvision firmware is case-sensitive on this query parameter on some
+      // builds; uppercase JSON was silently rejecting the delete.
+      const path = "/ISAPI/AccessControl/UserInfo/Delete?format=json";
+      console.log(`[acs.revokePin] ▶ PUT ${this.baseUrl}${path}`);
+      console.log(`[acs.revokePin] employeeNo=${employeeNo}`);
 
-      // 404 or "no user found" is still a success for revocation purposes
-      if (r.status === 404 || r.text.includes("no matched")) return { success: true };
-      if (!r.ok) {
-        return { success: false, raw_status: r.status, error: parseHikError(r.text) ?? `HTTP ${r.status}` };
+      const r = await this.request("PUT", path, body);
+
+      console.log(`[acs.revokePin] ← HTTP ${r.status}`);
+      console.log(`[acs.revokePin] ← upstream body: ${r.text}`);
+
+      // 404 or "no user found" is still a success for revocation purposes.
+      if (r.status === 404 || r.text.includes("no matched")) {
+        console.log(`[acs.revokePin] OK (not present on device — treated as revoked)`);
+        return { success: true };
       }
+      if (!r.ok) {
+        const err = parseHikError(r.text) ?? `HTTP ${r.status}`;
+        console.error(`[acs.revokePin] FAILED: ${err}`);
+        return { success: false, raw_status: r.status, error: err };
+      }
+      // Some Hik firmwares return HTTP 200 with statusCode != 1 on partial failures.
+      try {
+        const j = JSON.parse(r.text);
+        if (j.statusCode != null && j.statusCode !== 1) {
+          const msg = j.statusString ?? j.subStatusCode ?? `statusCode=${j.statusCode}`;
+          console.error(`[acs.revokePin] FAILED (200 but error body): ${msg}`);
+          return { success: false, raw_status: r.status, error: msg };
+        }
+      } catch { /* non-JSON body is fine */ }
+      console.log(`[acs.revokePin] OK`);
       return { success: true };
     } catch (err) {
-      return { success: false, error: err instanceof Error ? err.message : String(err) };
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`[acs.revokePin] threw: ${msg}`);
+      return { success: false, error: msg };
     }
   }
 

@@ -1,6 +1,7 @@
 import app from "./app";
 import { logger } from "./lib/logger";
 import { seedDefaultUsers } from "./lib/seed";
+import { startExpirySweep } from "./services/pin-sync";
 
 const rawPort = process.env["PORT"];
 
@@ -23,5 +24,9 @@ seedDefaultUsers()
         process.exit(1);
       }
       logger.info({ port }, "Server listening");
+      // Housekeeping: revoke expired/orphaned PIN records from Hikvision
+      // terminals every 5 minutes. See sweepExpiredPins for rationale.
+      startExpirySweep();
+      logger.info("PIN expiry sweep started (every 5 min)");
     });
   });
