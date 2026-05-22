@@ -330,19 +330,33 @@ router.put("/:id", requireAuth, async (req: any, res) => {
 
 router.delete("/:id", requireAuth, async (req: any, res) => {
   const rows = await db.select().from(reservationsTable).where(eq(reservationsTable.id, req.params.id)).limit(1);
-  if (rows[0]) {
-    // Await revoke so any device-side failure is surfaced in logs BEFORE the
-    // row is gone. We still proceed to delete the reservation even if revoke
-    // fails — the expiry sweep will retry the orphaned device-side record.
-    try {
-      const result = await revokePinFromIntercoms(rows[0], req.user?.id);
-      if (result.failed > 0) {
-        console.warn(`[reservations.delete] revoke had ${result.failed} failure(s) for reservation ${rows[0].id}`);
-      }
-    } catch (err) {
-      console.error(`[reservations.delete] revoke threw for reservation ${rows[0].id}:`, err);
+  if (!rows[0]) { res.status(404).json({ detail: "Not found" }); return; }
+
+  // Abort the delete if device-side revoke fails. Consistency over silent
+  // orphan: we will not remove the DB row until we know every Hikvision
+  // terminal has dropped the user. The reservation stays put with
+  // pin_sync_status="failed" so the sweep + a user retry can finish the job.
+  try {
+    const result = await revokePinFromIntercoms(rows[0], req.user?.id);
+    if (result.failed > 0) {
+      console.warn(`[reservations.delete] aborted — revoke had ${result.failed}/${result.total} failure(s) for reservation ${rows[0].id}`);
+      res.status(502).json({
+        detail: "Could not revoke PIN from one or more intercoms — reservation NOT deleted. Please retry.",
+        intercoms_failed:    result.failed,
+        intercoms_total:     result.total,
+        failures: result.results.filter((r) => !r.success).map((r) => ({ intercom: r.intercom_name, error: r.error })),
+      });
+      return;
     }
+  } catch (err) {
+    console.error(`[reservations.delete] aborted — revoke threw for reservation ${rows[0].id}:`, err);
+    res.status(502).json({
+      detail: "Intercom revoke failed — reservation NOT deleted. Please retry.",
+      error:  err instanceof Error ? err.message : String(err),
+    });
+    return;
   }
+
   await db.delete(reservationsTable).where(eq(reservationsTable.id, req.params.id));
   res.status(204).send();
 });
