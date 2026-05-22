@@ -12,6 +12,7 @@ version: "3.9"
 #   migrate   — one-shot drizzle schema push (runs before backend, then exits)
 #   backend   — Express API on port 8080
 #   frontend  — nginx serving the React SPA + proxying /api to backend, port 3000
+#   ai-worker — Python ANPR/OCR worker (polls cameras via backend, no ports)
 # ─────────────────────────────────────────────────────────────────────────────
 
 services:
@@ -58,11 +59,12 @@ services:
       dockerfile: docker/backend/Dockerfile
     restart: unless-stopped
     environment:
-      PORT:         "8080"
-      DATABASE_URL: postgresql://villa_user:${POSTGRES_PASSWORD}@postgres:5432/villa_access
-      JWT_SECRET:   ${JWT_SECRET}
-      NODE_ENV:     production
-      LOG_LEVEL:    info
+      PORT:              "8080"
+      DATABASE_URL:      postgresql://villa_user:${POSTGRES_PASSWORD}@postgres:5432/villa_access
+      JWT_SECRET:        ${JWT_SECRET}
+      ANPR_WORKER_TOKEN: ${ANPR_WORKER_TOKEN}
+      NODE_ENV:          production
+      LOG_LEVEL:         info
     ports:
       - "8080:8080"
     volumes:
@@ -85,6 +87,24 @@ services:
     restart: unless-stopped
     ports:
       - "3000:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+  # ── ANPR / OCR worker (Python + EasyOCR) ──────────────────────────────────
+  # Polls cameras with ocr_enabled=true via the backend's /api/anpr endpoints.
+  # No published ports — only talks to `backend` over the default compose
+  # network. Snapshots are processed in memory and never written to disk.
+  ai-worker:
+    build:
+      context: .
+      dockerfile: docker/ai-worker/Dockerfile
+    restart: unless-stopped
+    environment:
+      API_BASE_URL:                  http://backend:8080
+      ANPR_WORKER_TOKEN:             ${ANPR_WORKER_TOKEN}
+      ANPR_LANGUAGES:                ${ANPR_LANGUAGES:-en}
+      ANPR_REFRESH_TARGETS_SECONDS:  ${ANPR_REFRESH_TARGETS_SECONDS:-30}
     depends_on:
       backend:
         condition: service_healthy
