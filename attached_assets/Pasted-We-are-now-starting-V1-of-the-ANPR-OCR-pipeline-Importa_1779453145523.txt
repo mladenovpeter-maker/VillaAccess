@@ -1,0 +1,126 @@
+We are now starting V1 of the ANPR/OCR pipeline.
+
+Important:
+We do NOT want a big AI rewrite.
+We want a small, stable, incremental implementation that plugs into the existing architecture without touching the working reservation/PIN/intercom flows.
+
+Current architecture already works:
+- reservations
+- vehicle validation
+- permanent vehicles
+- PIN sync
+- door controllers/intercoms
+- relay opening
+
+We now only need:
+camera snapshot → OCR → validateVehicleAccess() → trigger relay.
+
+V1 Requirements (keep it SIMPLE)
+1. Snapshot-based OCR worker (NOT RTSP live stream)
+- Backend worker polls camera JPEG snapshot endpoints every 1s–2s.
+- No ffmpeg/live video/GPU pipeline yet.
+- Stability first.
+
+2. Temporary snapshot processing ONLY
+This is NOT a surveillance recording/archive system.
+
+The OCR worker should:
+- fetch snapshot into memory
+- process OCR
+- discard frame immediately if no valid plate/event exists
+
+We do NOT want:
+- continuous image archiving
+- millions of JPEG files
+- long-term storage of snapshots
+- CCTV recording behavior
+
+Only future OPTIONAL behavior:
+- save snapshots linked to valid vehicle events
+- save snapshots for audit/debugging only
+- retention cleanup later
+
+If OCR confidence is too low or no valid plate is detected:
+- ignore frame
+- discard snapshot
+- trigger nothing
+- store nothing
+
+3. OCR pipeline behavior
+For each camera:
+- fetch JPEG snapshot
+- run OCR/license plate recognition
+- normalize detected plate
+- compare against last seen plate (debounce)
+- call existing validateVehicleAccess()
+
+This should behave like a real ANPR gate system:
+camera polling →
+temporary snapshot →
+OCR →
+vehicle validation →
+relay trigger →
+discard frame.
+
+4. Existing access logic MUST remain the single source of truth
+Do NOT duplicate access logic.
+
+Use the existing:
+validateVehicleAccess()
+
+It already supports:
+- reservation time windows
+- permanent vehicles
+- blacklist
+- reservation status validation
+
+5. Relay trigger
+If validateVehicleAccess() returns allowed:
+- trigger existing relay/open-gate flow
+- create access event/audit entry
+
+6. Debounce / anti-repeat
+Do not repeatedly open the gate for the same plate every second.
+
+Need:
+- last_seen_plate
+- cooldown window (example 30s)
+
+7. Camera integration
+Use the existing Cameras entity/table/page.
+Each camera should support:
+- snapshot URL
+- polling enabled/disabled
+- OCR enabled/disabled
+- linked villa/entrance/controller
+
+8. VERY IMPORTANT
+Do NOT:
+- redesign the whole system
+- touch reservations
+- touch PIN sync
+- touch Hikvision intercom logic
+- rewrite access validation
+- introduce heavy AI infrastructure
+- introduce RTSP processing yet
+
+This is ONLY:
+stable V1 ANPR polling pipeline.
+
+9. Future preparation (NO implementation yet)
+Keep architecture extensible for future:
+- make/model/color recognition
+- confidence scoring
+- multi-factor vehicle matching
+
+We already want the architecture prepared for:
+plate + make + model + color + vehicle type confidence scoring later.
+
+BUT do not implement those yet.
+Only prepare clean interfaces/types so we can extend later.
+
+Goal of V1:
+A car stops at the gate →
+camera snapshot OCR reads plate →
+backend validates against reservations/permanent vehicles →
+relay opens automatically.
