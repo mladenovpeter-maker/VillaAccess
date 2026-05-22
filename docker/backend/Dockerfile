@@ -1,7 +1,7 @@
 # ── Stage 1: builder — full monorepo install + esbuild bundle ─────────────────
 FROM node:22-alpine AS builder
 
-RUN npm install -g pnpm@9 --quiet
+RUN npm install -g pnpm@10 --quiet
 
 WORKDIR /workspace
 
