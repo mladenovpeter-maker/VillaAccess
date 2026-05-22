@@ -33,6 +33,12 @@ export const intercomsTable = pgTable(
     device_type: text("device_type"),                       // e.g. "DS-K1T344MX-E1"
     relay_no:    integer("relay_no").notNull().default(1),  // door/relay number to trigger
 
+    // ── ACS device capabilities ─────────────────────────────────────────────
+    door_count:       integer("door_count").default(1),          // number of doors managed
+    lock_type:        text("lock_type"),                         // "electric_lock" | "magnetic" | "strike" | …
+    pin_support:      boolean("pin_support").default(true),      // device supports PIN codes
+    schedule_support: boolean("schedule_support").default(false), // device supports time schedules
+
     // ── PIN sync ────────────────────────────────────────────────────────────
     pin_sync_enabled: boolean("pin_sync_enabled").notNull().default(true),
     last_sync_status: text("last_sync_status"),

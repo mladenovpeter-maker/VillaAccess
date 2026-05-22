@@ -387,6 +387,10 @@ export interface Intercom {
   protocol: "hikvision" | "dahua" | "sip" | "generic";
   device_type: string | null;
   relay_no: number;
+  door_count: number;
+  lock_type: string | null;
+  pin_support: boolean;
+  schedule_support: boolean;
   pin_sync_enabled: boolean;
   last_sync_status: string | null;
   last_sync_at: string | null;

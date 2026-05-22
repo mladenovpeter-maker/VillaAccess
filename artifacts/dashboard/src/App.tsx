@@ -79,7 +79,7 @@ function Router() {
       {/* Admin only */}
       <Route path="/entrances"        component={() => <ProtectedRoute component={EntrancesPage}        roles={adminOnly} />} />
       <Route path="/cameras"          component={() => <ProtectedRoute component={CamerasPage}          roles={adminOnly} />} />
-      <Route path="/intercoms"        component={() => <ProtectedRoute component={IntercomsPage}        roles={adminOnly} />} />
+      <Route path="/access-control"   component={() => <ProtectedRoute component={IntercomsPage}        roles={adminOnly} />} />
       <Route path="/diagnostics"      component={() => <ProtectedRoute component={DiagnosticsPage}      roles={adminOnly} />} />
       <Route path="/health"           component={() => <ProtectedRoute component={HealthPage}           roles={adminOnly} />} />
       <Route path="/export"           component={() => <ProtectedRoute component={ExportPage}           roles={adminOnly} />} />

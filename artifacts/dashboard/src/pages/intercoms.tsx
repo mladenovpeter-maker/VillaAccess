@@ -20,8 +20,8 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { intercomsApi, entrancesApi, type Intercom, type Entrance } from "@/lib/api";
 import {
-  Phone, Plus, Pencil, Trash2, Loader2, Wifi, WifiOff, AlertCircle,
-  DoorOpen, Activity, KeyRound, Radio,
+  Plus, Pencil, Trash2, Loader2, Wifi, WifiOff, AlertCircle,
+  DoorOpen, Activity, KeyRound, Radio, ShieldCheck,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
@@ -35,6 +35,10 @@ interface IntercomForm {
   protocol: "hikvision" | "dahua" | "sip" | "generic";
   device_type: string;
   relay_no: string;
+  door_count: string;
+  lock_type: string;
+  pin_support: boolean;
+  schedule_support: boolean;
   pin_sync_enabled: boolean;
   notes: string;
 }
@@ -42,7 +46,9 @@ interface IntercomForm {
 const defaultForm: IntercomForm = {
   name: "", entrance_id: "", ip_address: "", http_port: "80",
   username: "admin", password: "", protocol: "hikvision",
-  device_type: "", relay_no: "1", pin_sync_enabled: true, notes: "",
+  device_type: "DS-K1T344MX-E1", relay_no: "1",
+  door_count: "1", lock_type: "", pin_support: true,
+  schedule_support: false, pin_sync_enabled: true, notes: "",
 };
 
 const PROTOCOL_LABELS: Record<string, string> = {
@@ -78,6 +84,10 @@ function IntercomDialog({ open, onClose, target, entrances }: {
       protocol:         target.protocol,
       device_type:      target.device_type ?? "",
       relay_no:         String(target.relay_no ?? 1),
+      door_count:       String(target.door_count ?? 1),
+      lock_type:        target.lock_type ?? "",
+      pin_support:      target.pin_support ?? true,
+      schedule_support: target.schedule_support ?? false,
       pin_sync_enabled: target.pin_sync_enabled,
       notes:            target.notes ?? "",
     } : defaultForm,
@@ -97,6 +107,10 @@ function IntercomDialog({ open, onClose, target, entrances }: {
         protocol:         form.protocol,
         device_type:      form.device_type || null,
         relay_no:         Number(form.relay_no) || 1,
+        door_count:       Number(form.door_count) || 1,
+        lock_type:        form.lock_type || null,
+        pin_support:      form.pin_support,
+        schedule_support: form.schedule_support,
         pin_sync_enabled: form.pin_sync_enabled,
         notes:            form.notes || null,
       };
@@ -184,9 +198,19 @@ function IntercomDialog({ open, onClose, target, entrances }: {
                 <Input type="number" min={1} value={form.relay_no} onChange={(e) => set("relay_no", e.target.value)} className="font-mono" />
               </div>
             </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1.5">
+                <Label>{t("intercoms.deviceType")}</Label>
+                <Input value={form.device_type} onChange={(e) => set("device_type", e.target.value)} placeholder={t("intercoms.deviceTypePlaceholder")} className="font-mono" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>{t("intercoms.doorCount")}</Label>
+                <Input type="number" min={1} max={8} value={form.door_count} onChange={(e) => set("door_count", e.target.value)} className="font-mono" />
+              </div>
+            </div>
             <div className="space-y-1.5">
-              <Label>{t("intercoms.deviceType")}</Label>
-              <Input value={form.device_type} onChange={(e) => set("device_type", e.target.value)} placeholder={t("intercoms.deviceTypePlaceholder")} className="font-mono" />
+              <Label>{t("intercoms.lockType")}</Label>
+              <Input value={form.lock_type} onChange={(e) => set("lock_type", e.target.value)} placeholder={t("intercoms.lockTypePlaceholder")} className="font-mono" />
             </div>
             <div className="space-y-1.5">
               <Label>{t("intercoms.entrance")}</Label>
@@ -200,15 +224,20 @@ function IntercomDialog({ open, onClose, target, entrances }: {
                 </SelectContent>
               </Select>
             </div>
-            <label className="flex items-center gap-2 cursor-pointer text-sm">
-              <input
-                type="checkbox"
-                checked={form.pin_sync_enabled}
-                onChange={(e) => set("pin_sync_enabled", e.target.checked)}
-                className="accent-primary"
-              />
-              {t("intercoms.pinSyncEnabled")}
-            </label>
+            <div className="flex flex-col gap-2">
+              <label className="flex items-center gap-2 cursor-pointer text-sm">
+                <input type="checkbox" checked={form.pin_support} onChange={(e) => set("pin_support", e.target.checked)} className="accent-primary" />
+                {t("intercoms.pinSupport")}
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer text-sm">
+                <input type="checkbox" checked={form.schedule_support} onChange={(e) => set("schedule_support", e.target.checked)} className="accent-primary" />
+                {t("intercoms.scheduleSupport")}
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer text-sm">
+                <input type="checkbox" checked={form.pin_sync_enabled} onChange={(e) => set("pin_sync_enabled", e.target.checked)} className="accent-primary" />
+                {t("intercoms.pinSyncEnabled")}
+              </label>
+            </div>
             <div className="space-y-1.5">
               <Label>{t("intercoms.notes")}</Label>
               <Textarea
@@ -287,7 +316,7 @@ function IntercomCard({ intercom, entranceName, onEdit, onDelete }: {
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
           <div className="w-10 h-10 rounded-xl bg-violet-500/10 flex items-center justify-center shrink-0">
-            <Phone className="w-5 h-5 text-violet-400" />
+            <ShieldCheck className="w-5 h-5 text-violet-400" />
           </div>
           <div className="min-w-0">
             <div className="font-medium text-foreground truncate">{intercom.name}</div>
@@ -315,7 +344,8 @@ function IntercomCard({ intercom, entranceName, onEdit, onDelete }: {
 
       <div className="text-xs text-muted-foreground space-y-0.5">
         <div className="font-mono flex items-center gap-1.5"><Radio className="w-3 h-3" />{intercom.ip_address}:{intercom.http_port}</div>
-        {intercom.device_type && <div className="font-mono">{intercom.device_type} · relay {intercom.relay_no}</div>}
+        {intercom.device_type && <div className="font-mono">{intercom.device_type} · door {intercom.relay_no}{intercom.door_count > 1 ? ` / ${intercom.door_count}` : ""}</div>}
+        {intercom.lock_type && <div className="font-mono text-muted-foreground/70">{intercom.lock_type}</div>}
         {entranceName && <div>📍 {entranceName}</div>}
         {intercom.last_sync_at && (
           <div>
@@ -328,7 +358,7 @@ function IntercomCard({ intercom, entranceName, onEdit, onDelete }: {
       <div className="flex flex-wrap gap-1.5">
         <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={() => openMut.mutate()} disabled={anyLoading}>
           {openMut.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <DoorOpen className="w-3.5 h-3.5" />}
-          {t("intercoms.openDoor")}
+          {openMut.isPending ? t("intercoms.openingDoor") : t("intercoms.openDoor")}
         </Button>
         <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={() => pingMut.mutate()} disabled={anyLoading}>
           {pingMut.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Activity className="w-3.5 h-3.5" />}
@@ -399,7 +429,7 @@ export default function IntercomsPage() {
           <div className="space-y-3">{[1,2,3].map((i) => <Skeleton key={i} className="h-32 rounded-xl" />)}</div>
         ) : intercoms.length === 0 ? (
           <div className="bg-card border border-border rounded-xl p-12 text-center">
-            <Phone className="w-12 h-12 mx-auto text-muted-foreground/30 mb-3" />
+            <ShieldCheck className="w-12 h-12 mx-auto text-muted-foreground/30 mb-3" />
             <h3 className="text-lg font-medium text-foreground">{t("intercoms.noIntercoms")}</h3>
             <p className="text-sm text-muted-foreground mt-1 mb-4">{t("intercoms.noIntercomsDesc")}</p>
             <Button onClick={openCreate} className="gap-2"><Plus className="w-4 h-4" />{t("intercoms.addFirst")}</Button>

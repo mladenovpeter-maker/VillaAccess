@@ -178,25 +178,59 @@ export class HikvisionIntercomService {
   }
 
   /**
-   * Remotely open the door/relay controlled by this intercom.
-   * Uses Hikvision Access-Control ISAPI:
-   *   PUT /ISAPI/AccessControl/RemoteControl/door/{relay_no}
-   *   body: { "RemoteControlDoor": { "cmd": "open" } }
+   * Pulse-safe door release.
+   *
+   * Sends:
+   *   1) PUT /ISAPI/AccessControl/RemoteControl/door/{relay_no}  cmd:"open"
+   *   2) wait PULSE_MS (3 000 ms)
+   *   3) PUT same endpoint  cmd:"close"   ← ALWAYS in finally
+   *
+   * The ACS terminal also enforces its own door-open duration from device
+   * config, but we add a server-side close command as a belt-and-suspenders
+   * safety layer so the latch is NEVER left permanently open even if device
+   * firmware behaviour is non-standard.
    */
-  async openDoor(): Promise<HikResult> {
+  async openDoor(): Promise<HikResult & { elapsed_ms?: number }> {
+    const PULSE_MS = 3_000;
+    const doorPath = `/ISAPI/AccessControl/RemoteControl/door/${this.config.relay_no}`;
+    const t0 = Date.now();
+
+    let openError: string | undefined;
+    let openStatus = 0;
+    let closeError: string | undefined;
+
     try {
-      const r = await this.request(
-        "PUT",
-        `/ISAPI/AccessControl/RemoteControl/door/${this.config.relay_no}`,
-        { RemoteControlDoor: { cmd: "open" } },
-      );
-      if (!r.ok) {
-        return { success: false, raw_status: r.status, error: parseHikError(r.text) ?? `HTTP ${r.status}` };
+      // 1) Open command
+      try {
+        const r = await this.request("PUT", doorPath, { RemoteControlDoor: { cmd: "open" } });
+        openStatus = r.status;
+        if (!r.ok) openError = parseHikError(r.text) ?? `HTTP ${r.status}`;
+      } catch (err) {
+        openError = err instanceof Error ? err.message : String(err);
       }
-      return { success: true };
-    } catch (err) {
-      return { success: false, error: err instanceof Error ? err.message : String(err) };
+
+      // Dwell — skip if open already failed
+      if (!openError) {
+        await new Promise((resolve) => setTimeout(resolve, PULSE_MS));
+      }
+    } finally {
+      // 2) Close command — ALWAYS attempt
+      try {
+        const r = await this.request("PUT", doorPath, { RemoteControlDoor: { cmd: "close" } });
+        if (!r.ok) closeError = parseHikError(r.text) ?? `HTTP ${r.status}`;
+      } catch (err) {
+        closeError = err instanceof Error ? err.message : String(err);
+      }
     }
+
+    const success = !openError && !closeError;
+    const errorParts = [openError, closeError].filter(Boolean);
+    return {
+      success,
+      raw_status: openStatus,
+      elapsed_ms: Date.now() - t0,
+      ...(success ? {} : { error: errorParts.join("; ") }),
+    };
   }
 
   /**

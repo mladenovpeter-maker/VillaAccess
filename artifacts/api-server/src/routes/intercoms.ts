@@ -4,6 +4,7 @@ import { intercomsTable, entrancesTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { requireAuth } from "./auth";
 import { z } from "zod";
+import { eventBus } from "../lib/events";
 
 const router = Router();
 
@@ -18,6 +19,10 @@ function serializeIntercom(i: typeof intercomsTable.$inferSelect) {
     protocol: i.protocol,
     device_type: i.device_type,
     relay_no: i.relay_no,
+    door_count: i.door_count ?? 1,
+    lock_type: i.lock_type ?? null,
+    pin_support: i.pin_support ?? true,
+    schedule_support: i.schedule_support ?? false,
     pin_sync_enabled: i.pin_sync_enabled,
     last_sync_status: i.last_sync_status,
     last_sync_at: i.last_sync_at,
@@ -60,6 +65,10 @@ const createSchema = z.object({
   protocol:         z.enum(["hikvision", "dahua", "sip", "generic"]).optional(),
   device_type:      z.string().optional().nullable(),
   relay_no:         z.number().int().optional(),
+  door_count:       z.number().int().optional().nullable(),
+  lock_type:        z.string().optional().nullable(),
+  pin_support:      z.boolean().optional(),
+  schedule_support: z.boolean().optional(),
   pin_sync_enabled: z.boolean().optional(),
   notes:            z.string().optional().nullable(),
 });
@@ -84,6 +93,10 @@ router.post("/", requireAuth, async (req, res) => {
     protocol:         body.data.protocol ?? "hikvision",
     device_type:      body.data.device_type ?? null,
     relay_no:         body.data.relay_no ?? 1,
+    door_count:       body.data.door_count ?? 1,
+    lock_type:        body.data.lock_type ?? null,
+    pin_support:      body.data.pin_support ?? true,
+    schedule_support: body.data.schedule_support ?? false,
     pin_sync_enabled: body.data.pin_sync_enabled ?? true,
     notes:            body.data.notes ?? null,
   }).returning();
@@ -99,7 +112,8 @@ router.patch("/:id", requireAuth, async (req, res) => {
 
   const allowed = [
     "name", "entrance_id", "ip_address", "http_port", "username", "password",
-    "protocol", "device_type", "relay_no", "pin_sync_enabled", "notes",
+    "protocol", "device_type", "relay_no", "door_count", "lock_type",
+    "pin_support", "schedule_support", "pin_sync_enabled", "notes",
   ];
   const patch: Record<string, unknown> = { updated_at: new Date() };
   for (const key of allowed) {
@@ -125,8 +139,12 @@ router.delete("/:id", requireAuth, async (req, res) => {
 
 router.post("/:id/open", requireAuth, async (req: any, res) => {
   const rows = await db.select().from(intercomsTable).where(eq(intercomsTable.id, req.params.id)).limit(1);
-  if (!rows[0]) { res.status(404).json({ detail: "Intercom not found" }); return; }
+  if (!rows[0]) { res.status(404).json({ detail: "Door controller not found" }); return; }
   const ic = rows[0];
+
+  const operator = req.user?.username ?? req.user?.email ?? "unknown";
+
+  console.log(`[access-control.open] ▶ OPEN user=${operator} device="${ic.name}" (${ic.id}) door=${ic.relay_no}`);
 
   const { HikvisionIntercomService } = await import("../services/hikvision/intercom");
   const svc = new HikvisionIntercomService({
@@ -141,15 +159,45 @@ router.post("/:id/open", requireAuth, async (req: any, res) => {
 
   const result = await svc.openDoor();
 
+  console.log(
+    `[access-control.open] ◀ CLOSE user=${operator} device="${ic.name}" ` +
+    `success=${result.success} elapsed=${result.elapsed_ms}ms` +
+    (result.error ? ` error=${result.error}` : ""),
+  );
+
+  // Audit event — "User X opened door via Device Y"
+  void eventBus.publish({
+    event_type: result.success ? "gate.door_opened" : "gate.door_failed",
+    severity:   result.success ? "info" : "error",
+    operator_id: req.user?.id,
+    source:      "dashboard",
+    payload: {
+      intercom_id:   ic.id,
+      intercom_name: ic.name,
+      entrance_id:   ic.entrance_id,
+      door_no:       ic.relay_no,
+      operator,
+      operator_id:   req.user?.id,
+      method:        "manual_pulse",
+      pulse_ms:      3000,
+      elapsed_ms:    result.elapsed_ms,
+      success:       result.success,
+      error:         result.error,
+      message: `${operator} ${result.success ? "opened" : "tried to open"} door via "${ic.name}"`,
+    },
+  });
+
   res.status(result.success ? 200 : 502).json({
     intercom_id:   ic.id,
     intercom_name: ic.name,
     action:        "open_door",
-    relay_no:      ic.relay_no,
+    door_no:       ic.relay_no,
+    pulse_ms:      3000,
+    elapsed_ms:    result.elapsed_ms,
+    triggered_by:  operator,
     success:       result.success,
     error:         result.error ?? null,
     raw_status:    result.raw_status ?? null,
-    triggered_by:  req.user?.username ?? "unknown",
   });
 });
 

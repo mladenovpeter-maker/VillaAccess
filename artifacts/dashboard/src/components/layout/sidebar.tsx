@@ -39,7 +39,7 @@ export function Sidebar() {
     { href: "/access",       label: t("nav.access"),       icon: ShieldCheck,          roles: ["admin", "operator", "viewer"] },
     { href: "/timeline",     label: t("nav.timeline"),     icon: GitCommitHorizontal,  roles: ["admin", "operator", "viewer"] },
     { href: "/cameras",      label: t("nav.cameras"),      icon: Camera,               roles: ["admin"] },
-    { href: "/intercoms",    label: t("nav.intercoms"),    icon: Phone,                roles: ["admin"] },
+    { href: "/access-control", label: t("nav.intercoms"),  icon: KeyRound,             roles: ["admin"] },
     { href: "/entrances",    label: t("nav.entrances"),    icon: DoorOpen,             roles: ["admin"] },
     { href: "/gallery",      label: t("nav.gallery"),      icon: Images,               roles: ["admin", "operator", "viewer"] },
     { href: "/events",       label: t("nav.events"),       icon: Activity,             roles: ["admin", "operator", "viewer"] },
