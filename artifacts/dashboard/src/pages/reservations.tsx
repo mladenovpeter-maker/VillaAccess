@@ -95,6 +95,15 @@ export default function ReservationsPage() {
   const { data: reservations = [], isLoading } = useQuery({
     queryKey: ["reservations", filter],
     queryFn: () => reservationsApi.list(filter !== "all" ? { status: filter } : undefined),
+    // Auto-poll while any reservation's PIN sync is still pending.
+    // syncPinToIntercoms runs async after POST returns, so the first refetch
+    // typically lands before the device roundtrip completes. Polling every 2 s
+    // until every status has settled (synced | failed | revoked) keeps the UI
+    // honest without any SSE/WebSocket plumbing.
+    refetchInterval: (q) => {
+      const list = q.state.data as Reservation[] | undefined;
+      return list?.some((r) => r.pin_sync_status === "pending") ? 2000 : false;
+    },
   });
   const { data: villas   = [] } = useQuery({ queryKey: ["villas"],   queryFn: villasApi.list });
   const { data: vehicles = [] } = useQuery({ queryKey: ["vehicles"], queryFn: vehiclesApi.list });
