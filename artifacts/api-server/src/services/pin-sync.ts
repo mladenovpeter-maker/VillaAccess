@@ -24,6 +24,7 @@
 import { db } from "@workspace/db";
 import { intercomsTable, reservationsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
+import { createHash } from "node:crypto";
 import { HikvisionIntercomService } from "./hikvision/intercom";
 import { eventBus } from "../lib/events";
 
@@ -44,9 +45,20 @@ export interface PinSyncSummary {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-/** Short stable employee number derived from reservation ID (≤32 chars for Hik API). */
+/**
+ * Numeric-only employeeNo derived deterministically from the reservation UUID.
+ *
+ * Hikvision firmware on DS-K1T terminals requires employeeNo to be numeric-only;
+ * non-numeric characters (letters, underscores) cause the device to silently
+ * reject the UserInfo even when the HTTP layer returns 200.
+ *
+ * We SHA-256 the reservation UUID and take the first 56 bits → up to 17 decimal
+ * digits. Stable per reservation (idempotent for re-sync), unique in practice,
+ * and well within Hik's 32-char employeeNo limit.
+ */
 function toEmployeeNo(reservationId: string): string {
-  return `RES_${reservationId.replace(/-/g, "").slice(0, 24)}`;
+  const hash = createHash("sha256").update(reservationId).digest("hex");
+  return BigInt("0x" + hash.slice(0, 14)).toString(10);
 }
 
 /** Fetch all intercoms that should receive PIN pushes. */
