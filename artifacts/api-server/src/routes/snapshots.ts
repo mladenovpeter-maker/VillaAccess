@@ -142,30 +142,17 @@ router.post(
         .limit(1);
       vehicle = rows[0] ?? null;
     } else if (license_plate) {
+      // Look up an existing vehicle by plate, but NEVER auto-create one here.
+      // The vehicles table is the access-control registry (manual entries,
+      // reservations, permanent-access, whitelist/service). OCR detections
+      // must not introduce new rows — they belong in access_events / logs.
       const normalized = license_plate.trim().toUpperCase();
       const rows = await db
         .select()
         .from(vehiclesTable)
         .where(eq(vehiclesTable.license_plate, normalized))
         .limit(1);
-
-      if (rows[0]) {
-        vehicle = rows[0];
-      } else {
-        // Auto-create a new unknown vehicle record
-        const now = new Date();
-        const [created] = await db
-          .insert(vehiclesTable)
-          .values({
-            license_plate: normalized,
-            status: "unknown",
-            first_seen: now,
-            last_seen: now,
-            notes: notes ?? null,
-          })
-          .returning();
-        vehicle = created;
-      }
+      vehicle = rows[0] ?? null;
     }
 
     if (!vehicle) {

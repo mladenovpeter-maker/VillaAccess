@@ -1,0 +1,88 @@
+We finally identified the exact issue clearly.
+
+The Dashboard / ANPR Events are now working correctly.
+
+The problem is ONLY on the Vehicles page.
+
+==================================================
+WHAT THE VEHICLES PAGE SHOULD BE
+==================================================
+
+The Vehicles page should contain ONLY:
+- manually added vehicles
+- whitelist/service vehicles
+- reservation vehicles
+- permanent access vehicles
+
+Example:
+- cleaners
+- gardeners
+- staff vehicles
+- reservation guest vehicles
+
+This page is effectively the ACCESS CONTROL VEHICLE REGISTRY.
+
+==================================================
+WHAT IS CURRENTLY WRONG
+==================================================
+
+The Vehicles page is STILL displaying OCR detections as vehicle records.
+
+Examples currently visible:
+- 4ACTM
+- CE6M
+- YAC1
+- CA3472M
+
+These are NOT real vehicles.
+These are OCR detection fragments/noise.
+
+They should NEVER appear in the Vehicles registry.
+
+==================================================
+IMPORTANT DISTINCTION
+==================================================
+
+Dashboard / Event Feed:
+CORRECT
+- allowed entries
+- timestamps
+- confidence
+- event history
+
+Vehicles Page:
+INCORRECT
+- still polluted with OCR detections
+
+==================================================
+EXPECTED BEHAVIOR
+==================================================
+
+OCR detections should exist ONLY in:
+- ANPR events/history
+- logs
+- audit trail
+
+They must NEVER create or appear as vehicle records.
+
+==================================================
+VERY IMPORTANT
+==================================================
+
+This is NOT a frontend cache issue anymore.
+
+The Vehicles page is rendering actual rows returned by GET /vehicles.
+
+Therefore:
+some backend/database path is STILL creating vehicle rows from OCR detections.
+
+Please investigate ALL backend insert paths into the vehicles table and ensure:
+OCR detections NEVER insert into vehicles.
+
+Vehicles must only be created from:
+- manual creation
+- reservations
+- permanent access registration
+- explicit admin actions
+
+NOT from OCR scans.
