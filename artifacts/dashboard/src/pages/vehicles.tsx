@@ -714,7 +714,10 @@ export default function VehiclesPage() {
 
   const { data: vehicles = [], isLoading } = useQuery({
     queryKey: ["vehicles"],
-    queryFn: vehiclesApi.list,
+    queryFn: () => vehiclesApi.list(),
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
   });
 
   const deleteMut = useMutation({

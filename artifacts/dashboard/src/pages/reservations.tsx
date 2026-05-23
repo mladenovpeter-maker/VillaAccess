@@ -106,7 +106,7 @@ export default function ReservationsPage() {
     },
   });
   const { data: villas   = [] } = useQuery({ queryKey: ["villas"],   queryFn: villasApi.list });
-  const { data: vehicles = [] } = useQuery({ queryKey: ["vehicles"], queryFn: vehiclesApi.list });
+  const { data: vehicles = [] } = useQuery({ queryKey: ["vehicles"], queryFn: () => vehiclesApi.list() });
 
   // Refresh detail when mutations settle
   const invalidate = () => {
