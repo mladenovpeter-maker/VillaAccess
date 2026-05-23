@@ -1,0 +1,107 @@
+We identified the issue clearly.
+
+OCR and relay logic are working correctly.
+
+The problem is NOT in the OCR pipeline.
+
+==================================================
+CURRENT PROBLEM
+==================================================
+
+The UI is currently mixing:
+
+1. Vehicle master database
+WITH
+2. Live ANPR detection events
+
+This causes OCR detections to incorrectly create vehicle records automatically.
+
+As a result, the Vehicle Database page becomes polluted with OCR fragments like:
+- CA34
+- CE6M
+- YAC1
+- A3477M
+- random OCR garbage
+
+These are NOT real vehicles.
+
+==================================================
+IMPORTANT
+==================================================
+
+DO NOT change:
+- OCR logic
+- EasyOCR
+- YOLO
+- relay logic
+- fuzzy matching
+
+Those parts already work correctly.
+
+Relay opening is already functioning correctly.
+
+==================================================
+CORRECT ARCHITECTURE
+==================================================
+
+Vehicle Database should contain ONLY:
+- real registered vehicles
+- manually created/admin-approved vehicles
+- access-controlled vehicles
+
+Example:
+CA3477MM
+Toyota
+White
+Permanent access
+
+==================================================
+ANPR EVENTS
+==================================================
+
+OCR detections must go ONLY into:
+- ANPR Events / Detection History
+
+NOT into the Vehicle Database table.
+
+==================================================
+REQUIRED FIX
+==================================================
+
+1.
+Stop auto-creating vehicle records from OCR detections.
+
+2.
+Keep OCR detections ONLY in ANPR event history.
+
+3.
+Vehicle Database must remain clean and stable.
+
+4.
+ANPR Events page should show:
+- detected plate
+- timestamp
+- allowed/denied
+- confidence
+- fuzzy match info
+- camera
+
+==================================================
+CURRENT BAD BEHAVIOR
+==================================================
+
+OCR detections currently create fake vehicle entries with:
+status = unknown
+
+This is incorrect behavior.
+
+==================================================
+IMPORTANT
+==================================================
+
+Please do NOT redesign the system.
+
+This is only a separation-of-concerns fix between:
+- vehicle records
+and
+- ANPR event records.

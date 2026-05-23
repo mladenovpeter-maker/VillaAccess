@@ -8,8 +8,9 @@
  *   2. Server-side debounce: skip if same plate seen on same camera within
  *      camera.anpr_cooldown_seconds. (Worker also debounces locally; this is
  *      defence-in-depth.)
- *   3. Look up vehicle by plate; auto-create if unknown (status="unknown",
- *      access_type defaults to "reservation" via DB default).
+ *   3. Look up vehicle by plate (READ-ONLY). If unknown, vehicle_id stays
+ *      null and we synthesise a NO_RESERVATION denial — the Vehicles master
+ *      DB is never auto-populated from OCR text (separation of concerns).
  *   4. Resolve villa via camera → entrance → villa. Bail if no villa link.
  *   5. Call existing validateVehicleAccess() — single source of truth.
  *   6. Log access_event (always — allowed OR denied).
@@ -111,7 +112,7 @@ export interface AnprDetectionResult {
     | "allowed_relay_ok"
     | "allowed_relay_failed";
   plate: string;
-  vehicle_id?: string;
+  vehicle_id?: string | null;
   reason?: string;
   denial_code?: string;
   gate?: { success: boolean; error?: string };
@@ -242,38 +243,28 @@ export async function handleAnprDetection(
     return { action: "skipped_cooldown", plate };
   }
 
-  // ── 3. Lookup-or-create vehicle (concurrency-safe via ON CONFLICT) ───────
-  let vehicle_id: string;
-  const inserted = await db
-    .insert(vehiclesTable)
-    .values({
-      license_plate: plate,
-      make: input.make?.trim() || null,
-      model: input.model?.trim() || null,
-      color: input.color?.trim() || null,
-      status: "unknown",
-      // access_type defaults to "reservation" at DB level.
-    })
-    .onConflictDoNothing({ target: vehiclesTable.license_plate })
-    .returning({ id: vehiclesTable.id });
-
-  if (inserted[0]) {
-    vehicle_id = inserted[0].id;
-  } else {
-    const existing = await db
-      .select({ id: vehiclesTable.id })
-      .from(vehiclesTable)
-      .where(eq(vehiclesTable.license_plate, plate))
-      .limit(1);
-    if (!existing[0]) {
-      // Should be impossible (we just attempted insert), but stay defensive.
-      return { action: "skipped_no_villa", plate, reason: "Vehicle row missing after upsert" };
-    }
-    vehicle_id = existing[0].id;
-  }
+  // ── 3. Lookup vehicle by plate (READ-ONLY) ────────────────────────────────
+  // Separation of concerns: ANPR detections must NOT auto-create rows in the
+  // vehicle master DB. The Vehicles page is for real, admin-registered cars
+  // (reservation guests, permanent access, blacklist). OCR text — even valid
+  // — only becomes a "vehicle" when someone adds it via the dashboard.
+  // If the plate isn't registered, we synthesise a NO_RESERVATION denial so
+  // the fuzzy fallback below can still try to match against a real plate.
+  const existing = await db
+    .select({ id: vehiclesTable.id })
+    .from(vehiclesTable)
+    .where(eq(vehiclesTable.license_plate, plate))
+    .limit(1);
+  let vehicle_id: string | null = existing[0]?.id ?? null;
 
   // ── 4. Validate via existing single source of truth ───────────────────────
-  let decision = await validateVehicleAccess(vehicle_id, villa_id);
+  let decision = vehicle_id
+    ? await validateVehicleAccess(vehicle_id, villa_id)
+    : {
+        allowed: false,
+        reason: "No reservation found for this vehicle",
+        denial_code: "NO_RESERVATION" as const,
+      };
 
   // Track match metadata for visibility (UI / events / notes). Exact-match is
   // the legacy path; only flipped to "partial" if fuzzy fallback succeeds.
@@ -319,10 +310,12 @@ export async function handleAnprDetection(
       .select({ id: vehiclesTable.id, license_plate: vehiclesTable.license_plate })
       .from(vehiclesTable)
       .where(
-        and(
-          isNotNull(vehiclesTable.license_plate),
-          sql`${vehiclesTable.id} <> ${vehicle_id}`,
-        ),
+        vehicle_id
+          ? and(
+              isNotNull(vehiclesTable.license_plate),
+              sql`${vehiclesTable.id} <> ${vehicle_id}`,
+            )
+          : isNotNull(vehiclesTable.license_plate),
       );
 
     let best: { id: string; plate: string; sim: number; digits: number } | null =
