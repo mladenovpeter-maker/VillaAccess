@@ -37,14 +37,21 @@ services:
       start_period: 10s
 
   # ── Schema migration (one-shot, exits 0 on success) ───────────────────────
-  # Uses the builder stage which has the full monorepo + drizzle-kit installed.
+  # Runs the deterministic SQL migration runner against the production DB.
+  # Applies every lib/db/migrations/*.sql file in order; tracks applied ones
+  # in the __migrations table; idempotent; non-interactive; prints real
+  # Postgres errors to stderr (no pnpm wrapper to swallow them).
+  #
+  # Uses the builder stage because it has the full monorepo + node_modules
+  # (notably lib/db/node_modules/pg). Working dir is /workspace/lib/db so
+  # Node resolves `pg` from lib/db's own node_modules.
   migrate:
     build:
       context: .
       dockerfile: docker/backend/Dockerfile
       target: builder
-    working_dir: /workspace
-    command: ["pnpm", "--filter", "@workspace/db", "run", "push"]
+    working_dir: /workspace/lib/db
+    command: ["node", "./migrate.mjs"]
     environment:
       DATABASE_URL: postgresql://villa_user:${POSTGRES_PASSWORD}@postgres:5432/villa_access
     depends_on:
