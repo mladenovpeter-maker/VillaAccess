@@ -154,7 +154,7 @@ router.post("/detection", async (req, res) => {
     // `vehicle_color` is the explicit field added in newer worker builds and
     // wins when both are present; otherwise fall back to legacy `color`.
     const data = { ...body.data };
-    if (data.vehicle_color) data.color = data.vehicle_color;
+    if (data.vehicle_color !== undefined) data.color = data.vehicle_color;
     const result = await handleAnprDetection(data);
     res.json(result);
   } catch (err: any) {

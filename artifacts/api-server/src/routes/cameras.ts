@@ -117,25 +117,28 @@ router.post("/", requireAuth, requireWriteAccess(), async (req, res) => {
         gate_no: gate_no ?? 1,
         // ANPR — accept on create so the UI can configure these up-front
         // instead of always requiring a follow-up PATCH.
+        // Use Number.isFinite + explicit defaults so valid `0` is preserved
+        // (Number(x) || default would silently overwrite zero) and parity is
+        // kept with PATCH clamping below.
         ...(ocr_enabled !== undefined ? { ocr_enabled: Boolean(ocr_enabled) } : {}),
         ...(polling_interval_ms !== undefined
-          ? { polling_interval_ms: Math.max(500, Math.min(60000, Number(polling_interval_ms) || 1500)) }
+          ? { polling_interval_ms: (() => { const v = Number(polling_interval_ms); return Number.isFinite(v) ? Math.max(500, Math.min(60000, Math.round(v))) : 1500; })() }
           : {}),
         ...(ocr_min_confidence !== undefined
-          ? { ocr_min_confidence: Math.max(0, Math.min(100, Number(ocr_min_confidence) || 70)) }
+          ? { ocr_min_confidence: (() => { const v = Number(ocr_min_confidence); return Number.isFinite(v) ? Math.max(0, Math.min(100, Math.round(v))) : 70; })() }
           : {}),
         ...(anpr_cooldown_seconds !== undefined
-          ? { anpr_cooldown_seconds: Math.max(1, Math.min(3600, Number(anpr_cooldown_seconds) || 30)) }
+          ? { anpr_cooldown_seconds: (() => { const v = Number(anpr_cooldown_seconds); return Number.isFinite(v) ? Math.max(1, Math.min(3600, Math.round(v))) : 30; })() }
           : {}),
         ...(allow_partial_match !== undefined ? { allow_partial_match: Boolean(allow_partial_match) } : {}),
         ...(partial_match_threshold !== undefined
-          ? { partial_match_threshold: Math.max(0, Math.min(100, Number(partial_match_threshold) || 85)) }
+          ? { partial_match_threshold: (() => { const v = Number(partial_match_threshold); return Number.isFinite(v) ? Math.max(0, Math.min(100, Math.round(v))) : 85; })() }
           : {}),
         ...(partial_min_confidence !== undefined
-          ? { partial_min_confidence: Math.max(0, Math.min(100, Number(partial_min_confidence) || 50)) }
+          ? { partial_min_confidence: (() => { const v = Number(partial_min_confidence); return Number.isFinite(v) ? Math.max(0, Math.min(100, Math.round(v))) : 50; })() }
           : {}),
         ...(min_matching_digits !== undefined
-          ? { min_matching_digits: Math.max(0, Math.min(20, Number(min_matching_digits) || 4)) }
+          ? { min_matching_digits: (() => { const v = Number(min_matching_digits); return Number.isFinite(v) ? Math.max(0, Math.min(20, Math.round(v))) : 4; })() }
           : {}),
       })
       .returning();

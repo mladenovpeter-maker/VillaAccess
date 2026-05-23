@@ -241,16 +241,27 @@ export async function handleAnprDetection(
 
   // ── 5. Fuzzy fallback (additive, OFF by default) ──────────────────────────
   // Only runs when:
-  //   * exact match failed, AND
+  //   * exact match failed with denial_code NO_RESERVATION or VEHICLE_NOT_FOUND
+  //     (i.e. the OCR'd plate doesn't correspond to a known reservation — the
+  //     legitimate OCR-typo case), AND
   //   * camera.allow_partial_match is true, AND
   //   * OCR confidence >= camera.partial_min_confidence.
+  //
+  // Fuzzy MUST NOT run for policy denials (BLACKLISTED, RESERVATION_CANCELLED,
+  // RESERVATION_EXPIRED, OUTSIDE_WINDOW) — otherwise a blacklisted plate could
+  // be silently superseded by a similar allowed plate.
+  //
   // We scan known vehicle plates, pick the most-similar one passing both
   // the similarity threshold AND the shared-digit safety gate, then re-run
   // validateVehicleAccess against THAT vehicle. validateVehicleAccess remains
   // the single source of truth — fuzzy matching only changes which vehicle
   // we validate, never whether the validator's verdict is honoured.
+  const fuzzyEligibleDenial =
+    (decision as { denial_code?: string }).denial_code === "NO_RESERVATION" ||
+    (decision as { denial_code?: string }).denial_code === "VEHICLE_NOT_FOUND";
   if (
     !decision.allowed &&
+    fuzzyEligibleDenial &&
     camera.allow_partial_match &&
     input.confidence >= (camera.partial_min_confidence ?? 50)
   ) {
