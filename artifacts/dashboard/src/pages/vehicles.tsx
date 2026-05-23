@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { vehiclesApi, type Vehicle, type VehicleSnapshot } from "@/lib/api";
 import { AppLayout } from "@/components/layout/app-layout";
@@ -597,13 +597,29 @@ function VehicleFormDialog({
   const qc = useQueryClient();
   const { toast } = useToast();
   const { t } = useTranslation();
-  const [form, setForm] = useState<VehicleForm>(vehicle ? {
-    license_plate: vehicle.license_plate, make: vehicle.make ?? "", model: vehicle.model ?? "",
-    color: vehicle.color ?? "", vehicle_type: vehicle.vehicle_type ?? "sedan",
-    owner_name: vehicle.owner_name ?? "", plate_region: vehicle.plate_region ?? "",
-    status: vehicle.status, access_type: vehicle.access_type ?? "reservation",
-    notes: vehicle.notes ?? "",
-  } : defaultForm);
+  const [form, setForm] = useState<VehicleForm>(defaultForm);
+
+  // Sync form whenever the dialog opens or the target vehicle changes.
+  // The dialog component is always mounted, so useState's initializer only
+  // runs once — without this effect, opening the edit modal for a real
+  // vehicle would keep the previous form state (empty defaults on first open,
+  // making placeholders like "B 1234 AB" / "Toyota" / "Camry" appear as if
+  // they were the loaded data).
+  useEffect(() => {
+    if (!open) return;
+    setForm(vehicle ? {
+      license_plate: vehicle.license_plate,
+      make: vehicle.make ?? "",
+      model: vehicle.model ?? "",
+      color: vehicle.color ?? "",
+      vehicle_type: vehicle.vehicle_type ?? "sedan",
+      owner_name: vehicle.owner_name ?? "",
+      plate_region: vehicle.plate_region ?? "",
+      status: vehicle.status,
+      access_type: vehicle.access_type ?? "reservation",
+      notes: vehicle.notes ?? "",
+    } : defaultForm);
+  }, [open, vehicle]);
 
   const mut = useMutation({
     mutationFn: () => vehicle ? vehiclesApi.update(vehicle.id, form) : vehiclesApi.create(form),
