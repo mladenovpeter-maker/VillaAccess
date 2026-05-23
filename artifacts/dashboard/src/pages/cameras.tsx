@@ -60,6 +60,11 @@ interface CameraFormData {
   polling_interval_ms: string;
   ocr_min_confidence: string;
   anpr_cooldown_seconds: string;
+  // Fuzzy / partial plate matching
+  allow_partial_match: boolean;
+  partial_match_threshold: string;
+  partial_min_confidence: string;
+  min_matching_digits: string;
 }
 
 const defaultCameraForm: CameraFormData = {
@@ -68,6 +73,8 @@ const defaultCameraForm: CameraFormData = {
   entrance_id: "", gate_no: "1",
   ocr_enabled: false, polling_interval_ms: "1500",
   ocr_min_confidence: "70", anpr_cooldown_seconds: "30",
+  allow_partial_match: false, partial_match_threshold: "85",
+  partial_min_confidence: "50", min_matching_digits: "4",
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -145,6 +152,10 @@ function CameraFormDialog({
         polling_interval_ms:   String(editTarget.polling_interval_ms ?? 1500),
         ocr_min_confidence:    String(editTarget.ocr_min_confidence ?? 70),
         anpr_cooldown_seconds: String(editTarget.anpr_cooldown_seconds ?? 30),
+        allow_partial_match:     editTarget.allow_partial_match ?? false,
+        partial_match_threshold: String(editTarget.partial_match_threshold ?? 85),
+        partial_min_confidence:  String(editTarget.partial_min_confidence ?? 50),
+        min_matching_digits:     String(editTarget.min_matching_digits ?? 4),
       });
       setChangePassword(false);
     } else {
@@ -203,6 +214,10 @@ function CameraFormDialog({
         polling_interval_ms:   Math.max(500, Number(form.polling_interval_ms) || 1500),
         ocr_min_confidence:    Math.min(100, Math.max(0, Number(form.ocr_min_confidence) || 70)),
         anpr_cooldown_seconds: Math.max(1, Number(form.anpr_cooldown_seconds) || 30),
+        allow_partial_match:     form.allow_partial_match,
+        partial_match_threshold: Math.min(100, Math.max(0, Number(form.partial_match_threshold) || 85)),
+        partial_min_confidence:  Math.min(100, Math.max(0, Number(form.partial_min_confidence) || 50)),
+        min_matching_digits:     Math.max(0, Number(form.min_matching_digits) || 4),
       };
       if (!editTarget || changePassword) {
         payload.password = form.password;
@@ -371,6 +386,62 @@ function CameraFormDialog({
               Worker polls the snapshot endpoint, runs OCR, and triggers this camera's gate relay
               when a known/allowed plate is detected. Snapshots are processed in memory only.
             </p>
+
+            {/* Fuzzy / partial plate matching — additive, default OFF */}
+            <div className="mt-1 border-t border-border/60 pt-3 space-y-3">
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={form.allow_partial_match}
+                  onChange={(e) => setForm({ ...form, allow_partial_match: e.target.checked })}
+                  className="h-4 w-4"
+                  disabled={!form.ocr_enabled}
+                />
+                <span className="text-sm">Allow partial plate match</span>
+              </label>
+              <p className="text-[10px] text-muted-foreground/70 -mt-2">
+                When OCR misses one or two trailing characters (e.g. "CA3477M" vs reservation
+                "CA3477MM"), accept the closest known plate as long as it passes all three gates
+                below. Exact matches always win; partial matching only runs when exact fails.
+              </p>
+              <div className="grid grid-cols-3 gap-2">
+                <div className="space-y-1.5">
+                  <label className="text-[11px] text-muted-foreground">Similarity ≥ (%)</label>
+                  <Input
+                    type="number"
+                    value={form.partial_match_threshold}
+                    onChange={(e) => setForm({ ...form, partial_match_threshold: e.target.value })}
+                    className="font-mono"
+                    min={0}
+                    max={100}
+                    disabled={!form.ocr_enabled || !form.allow_partial_match}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[11px] text-muted-foreground">OCR conf ≥ (%)</label>
+                  <Input
+                    type="number"
+                    value={form.partial_min_confidence}
+                    onChange={(e) => setForm({ ...form, partial_min_confidence: e.target.value })}
+                    className="font-mono"
+                    min={0}
+                    max={100}
+                    disabled={!form.ocr_enabled || !form.allow_partial_match}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[11px] text-muted-foreground">Min matching digits</label>
+                  <Input
+                    type="number"
+                    value={form.min_matching_digits}
+                    onChange={(e) => setForm({ ...form, min_matching_digits: e.target.value })}
+                    className="font-mono"
+                    min={0}
+                    disabled={!form.ocr_enabled || !form.allow_partial_match}
+                  />
+                </div>
+              </div>
+            </div>
           </fieldset>
         </div>
 

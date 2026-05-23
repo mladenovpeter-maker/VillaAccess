@@ -83,6 +83,19 @@ export const camerasTable = pgTable(
     last_anpr_plate: text("last_anpr_plate"),
     last_anpr_at: timestamp("last_anpr_at"),
 
+    // ── Fuzzy / partial plate matching (additive, default OFF) ───────────
+    // When allow_partial_match=false, only EXACT plate matches grant access
+    // (legacy behaviour — unchanged). When true, after an exact-match denial
+    // the backend looks for the most similar known plate and re-validates
+    // against that vehicle, subject to all three gates below.
+    allow_partial_match: boolean("allow_partial_match").notNull().default(false),
+    // Levenshtein-derived similarity ratio, in percent (0–100).
+    partial_match_threshold: integer("partial_match_threshold").notNull().default(85),
+    // Minimum OCR confidence required to even attempt a partial match (0–100).
+    partial_min_confidence: integer("partial_min_confidence").notNull().default(50),
+    // Minimum count of digit characters that must match in common positions.
+    min_matching_digits: integer("min_matching_digits").notNull().default(4),
+
     created_at: timestamp("created_at").defaultNow().notNull(),
     updated_at: timestamp("updated_at").defaultNow().notNull(),
   },

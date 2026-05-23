@@ -516,6 +516,11 @@ export interface Camera {
   anpr_cooldown_seconds: number;
   last_anpr_plate: string | null;
   last_anpr_at: string | null;
+  // Fuzzy / partial plate matching (additive, default OFF)
+  allow_partial_match: boolean;
+  partial_match_threshold: number;
+  partial_min_confidence: number;
+  min_matching_digits: number;
   created_at: string;
   updated_at: string;
 }

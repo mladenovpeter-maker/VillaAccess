@@ -29,10 +29,64 @@ import {
   entrancesTable,
   accessEventsTable,
 } from "@workspace/db";
-import { and, eq, isNull, lt, or, sql } from "drizzle-orm";
+import { and, eq, isNull, isNotNull, lt, or, sql } from "drizzle-orm";
 import { validateVehicleAccess } from "../lib/validation/reservation-validator";
 import { createAdapter } from "../lib/cameras/factory";
 import { eventBus } from "../lib/events";
+
+// ─── Fuzzy plate matching helpers ───────────────────────────────────────────
+//
+// Pure functions — no DB, no I/O. Mirrors Python's SequenceMatcher.ratio()
+// using a classic Levenshtein distance; for plates (≤ ~10 chars) the cost
+// is negligible and a real npm dep is not worth pulling in.
+
+function levenshtein(a: string, b: string): number {
+  if (a === b) return 0;
+  if (!a.length) return b.length;
+  if (!b.length) return a.length;
+  const m = a.length, n = b.length;
+  const prev: number[] = new Array(n + 1);
+  const curr: number[] = new Array(n + 1);
+  for (let j = 0; j <= n; j++) prev[j] = j;
+  for (let i = 1; i <= m; i++) {
+    curr[0] = i;
+    for (let j = 1; j <= n; j++) {
+      const cost = a.charCodeAt(i - 1) === b.charCodeAt(j - 1) ? 0 : 1;
+      curr[j] = Math.min(
+        curr[j - 1] + 1,        // insertion
+        prev[j] + 1,            // deletion
+        prev[j - 1] + cost,     // substitution
+      );
+    }
+    for (let j = 0; j <= n; j++) prev[j] = curr[j];
+  }
+  return prev[n];
+}
+
+/** Similarity in percent (0–100), based on Levenshtein distance. */
+function similarityPct(a: string, b: string): number {
+  const maxLen = Math.max(a.length, b.length);
+  if (maxLen === 0) return 100;
+  const d = levenshtein(a, b);
+  return Math.round(((maxLen - d) / maxLen) * 1000) / 10; // one decimal
+}
+
+/**
+ * Count digit characters that appear in BOTH plates at common positions
+ * (left-aligned). Plates of slightly different length are compared up to
+ * the shorter length. This is intentionally conservative — it's a safety
+ * gate to block "high similarity but the numbers differ" matches like
+ * CA1111MM vs CA2222MM (similarity 75% but zero shared digits).
+ */
+function sharedDigitCount(a: string, b: string): number {
+  const len = Math.min(a.length, b.length);
+  let n = 0;
+  for (let i = 0; i < len; i++) {
+    const ca = a[i];
+    if (ca >= "0" && ca <= "9" && ca === b[i]) n++;
+  }
+  return n;
+}
 
 export interface AnprDetectionInput {
   camera_id: string;
@@ -60,6 +114,14 @@ export interface AnprDetectionResult {
   reason?: string;
   denial_code?: string;
   gate?: { success: boolean; error?: string };
+  /** "exact" when OCR plate matched a vehicle row directly, "partial" when
+   *  fuzzy fallback was used, "none" when no candidate matched. */
+  match_type?: "exact" | "partial" | "none";
+  /** Plate that was actually used for access validation. Equals `plate`
+   *  for exact matches; differs for partial matches. */
+  matched_plate?: string;
+  /** Levenshtein similarity vs `matched_plate` in percent (0–100). */
+  similarity_pct?: number;
 }
 
 function normalisePlate(p: string): string {
@@ -167,18 +229,87 @@ export async function handleAnprDetection(
   }
 
   // ── 4. Validate via existing single source of truth ───────────────────────
-  const decision = await validateVehicleAccess(vehicle_id, villa_id);
+  let decision = await validateVehicleAccess(vehicle_id, villa_id);
 
-  // ── 6. Build notes (for future multi-factor matching) ─────────────────────
+  // Track match metadata for visibility (UI / events / notes). Exact-match is
+  // the legacy path; only flipped to "partial" if fuzzy fallback succeeds.
+  let matchType: "exact" | "partial" | "none" = decision.allowed
+    ? "exact"
+    : "none";
+  let matchedPlate: string = plate;
+  let similarity: number = 100;
+
+  // ── 5. Fuzzy fallback (additive, OFF by default) ──────────────────────────
+  // Only runs when:
+  //   * exact match failed, AND
+  //   * camera.allow_partial_match is true, AND
+  //   * OCR confidence >= camera.partial_min_confidence.
+  // We scan known vehicle plates, pick the most-similar one passing both
+  // the similarity threshold AND the shared-digit safety gate, then re-run
+  // validateVehicleAccess against THAT vehicle. validateVehicleAccess remains
+  // the single source of truth — fuzzy matching only changes which vehicle
+  // we validate, never whether the validator's verdict is honoured.
+  if (
+    !decision.allowed &&
+    camera.allow_partial_match &&
+    input.confidence >= (camera.partial_min_confidence ?? 50)
+  ) {
+    const threshold = camera.partial_match_threshold ?? 85;
+    const minDigits = camera.min_matching_digits ?? 4;
+
+    // Scan all known plates. Villa scale is small (≲ low thousands); pulling
+    // into Node keeps the matching logic in one place and avoids needing a
+    // pg_trgm/extension on the self-hosted box.
+    const candidates = await db
+      .select({ id: vehiclesTable.id, license_plate: vehiclesTable.license_plate })
+      .from(vehiclesTable)
+      .where(
+        and(
+          isNotNull(vehiclesTable.license_plate),
+          sql`${vehiclesTable.id} <> ${vehicle_id}`,
+        ),
+      );
+
+    let best: { id: string; plate: string; sim: number; digits: number } | null =
+      null;
+    for (const c of candidates) {
+      const cand = (c.license_plate ?? "").toUpperCase().replace(/\s+/g, "");
+      if (!cand) continue;
+      const sim = similarityPct(plate, cand);
+      if (sim < threshold) continue;
+      const digits = sharedDigitCount(plate, cand);
+      if (digits < minDigits) continue;
+      if (!best || sim > best.sim) {
+        best = { id: c.id, plate: cand, sim, digits };
+      }
+    }
+
+    if (best) {
+      const partialDecision = await validateVehicleAccess(best.id, villa_id);
+      if (partialDecision.allowed) {
+        decision = partialDecision;
+        vehicle_id = best.id;
+        matchType = "partial";
+        matchedPlate = best.plate;
+        similarity = best.sim;
+      }
+    }
+  }
+
+  // ── 6. Build notes (for future multi-factor matching + UI visibility) ────
   const futureMeta = {
     confidence: input.confidence,
     raw_ocr_text: input.raw_ocr_text ?? null,
     make: input.make ?? null,
     model: input.model ?? null,
     color: input.color ?? null,
+    vehicle_color: input.color ?? null, // explicit alias for downstream readers
     vehicle_type: input.vehicle_type ?? null,
     has_embedding: !!input.embedding,
     decision_reason: decision.reason,
+    match_type: matchType,
+    matched_plate: matchedPlate,
+    similarity_pct: similarity,
   };
 
   // ── 7. Denied path ────────────────────────────────────────────────────────
@@ -201,7 +332,19 @@ export async function handleAnprDetection(
       camera_id: camera.id,
       vehicle_id,
       source: "ai_worker",
-      payload: { plate, reason: decision.reason, denial_code: decision.denial_code },
+      payload: {
+        plate,
+        license_plate: plate,
+        raw_ocr_text: input.raw_ocr_text ?? null,
+        confidence: input.confidence,
+        match_type: matchType,
+        matched_plate: matchedPlate,
+        similarity_pct: similarity,
+        vehicle_color: input.color ?? null,
+        decision_reason: decision.reason,
+        reason: decision.reason,
+        denial_code: decision.denial_code,
+      },
     });
 
     return {
@@ -210,6 +353,9 @@ export async function handleAnprDetection(
       vehicle_id,
       reason: decision.reason,
       denial_code: decision.denial_code,
+      match_type: matchType,
+      matched_plate: matchedPlate,
+      similarity_pct: similarity,
     };
   }
 
@@ -241,6 +387,14 @@ export async function handleAnprDetection(
     source: "ai_worker",
     payload: {
       plate,
+      license_plate: plate,
+      raw_ocr_text: input.raw_ocr_text ?? null,
+      confidence: input.confidence,
+      match_type: matchType,
+      matched_plate: matchedPlate,
+      similarity_pct: similarity,
+      vehicle_color: input.color ?? null,
+      decision_reason: decision.reason,
       reason: decision.reason,
       gate_success: gate.success,
       gate_error: gate.error,
@@ -253,5 +407,8 @@ export async function handleAnprDetection(
     vehicle_id,
     reason: decision.reason,
     gate: { success: gate.success, error: gate.error },
+    match_type: matchType,
+    matched_plate: matchedPlate,
+    similarity_pct: similarity,
   };
 }

@@ -132,6 +132,9 @@ const detectionSchema = z.object({
   make: z.string().nullable().optional(),
   model: z.string().nullable().optional(),
   color: z.string().nullable().optional(),
+  // Alias accepted from newer worker builds. Either `color` or `vehicle_color`
+  // is OK; if both are present, `vehicle_color` wins (it's the explicit name).
+  vehicle_color: z.string().nullable().optional(),
   vehicle_type: z.string().nullable().optional(),
   embedding: z.array(z.number()).nullable().optional(),
   raw_ocr_text: z.string().nullable().optional(),
@@ -147,7 +150,12 @@ router.post("/detection", async (req, res) => {
   }
 
   try {
-    const result = await handleAnprDetection(body.data);
+    // Normalise the two color aliases before handing off to the service.
+    // `vehicle_color` is the explicit field added in newer worker builds and
+    // wins when both are present; otherwise fall back to legacy `color`.
+    const data = { ...body.data };
+    if (data.vehicle_color) data.color = data.vehicle_color;
+    const result = await handleAnprDetection(data);
     res.json(result);
   } catch (err: any) {
     console.error("[anpr] detection failed", err);

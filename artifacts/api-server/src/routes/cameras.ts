@@ -37,6 +37,11 @@ function serializeCamera(c: typeof camerasTable.$inferSelect) {
     anpr_cooldown_seconds: c.anpr_cooldown_seconds,
     last_anpr_plate: c.last_anpr_plate,
     last_anpr_at: c.last_anpr_at,
+    // Fuzzy / partial plate matching (additive)
+    allow_partial_match: c.allow_partial_match,
+    partial_match_threshold: c.partial_match_threshold,
+    partial_min_confidence: c.partial_min_confidence,
+    min_matching_digits: c.min_matching_digits,
     created_at: c.created_at,
     updated_at: c.updated_at,
   };
@@ -72,6 +77,10 @@ router.post("/", requireAuth, requireWriteAccess(), async (req, res) => {
       name, ip_address, rtsp_url, entrance_id, model,
       protocol, http_port, username, password,
       channel_no, gate_no,
+      ocr_enabled, polling_interval_ms, ocr_min_confidence,
+      anpr_cooldown_seconds,
+      allow_partial_match, partial_match_threshold,
+      partial_min_confidence, min_matching_digits,
     } = req.body;
 
     if (!name || !ip_address) {
@@ -106,6 +115,28 @@ router.post("/", requireAuth, requireWriteAccess(), async (req, res) => {
         password: password ?? null,
         channel_no: channel_no ?? 1,
         gate_no: gate_no ?? 1,
+        // ANPR — accept on create so the UI can configure these up-front
+        // instead of always requiring a follow-up PATCH.
+        ...(ocr_enabled !== undefined ? { ocr_enabled: Boolean(ocr_enabled) } : {}),
+        ...(polling_interval_ms !== undefined
+          ? { polling_interval_ms: Math.max(500, Math.min(60000, Number(polling_interval_ms) || 1500)) }
+          : {}),
+        ...(ocr_min_confidence !== undefined
+          ? { ocr_min_confidence: Math.max(0, Math.min(100, Number(ocr_min_confidence) || 70)) }
+          : {}),
+        ...(anpr_cooldown_seconds !== undefined
+          ? { anpr_cooldown_seconds: Math.max(1, Math.min(3600, Number(anpr_cooldown_seconds) || 30)) }
+          : {}),
+        ...(allow_partial_match !== undefined ? { allow_partial_match: Boolean(allow_partial_match) } : {}),
+        ...(partial_match_threshold !== undefined
+          ? { partial_match_threshold: Math.max(0, Math.min(100, Number(partial_match_threshold) || 85)) }
+          : {}),
+        ...(partial_min_confidence !== undefined
+          ? { partial_min_confidence: Math.max(0, Math.min(100, Number(partial_min_confidence) || 50)) }
+          : {}),
+        ...(min_matching_digits !== undefined
+          ? { min_matching_digits: Math.max(0, Math.min(20, Number(min_matching_digits) || 4)) }
+          : {}),
       })
       .returning();
     console.log("[cameras.create] 4/6 insert done", { id: c?.id });
@@ -134,6 +165,9 @@ router.patch("/:id", requireAuth, requireWriteAccess(), async (req, res) => {
     "channel_no", "gate_no",
     "ocr_enabled", "polling_interval_ms", "ocr_min_confidence",
     "anpr_cooldown_seconds",
+    // Fuzzy / partial plate matching (additive)
+    "allow_partial_match", "partial_match_threshold",
+    "partial_min_confidence", "min_matching_digits",
   ];
   const patch: Record<string, unknown> = { updated_at: new Date() };
   for (const key of allowed) {
@@ -155,6 +189,21 @@ router.patch("/:id", requireAuth, requireWriteAccess(), async (req, res) => {
   }
   if ("ocr_enabled" in patch) {
     patch["ocr_enabled"] = Boolean(patch["ocr_enabled"]);
+  }
+  if ("allow_partial_match" in patch) {
+    patch["allow_partial_match"] = Boolean(patch["allow_partial_match"]);
+  }
+  if ("partial_match_threshold" in patch) {
+    const v = Number(patch["partial_match_threshold"]);
+    patch["partial_match_threshold"] = Number.isFinite(v) ? Math.max(0, Math.min(100, Math.round(v))) : 85;
+  }
+  if ("partial_min_confidence" in patch) {
+    const v = Number(patch["partial_min_confidence"]);
+    patch["partial_min_confidence"] = Number.isFinite(v) ? Math.max(0, Math.min(100, Math.round(v))) : 50;
+  }
+  if ("min_matching_digits" in patch) {
+    const v = Number(patch["min_matching_digits"]);
+    patch["min_matching_digits"] = Number.isFinite(v) ? Math.max(0, Math.min(20, Math.round(v))) : 4;
   }
 
   const [updated] = await db

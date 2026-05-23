@@ -104,10 +104,48 @@ function EventCard({ event, isLive = false }: { event: DomainEvent; isLive?: boo
 
   const severityLabel = (t(`events.eventTypes.${event.severity}`, { defaultValue: event.severity }) as string);
 
-  // Extract human-readable description from payload
+  // Extract human-readable description from payload. For ANPR events we
+  // surface the match details (raw OCR text, similarity %, exact/partial,
+  // and either the reason or relay outcome) so operators can see at a
+  // glance why a plate was opened or denied.
   const description = (() => {
     const p = event.payload as Record<string, unknown> | null;
     if (!p) return null;
+
+    const isAnpr =
+      typeof event.event_type === "string" &&
+      event.event_type.startsWith("anpr.");
+
+    if (isAnpr) {
+      const parts: string[] = [];
+      const plate = (p.matched_plate || p.plate || p.license_plate) as
+        | string
+        | undefined;
+      if (plate) parts.push(`Plate: ${plate}`);
+      const raw = p.raw_ocr_text as string | null | undefined;
+      if (raw && raw !== plate) parts.push(`raw "${raw}"`);
+      const matchType = p.match_type as string | undefined;
+      const sim = p.similarity_pct as number | undefined;
+      if (matchType === "partial" && typeof sim === "number") {
+        parts.push(`partial ${sim}%`);
+      } else if (matchType === "exact") {
+        parts.push("exact");
+      }
+      const conf = p.confidence as number | undefined;
+      if (typeof conf === "number") parts.push(`conf ${conf.toFixed(0)}%`);
+      const color = p.vehicle_color as string | null | undefined;
+      if (color) parts.push(`color ${color}`);
+      const reason = (p.decision_reason || p.reason) as string | undefined;
+      if (event.event_type === "anpr.denied" && reason) {
+        parts.push(`— ${reason}`);
+      } else if (event.event_type === "anpr.allowed") {
+        parts.push("— barrier opened");
+      } else if (event.event_type === "anpr.relay_failed") {
+        parts.push("— relay failed");
+      }
+      return parts.length ? parts.join(" · ") : null;
+    }
+
     if (p.license_plate)  return `Plate: ${p.license_plate}`;
     if (p.guest_name)     return `Guest: ${p.guest_name}`;
     if (p.camera_name)    return `Camera: ${p.camera_name}`;

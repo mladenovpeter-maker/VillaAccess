@@ -1,0 +1,297 @@
+We now have a WORKING live ANPR pipeline and we want ONLY incremental backend improvements without breaking the current architecture.
+
+CRITICAL:
+Do NOT rewrite the OCR system.
+Do NOT replace YOLO.
+Do NOT replace EasyOCR.
+Do NOT modify Docker/container architecture.
+Do NOT refactor worker polling logic.
+Do NOT change snapshot flow.
+Do NOT introduce new services.
+
+The current Ubuntu AI worker is already stable and working correctly.
+
+==================================================
+CURRENT WORKING ARCHITECTURE
+==================================================
+
+FLOW:
+
+Camera →
+Ubuntu AI Worker →
+YOLO plate detection →
+EasyOCR →
+POST /api/anpr/detection →
+Backend/Replit →
+Reservation matching →
+Relay/barrier decision
+
+The worker is already:
+- detecting plates correctly
+- reading OCR correctly
+- posting detections correctly
+- logging events correctly
+
+REAL CURRENT EXAMPLE:
+
+OCR raw:
+"CA 3477 MI"
+
+Normalized:
+"CA3477M"
+
+Confidence:
+58.6%
+
+This proves the OCR pipeline already works.
+
+The problem is NOT OCR anymore.
+
+The problem is ONLY backend decision logic and matching strictness.
+
+==================================================
+VERY IMPORTANT ARCHITECTURE RULE
+==================================================
+
+The backend database / reservation system is the SINGLE SOURCE OF TRUTH.
+
+The AI worker DOES NOT:
+- store reservations
+- make final access decisions
+- store vehicle data
+- store access permissions
+
+The AI worker ONLY:
+- polls snapshots
+- detects plates
+- runs OCR
+- sends detection payloads
+
+Current payload already includes:
+- plate
+- confidence
+- raw_ocr_text
+
+Future payload may also include:
+- vehicle_color
+
+Reservation matching MUST stay entirely inside the backend/Replit app.
+
+==================================================
+THE MAIN PROBLEM TO SOLVE
+==================================================
+
+Current backend logic requires exact plate matching.
+
+Example:
+
+Database reservation:
+CA3477MM
+
+Worker OCR result:
+CA3477M
+
+Current result:
+DENIED
+
+This is WRONG behavior for a real ANPR system.
+
+This should OPEN because:
+- the OCR result is extremely close
+- digits match correctly
+- OCR confidence is acceptable
+- only one trailing character is missing
+
+We need SMART MATCHING instead of exact-only matching.
+
+==================================================
+REQUIRED BACKEND IMPROVEMENTS
+==================================================
+
+1. ADD FUZZY / PARTIAL PLATE MATCHING
+
+If exact match fails:
+- compare OCR plate with reservation plates
+- calculate similarity score
+- allow configurable threshold
+
+Recommended:
+Use Levenshtein similarity or SequenceMatcher ratio.
+
+Examples:
+
+OCR:
+CA3477M
+
+Reservation:
+CA3477MM
+
+This should produce HIGH similarity and should OPEN.
+
+Another example:
+
+OCR:
+CA3477
+
+Reservation:
+CA3477MM
+
+Still likely acceptable depending on thresholds.
+
+But:
+
+OCR:
+CB1111TT
+
+Reservation:
+CA3477MM
+
+Should DENY.
+
+==================================================
+2. ADD SMART DECISION ENGINE
+==================================================
+
+Barrier opening should NOT require perfect OCR.
+
+Recommended logic:
+
+OPEN if:
+- exact match exists
+
+OR
+
+- partial similarity >= threshold
+AND OCR confidence >= minimum confidence
+
+This must be configurable from admin UI.
+
+==================================================
+3. ADD NEW CAMERA OCR SETTINGS
+==================================================
+
+Inside existing camera OCR settings page add:
+
+- Allow Partial Plate Match (ON/OFF)
+- Partial Match Threshold (%) default 85
+- Minimum OCR Confidence (%) default 50
+- Minimum Matching Digits default 4
+
+Future-ready options:
+- Enable Vehicle Color Verification
+- Vehicle Color Match Weight
+- Enable Vehicle Brand Verification
+
+IMPORTANT:
+Do NOT affect existing exact-match behavior unless partial matching is enabled.
+
+==================================================
+4. VEHICLE COLOR SUPPORT
+==================================================
+
+Ubuntu worker now includes lightweight vehicle color detection.
+
+The worker may soon send:
+vehicle_color = "white"
+
+Backend must:
+- store detected vehicle color in ANPR events
+- compare it against reservation vehicle color
+- use it only as an additional confidence signal
+
+Vehicle color must NEVER be mandatory.
+It should only improve confidence.
+
+Example:
+
+OCR:
+CA3477M
+
+Color:
+white
+
+Reservation:
+CA3477MM
+white Fiat
+
+This should strongly increase confidence and allow opening.
+
+==================================================
+5. IMPORTANT MATCHING RULE
+==================================================
+
+The system must understand that:
+
+CA3477M
+
+is VERY LIKELY the same as:
+
+CA3477MM
+
+because:
+- all major digits match
+- prefix matches
+- OCR commonly misses trailing characters
+- OCR confidence is already high
+
+This is normal ANPR behavior.
+
+==================================================
+6. UI / ADMIN IMPROVEMENTS
+==================================================
+
+In ANPR events page display:
+
+- OCR raw text
+- normalized OCR plate
+- OCR confidence
+- similarity percentage
+- exact vs partial match
+- decision reason
+- relay opened or denied
+
+Examples:
+
+"Partial match accepted (92%)"
+"Barrier opened"
+
+or
+
+"OCR confidence too low"
+"Barrier denied"
+
+This visibility is critical for debugging and tuning.
+
+==================================================
+7. RELAY / BARRIER LOGIC
+==================================================
+
+Once partial matching succeeds:
+- use the SAME existing relay open pipeline
+- do NOT create a second relay mechanism
+- do NOT duplicate access logic
+
+Only improve the decision criteria before relay opening.
+
+==================================================
+8. MOST IMPORTANT REQUIREMENT
+==================================================
+
+DO NOT break the existing stable pipeline.
+
+The following already works correctly:
+- camera polling
+- YOLO detection
+- OCR reading
+- Ubuntu worker
+- detection posting
+- backend event logging
+- relay communication
+
+We ONLY want:
+- smarter matching
+- smarter access decisions
+- configurable thresholds
+- better UI visibility
+
+This must be implemented with minimal and careful changes.
