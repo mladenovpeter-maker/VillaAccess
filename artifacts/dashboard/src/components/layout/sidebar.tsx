@@ -60,7 +60,8 @@ export function Sidebar() {
   ];
 
   const devItems: NavItem[] = [
-    { href: "/mock", label: t("nav.mockMode"), icon: FlaskConical, roles: ["admin"] },
+    // Hidden from menu (page + backend still active). Access by typing /mock directly.
+    // { href: "/mock", label: t("nav.mockMode"), icon: FlaskConical, roles: ["admin"] },
   ];
 
   function visible(items: NavItem[]) {
