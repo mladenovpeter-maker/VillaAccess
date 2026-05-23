@@ -1,10 +1,14 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import { camerasTable, entrancesTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { requireAuth } from "./auth";
 import { createAdapter } from "../lib/cameras/factory";
 import * as net from "net";
+import * as os from "os";
+import * as fs from "fs";
+import * as fsp from "fs/promises";
+import * as path from "path";
 
 const router = Router();
 
@@ -169,46 +173,217 @@ router.get("/cameras", requireAuth, async (_req, res) => {
 
 // ─── GET /diagnostics/system — system component health ───────────────────────
 
+// Tier 1.5: prefer /host/proc when bind-mounted, else container's /proc via os.*
+async function readHostMem(): Promise<{ total: number; free: number; available: number; source: "host" | "container" }> {
+  try {
+    const raw = await fsp.readFile("/host/proc/meminfo", "utf8");
+    const get = (k: string) => {
+      const m = raw.match(new RegExp(`^${k}:\\s+(\\d+)\\s+kB`, "m"));
+      return m ? Number(m[1]) * 1024 : NaN;
+    };
+    const total = get("MemTotal");
+    const free = get("MemFree");
+    const available = get("MemAvailable");
+    if (Number.isFinite(total) && Number.isFinite(available)) {
+      return { total, free: Number.isFinite(free) ? free : available, available, source: "host" };
+    }
+  } catch { /* fall through */ }
+  const total = os.totalmem();
+  const free = os.freemem();
+  return { total, free, available: free, source: "container" };
+}
+
+async function readHostCpuCores(): Promise<number | null> {
+  try {
+    const raw = await fsp.readFile("/host/proc/cpuinfo", "utf8");
+    const n = (raw.match(/^processor\s*:/gm) || []).length;
+    if (n > 0) return n;
+  } catch { /* fall through */ }
+  return null;
+}
+
+async function readHostLoad(): Promise<{ load: [number, number, number]; cores: number; source: "host" | "container" }> {
+  try {
+    const raw = await fsp.readFile("/host/proc/loadavg", "utf8");
+    const parts = raw.trim().split(/\s+/);
+    const l1 = Number(parts[0]), l5 = Number(parts[1]), l15 = Number(parts[2]);
+    if ([l1, l5, l15].every(Number.isFinite)) {
+      const hostCores = await readHostCpuCores();
+      return { load: [l1, l5, l15], cores: hostCores ?? os.cpus().length, source: "host" };
+    }
+  } catch { /* fall through */ }
+  const [l1, l5, l15] = os.loadavg();
+  return { load: [l1, l5, l15], cores: os.cpus().length, source: "container" };
+}
+
+async function readHostUptimeSec(): Promise<{ uptime: number; source: "host" | "container" }> {
+  try {
+    const raw = await fsp.readFile("/host/proc/uptime", "utf8");
+    const up = Number(raw.trim().split(/\s+/)[0]);
+    if (Number.isFinite(up)) return { uptime: Math.floor(up), source: "host" };
+  } catch { /* fall through */ }
+  return { uptime: Math.floor(os.uptime()), source: "container" };
+}
+
+async function readDiskUploads(): Promise<{ total: number; free: number; used: number; label: string } | null> {
+  const candidates: Array<{ path: string; label: string }> = [
+    process.env.UPLOADS_DIR ? { path: process.env.UPLOADS_DIR, label: "uploads" } : null!,
+    { path: path.resolve(process.cwd(), "uploads"), label: "uploads" },
+    { path: "/app/uploads", label: "uploads" },
+    { path: "/", label: "rootfs" },
+  ].filter(Boolean);
+  for (const { path: p, label } of candidates) {
+    try {
+      // fs.statfs is Node 18.15+
+      const st: any = await new Promise((resolve, reject) =>
+        (fs as any).statfs(p, (err: any, s: any) => (err ? reject(err) : resolve(s)))
+      );
+      const total = Number(st.blocks) * Number(st.bsize);
+      const free = Number(st.bavail) * Number(st.bsize);
+      const used = total - free;
+      if (total > 0) return { total, free, used, label };
+    } catch { /* try next */ }
+  }
+  return null;
+}
+
 router.get("/system", requireAuth, async (_req, res) => {
   const checked_at = new Date().toISOString();
 
-  // DB health
+  // DB health + size + connection count
   let dbStatus: "ok" | "error" = "error";
   let dbLatency = 0;
+  let dbSizeBytes: number | null = null;
+  let dbConnections: number | null = null;
   try {
     const t0 = Date.now();
-    await db.execute("SELECT 1" as any);
+    await db.execute(sql`SELECT 1`);
     dbLatency = Date.now() - t0;
     dbStatus = "ok";
+    try {
+      const sizeRow: any = await db.execute(sql`SELECT pg_database_size(current_database()) AS bytes`);
+      const rows = (sizeRow?.rows ?? sizeRow) as any[];
+      dbSizeBytes = rows?.[0]?.bytes != null ? Number(rows[0].bytes) : null;
+    } catch { /* size optional */ }
+    try {
+      const connRow: any = await db.execute(sql`SELECT count(*)::int AS n FROM pg_stat_activity WHERE datname = current_database() AND state = 'active'`);
+      const rows = (connRow?.rows ?? connRow) as any[];
+      dbConnections = rows?.[0]?.n != null ? Number(rows[0].n) : null;
+    } catch { /* conn count optional */ }
   } catch { dbStatus = "error"; }
 
+  let cameraTotal = 0, cameraOnline = 0, cameraOffline = 0, cameraError = 0;
+  try {
+    const camRes: any = await db.execute(sql`SELECT status, COUNT(*)::int AS n FROM cameras GROUP BY status`);
+    const camRows = (camRes?.rows ?? camRes) as Array<{ status: string; n: number }>;
+    for (const r of camRows) {
+      cameraTotal += Number(r.n);
+      if (r.status === "online")  cameraOnline  = Number(r.n);
+      if (r.status === "offline") cameraOffline = Number(r.n);
+      if (r.status === "error")   cameraError   = Number(r.n);
+    }
+  } catch { /* counters stay 0 */ }
 
-  const allCameras = await db.select({ status: camerasTable.status }).from(camerasTable);
-  const cameraOnline  = allCameras.filter((c) => c.status === "online").length;
-  const cameraOffline = allCameras.filter((c) => c.status === "offline").length;
-  const cameraError   = allCameras.filter((c) => c.status === "error").length;
+  let entranceTotal = 0, entranceActive = 0;
+  try {
+    const entRes: any = await db.execute(sql`SELECT status, COUNT(*)::int AS n FROM entrances GROUP BY status`);
+    const entRows = (entRes?.rows ?? entRes) as Array<{ status: string; n: number }>;
+    for (const r of entRows) {
+      entranceTotal += Number(r.n);
+      if (r.status === "active") entranceActive = Number(r.n);
+    }
+  } catch { /* counters stay 0 */ }
 
-  // Entrance count
-  const entrances = await db.select({ id: entrancesTable.id, status: entrancesTable.status }).from(entrancesTable);
+  // OCR worker heartbeat — inferred from most recent access_events row.
+  // Read-only; no worker-loop changes.
+  let ocrStatus: "ok" | "degraded" | "error" | "not_configured" = "not_configured";
+  let ocrDetail = "No recent activity";
+  let ocrLastSeenSec: number | null = null;
+  try {
+    const lastRow: any = await db.execute(sql`SELECT MAX("timestamp") AS ts FROM access_events`);
+    const rows = (lastRow?.rows ?? lastRow) as any[];
+    const ts = rows?.[0]?.ts;
+    if (ts) {
+      const lastMs = new Date(ts).getTime();
+      const ageSec = Math.max(0, Math.floor((Date.now() - lastMs) / 1000));
+      ocrLastSeenSec = ageSec;
+      if (ageSec < 300)        { ocrStatus = "ok";        ocrDetail = `Last detection ${ageSec}s ago`; }
+      else if (ageSec < 3600)  { ocrStatus = "degraded";  ocrDetail = `Last detection ${Math.floor(ageSec / 60)}m ago`; }
+      else                     { ocrStatus = "degraded";  ocrDetail = `Last detection ${Math.floor(ageSec / 3600)}h ago`; }
+    } else {
+      ocrStatus = "not_configured";
+      ocrDetail = "No access events recorded yet";
+    }
+  } catch {
+    ocrStatus = "error";
+    ocrDetail = "Failed to read access_events";
+  }
+
+  // Host metrics (Tier 1 + 1.5)
+  const [mem, load, hostUp, disk] = await Promise.all([
+    readHostMem(),
+    readHostLoad(),
+    readHostUptimeSec(),
+    readDiskUploads(),
+  ]);
+
+  const memUsed = mem.total - mem.available;
+  const memUsedPct = mem.total > 0 ? Math.round((memUsed / mem.total) * 1000) / 10 : 0;
+  const cpuPct = load.cores > 0 ? Math.round((load.load[0] / load.cores) * 1000) / 10 : 0;
+  const diskUsedPct = disk && disk.total > 0 ? Math.round((disk.used / disk.total) * 1000) / 10 : null;
+
+  const rssBytes = process.memoryUsage().rss;
 
   res.json({
     checked_at,
     components: {
-      database:   { status: dbStatus,   latency_ms: dbLatency, detail: "PostgreSQL via Drizzle ORM" },
-      api:        { status: "ok",        latency_ms: 0,         detail: "Express API server" },
-      event_bus:  { status: "ok",        latency_ms: null,      detail: "In-process SSE event bus" },
-      ocr_worker: { status: "not_configured", latency_ms: null, detail: "OCR pipeline — not yet active" },
+      database: {
+        status: dbStatus,
+        latency_ms: dbLatency,
+        detail: dbStatus === "ok"
+          ? `PostgreSQL${dbSizeBytes != null ? ` · ${(dbSizeBytes / 1024 / 1024).toFixed(1)} MB` : ""}${dbConnections != null ? ` · ${dbConnections} conn` : ""}`
+          : "PostgreSQL unreachable",
+      },
+      api:        { status: "ok",       latency_ms: 0,    detail: `Express API · RSS ${Math.round(rssBytes / 1024 / 1024)} MB` },
+      event_bus:  { status: "ok",       latency_ms: null, detail: "In-process SSE event bus" },
+      ocr_worker: { status: ocrStatus,  latency_ms: ocrLastSeenSec, detail: ocrDetail },
       ai_engine:  { status: "not_configured", latency_ms: null, detail: "AI recognition — not yet active" },
     },
     cameras: {
-      total:   allCameras.length,
+      total:   cameraTotal,
       online:  cameraOnline,
       offline: cameraOffline,
       error:   cameraError,
     },
     entrances: {
-      total:  entrances.length,
-      active: entrances.filter((e) => e.status === "active").length,
+      total:  entranceTotal,
+      active: entranceActive,
+    },
+    host: {
+      cpu: {
+        cores: load.cores,
+        load_1: load.load[0],
+        load_5: load.load[1],
+        load_15: load.load[2],
+        used_pct: cpuPct,
+        source: load.source,
+      },
+      memory: {
+        total_bytes: mem.total,
+        used_bytes: memUsed,
+        available_bytes: mem.available,
+        used_pct: memUsedPct,
+        source: mem.source,
+      },
+      disk: disk
+        ? { label: disk.label, total_bytes: disk.total, used_bytes: disk.used, free_bytes: disk.free, used_pct: diskUsedPct }
+        : null,
+      uptime_seconds: hostUp.uptime,
+      uptime_source: hostUp.source,
+    },
+    database_detail: {
+      size_bytes: dbSizeBytes,
+      connections: dbConnections,
     },
     uptime_seconds: Math.floor(process.uptime()),
     node_version: process.version,

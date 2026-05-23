@@ -7,7 +7,7 @@ import { useTranslation } from "react-i18next";
 import {
   Database, Server, Activity, Radio, Brain, Camera,
   Wifi, WifiOff, AlertCircle, CheckCircle2, Clock, Cpu, MemoryStick,
-  DoorOpen, RefreshCw,
+  DoorOpen, RefreshCw, HardDrive, Gauge,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -18,14 +18,75 @@ interface ComponentHealth {
   detail: string;
 }
 
+interface HostCpu { cores: number; load_1: number; load_5: number; load_15: number; used_pct: number; source: "host" | "container" }
+interface HostMem { total_bytes: number; used_bytes: number; available_bytes: number; used_pct: number; source: "host" | "container" }
+interface HostDisk { label: string; total_bytes: number; used_bytes: number; free_bytes: number; used_pct: number | null }
+
 interface SystemHealth {
   checked_at: string;
   components: Record<string, ComponentHealth>;
   cameras: { total: number; online: number; offline: number; error: number };
   entrances: { total: number; active: number };
+  host?: {
+    cpu: HostCpu;
+    memory: HostMem;
+    disk: HostDisk | null;
+    uptime_seconds: number;
+    uptime_source: "host" | "container";
+  };
+  database_detail?: { size_bytes: number | null; connections: number | null };
   uptime_seconds: number;
   node_version: string;
   memory_mb: number;
+}
+
+function fmtBytes(n: number): string {
+  if (n >= 1024 ** 3) return `${(n / 1024 ** 3).toFixed(1)} GB`;
+  if (n >= 1024 ** 2) return `${(n / 1024 ** 2).toFixed(0)} MB`;
+  if (n >= 1024) return `${(n / 1024).toFixed(0)} KB`;
+  return `${n} B`;
+}
+
+function pctTone(pct: number | null): { color: string; bar: string; tone: "ok" | "warn" | "crit" } {
+  if (pct == null) return { color: "text-muted-foreground", bar: "bg-muted-foreground/40", tone: "ok" };
+  if (pct >= 90) return { color: "text-red-400",   bar: "bg-red-400",   tone: "crit" };
+  if (pct >= 75) return { color: "text-amber-400", bar: "bg-amber-400", tone: "warn" };
+  return { color: "text-green-400", bar: "bg-green-400", tone: "ok" };
+}
+
+function HostMetricCard({ label, icon: Icon, primary, pct, secondary, badge }: {
+  label: string;
+  icon: React.ElementType;
+  primary: string;
+  pct: number | null;
+  secondary?: string;
+  badge?: string;
+}) {
+  const tone = pctTone(pct);
+  return (
+    <Card>
+      <CardContent className="p-4">
+        <div className="flex items-start gap-3">
+          <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center shrink-0">
+            <Icon className={cn("w-4 h-4", tone.color)} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between gap-2">
+              <div className={cn("text-lg font-bold font-mono", tone.color)}>{primary}</div>
+              {badge && <span className="text-[9px] font-mono uppercase tracking-wide text-muted-foreground/60 px-1.5 py-0.5 rounded bg-muted">{badge}</span>}
+            </div>
+            <div className="text-[10px] text-muted-foreground uppercase tracking-wide">{label}</div>
+            {pct != null && (
+              <div className="mt-2 h-1 w-full rounded-full bg-muted overflow-hidden">
+                <div className={cn("h-full transition-all", tone.bar)} style={{ width: `${Math.min(100, Math.max(0, pct))}%` }} />
+              </div>
+            )}
+            {secondary && <div className="text-[10px] text-muted-foreground/70 mt-1 font-mono truncate">{secondary}</div>}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
 }
 
 const COMPONENT_ICONS: Record<string, React.ElementType> = {
@@ -140,11 +201,57 @@ export default function HealthPage() {
               <span className="ml-auto">Auto-refreshes every 15s</span>
             </div>
 
-            {/* Quick metrics */}
+            {/* Host metrics (CPU / RAM / Disk / Uptime) */}
+            {data.host && (
+              <div>
+                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+                  Host
+                </h3>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <HostMetricCard
+                    label="CPU Load"
+                    icon={Gauge}
+                    primary={`${data.host.cpu.used_pct}%`}
+                    pct={data.host.cpu.used_pct}
+                    secondary={`load ${data.host.cpu.load_1.toFixed(2)} · ${data.host.cpu.cores} cores`}
+                    badge={data.host.cpu.source === "host" ? "host" : "ctr"}
+                  />
+                  <HostMetricCard
+                    label="Memory"
+                    icon={MemoryStick}
+                    primary={`${data.host.memory.used_pct}%`}
+                    pct={data.host.memory.used_pct}
+                    secondary={`${fmtBytes(data.host.memory.used_bytes)} / ${fmtBytes(data.host.memory.total_bytes)}`}
+                    badge={data.host.memory.source === "host" ? "host" : "ctr"}
+                  />
+                  {data.host.disk ? (
+                    <HostMetricCard
+                      label={`Disk (${data.host.disk.label})`}
+                      icon={HardDrive}
+                      primary={data.host.disk.used_pct != null ? `${data.host.disk.used_pct}%` : "—"}
+                      pct={data.host.disk.used_pct}
+                      secondary={`${fmtBytes(data.host.disk.free_bytes)} free`}
+                    />
+                  ) : (
+                    <HostMetricCard label="Disk" icon={HardDrive} primary="—" pct={null} secondary="unavailable" />
+                  )}
+                  <HostMetricCard
+                    label={data.host.uptime_source === "host" ? "Host Uptime" : "API Uptime"}
+                    icon={Clock}
+                    primary={formatUptime(data.host.uptime_seconds)}
+                    pct={null}
+                    secondary={`API ${formatUptime(data.uptime_seconds)}`}
+                    badge={data.host.uptime_source === "host" ? "host" : "ctr"}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Operational counters */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {[
                 { label: t("health.uptime"), value: formatUptime(data.uptime_seconds), icon: Clock, color: "text-green-400" },
-                { label: t("health.memory"), value: `${data.memory_mb} MB`, icon: Cpu, color: "text-blue-400" },
+                { label: "API Heap", value: `${data.memory_mb} MB`, icon: Cpu, color: "text-blue-400" },
                 { label: t("health.camerasOnline"), value: `${data.cameras.online}/${data.cameras.total}`, icon: Camera, color: data.cameras.offline > 0 ? "text-amber-400" : "text-green-400" },
                 { label: t("health.entrancesActive"), value: `${data.entrances.active}/${data.entrances.total}`, icon: DoorOpen, color: "text-primary" },
               ].map(({ label, value, icon: Icon, color }) => (
