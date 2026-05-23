@@ -37,39 +37,62 @@ import { eventBus } from "../lib/events";
 
 // ─── Fuzzy plate matching helpers ───────────────────────────────────────────
 //
-// Pure functions — no DB, no I/O. Mirrors Python's SequenceMatcher.ratio()
-// using a classic Levenshtein distance; for plates (≤ ~10 chars) the cost
-// is negligible and a real npm dep is not worth pulling in.
+// Pure functions — no DB, no I/O. Port of Python's difflib.SequenceMatcher
+// .ratio() (Ratcliff–Obershelp): ratio = 2 * M / T, where M is the sum of
+// matching block sizes and T = |a| + |b|. The earlier implementation used
+// Levenshtein distance, which is NOT equivalent to SequenceMatcher and
+// under-scored prefix/suffix-truncated plates by ~10 points (e.g. for
+// CA3477 vs CA3477MM, Levenshtein → 75%, SequenceMatcher → 85.7%) — that
+// caused legitimate partial matches to fall below the 80% threshold even
+// when the OCR was a clean prefix of the registered plate. Re-aligning
+// with SequenceMatcher restores the documented behaviour the ANPR worker
+// was originally designed for.
+//
+// Plates are ≤ ~10 chars so the recursive find-longest-match is trivial.
 
-function levenshtein(a: string, b: string): number {
-  if (a === b) return 0;
-  if (!a.length) return b.length;
-  if (!b.length) return a.length;
-  const m = a.length, n = b.length;
-  const prev: number[] = new Array(n + 1);
-  const curr: number[] = new Array(n + 1);
-  for (let j = 0; j <= n; j++) prev[j] = j;
-  for (let i = 1; i <= m; i++) {
-    curr[0] = i;
-    for (let j = 1; j <= n; j++) {
-      const cost = a.charCodeAt(i - 1) === b.charCodeAt(j - 1) ? 0 : 1;
-      curr[j] = Math.min(
-        curr[j - 1] + 1,        // insertion
-        prev[j] + 1,            // deletion
-        prev[j - 1] + cost,     // substitution
-      );
+function findLongestMatch(
+  a: string, alo: number, ahi: number,
+  b: string, blo: number, bhi: number,
+): { i: number; j: number; size: number } {
+  let bestI = alo, bestJ = blo, bestSize = 0;
+  let j2len = new Map<number, number>();
+  for (let i = alo; i < ahi; i++) {
+    const next = new Map<number, number>();
+    for (let j = blo; j < bhi; j++) {
+      if (a.charCodeAt(i) === b.charCodeAt(j)) {
+        const k = (j2len.get(j - 1) ?? 0) + 1;
+        next.set(j, k);
+        if (k > bestSize) {
+          bestI = i - k + 1;
+          bestJ = j - k + 1;
+          bestSize = k;
+        }
+      }
     }
-    for (let j = 0; j <= n; j++) prev[j] = curr[j];
+    j2len = next;
   }
-  return prev[n];
+  return { i: bestI, j: bestJ, size: bestSize };
 }
 
-/** Similarity in percent (0–100), based on Levenshtein distance. */
+function matchingChars(
+  a: string, alo: number, ahi: number,
+  b: string, blo: number, bhi: number,
+): number {
+  const { i, j, size } = findLongestMatch(a, alo, ahi, b, blo, bhi);
+  if (size === 0) return 0;
+  return (
+    size +
+    matchingChars(a, alo, i, b, blo, j) +
+    matchingChars(a, i + size, ahi, b, j + size, bhi)
+  );
+}
+
+/** Similarity in percent (0–100), Python SequenceMatcher.ratio() equivalent. */
 function similarityPct(a: string, b: string): number {
-  const maxLen = Math.max(a.length, b.length);
-  if (maxLen === 0) return 100;
-  const d = levenshtein(a, b);
-  return Math.round(((maxLen - d) / maxLen) * 1000) / 10; // one decimal
+  const total = a.length + b.length;
+  if (total === 0) return 100;
+  const m = matchingChars(a, 0, a.length, b, 0, b.length);
+  return Math.round(((2 * m) / total) * 1000) / 10; // one decimal
 }
 
 /**
