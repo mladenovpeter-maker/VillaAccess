@@ -1,5 +1,6 @@
 export * from "./users";
 export * from "./entrances";
+export * from "./villa_entrances";
 export * from "./intercoms";
 export * from "./villas";
 export * from "./cameras";

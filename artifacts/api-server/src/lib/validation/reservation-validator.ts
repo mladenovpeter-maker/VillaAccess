@@ -391,6 +391,139 @@ export async function validateVehicleAccess(
   return { allowed: true, reason: "Access granted", reservation: serializeRes(best), access_window: accessWindowData };
 }
 
+// ── Vehicle access validation (M:N villa scope) ──────────────────────────────
+//
+// Phase A.0 sibling of `validateVehicleAccess`. Identical decision tree
+// except the reservation filter accepts an array of villa ids (the
+// derived set of villas served by the camera's entrance via the new
+// villa_entrances join table). Returns the matched villa id so the
+// caller knows WHICH villa's reservation granted access.
+//
+// Used ONLY by the shadow path in services/anpr.ts during Phase A.0 —
+// the live relay path still calls the single-villa `validateVehicleAccess`
+// above. After 24h shadow observation with zero mismatches this function
+// becomes the primary in Phase A.1 and the single-villa version is
+// removed.
+//
+// Semantics for a single-villa input (`villaIds.length === 1`) MUST be
+// byte-identical to `validateVehicleAccess(vehicleId, villaIds[0])` —
+// that is the property the shadow comparator verifies in production.
+export async function validateVehicleAccessMulti(
+  vehicleId: string,
+  villaIds: string[],
+): Promise<AccessDecision & { matched_villa_id?: string | null }> {
+  const now = new Date();
+
+  const vehicles = await db
+    .select()
+    .from(vehiclesTable)
+    .where(eq(vehiclesTable.id, vehicleId))
+    .limit(1);
+
+  if (!vehicles[0]) {
+    return { allowed: false, reason: "Vehicle not found in system", denial_code: "VEHICLE_NOT_FOUND" };
+  }
+  if (vehicles[0].status === "blacklisted") {
+    return {
+      allowed: false,
+      reason: `Vehicle is blacklisted${vehicles[0].blacklist_reason ? `: ${vehicles[0].blacklist_reason}` : ""}`,
+      denial_code: "BLACKLISTED",
+    };
+  }
+
+  if ((vehicles[0] as any).access_type === "permanent") {
+    return {
+      allowed: true,
+      reason: "Permanent access vehicle",
+      matched_villa_id: null,
+    };
+  }
+
+  // No allowed villas wired to this entrance → can't grant access.
+  if (villaIds.length === 0) {
+    return { allowed: false, reason: "No reservation found for this vehicle at this entrance", denial_code: "NO_RESERVATION" };
+  }
+
+  const links = await db
+    .select({ reservation_id: reservationVehiclesTable.reservation_id })
+    .from(reservationVehiclesTable)
+    .where(eq(reservationVehiclesTable.vehicle_id, vehicleId));
+
+  if (!links.length) {
+    return { allowed: false, reason: "No reservation found for this vehicle", denial_code: "NO_RESERVATION" };
+  }
+
+  const reservationIds = links.map((l) => l.reservation_id);
+
+  const reservations = await db
+    .select()
+    .from(reservationsTable)
+    .where(and(inArray(reservationsTable.villa_id, villaIds), inArray(reservationsTable.id, reservationIds)))
+    .orderBy(desc(reservationsTable.check_in))
+    .limit(5);
+
+  if (!reservations.length) {
+    return { allowed: false, reason: "No reservation found for this vehicle at this entrance", denial_code: "NO_RESERVATION" };
+  }
+
+  const best =
+    reservations.find((r) => r.status === "active") ??
+    reservations.find((r) => r.status === "upcoming") ??
+    reservations[0];
+
+  const serializeRes = (r: typeof best) => ({
+    id: r.id,
+    guest_name: r.guest_name,
+    check_in:  r.check_in.toISOString(),
+    check_out: r.check_out.toISOString(),
+    status: r.status,
+    actual_check_in: (r as any).actual_check_in?.toISOString() ?? null,
+  });
+
+  if (best.status === "cancelled") {
+    return { allowed: false, reason: "Reservation has been cancelled", denial_code: "RESERVATION_CANCELLED", reservation: serializeRes(best), matched_villa_id: best.villa_id };
+  }
+  if (best.status === "completed") {
+    return { allowed: false, reason: "Reservation is already completed (guest has checked out)", denial_code: "RESERVATION_EXPIRED", reservation: serializeRes(best), matched_villa_id: best.villa_id };
+  }
+
+  const windowOpens  = new Date(best.check_in.getTime()  - CHECKIN_GRACE_MS);
+  const windowCloses = new Date(best.check_out.getTime() + CHECKOUT_GRACE_MS);
+
+  const accessWindowData = {
+    opens_at:  windowOpens.toISOString(),
+    closes_at: windowCloses.toISOString(),
+    is_open:   now >= windowOpens && now <= windowCloses,
+    minutes_until_open:  now < windowOpens  ? Math.ceil((windowOpens.getTime()  - now.getTime()) / 60_000) : null,
+    minutes_until_close: now < windowCloses ? Math.ceil((windowCloses.getTime() - now.getTime()) / 60_000) : null,
+  };
+
+  if (now > windowCloses) {
+    return {
+      allowed: false,
+      reason: `Check-out window has expired (closed ${windowCloses.toLocaleString()})`,
+      denial_code: "RESERVATION_EXPIRED",
+      reservation: serializeRes(best),
+      access_window: accessWindowData,
+      matched_villa_id: best.villa_id,
+    };
+  }
+
+  if (now < windowOpens) {
+    const h = Math.ceil((windowOpens.getTime() - now.getTime()) / 3_600_000);
+    return {
+      allowed: false,
+      reason: `Access window not yet open — opens in ${h}h (${windowOpens.toLocaleString()})`,
+      denial_code: "OUTSIDE_WINDOW",
+      reservation: serializeRes(best),
+      access_window: accessWindowData,
+      matched_villa_id: best.villa_id,
+    };
+  }
+
+  return { allowed: true, reason: "Access granted", reservation: serializeRes(best), access_window: accessWindowData, matched_villa_id: best.villa_id };
+}
+
 // ── Status sync (lazy) ────────────────────────────────────────────────────────
 
 export async function syncReservationStatus(
