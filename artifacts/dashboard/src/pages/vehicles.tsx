@@ -14,7 +14,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
-  Plus, Pencil, Trash2, Search, Car, Clock, Eye, Upload,
+  Plus, Pencil, Trash2, Search, Car, Clock, Upload,
   X, ImageIcon, Star, Camera, AlertTriangle, CheckCircle2,
   ChevronLeft, ChevronRight, ZoomIn,
 } from "lucide-react";
@@ -726,7 +726,6 @@ export default function VehiclesPage() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [formOpen, setFormOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<Vehicle | null>(null);
-  const [detailTarget, setDetailTarget] = useState<Vehicle | null>(null);
 
   const { data: vehicles = [], isLoading } = useQuery({
     queryKey: ["vehicles"],
@@ -800,7 +799,7 @@ export default function VehiclesPage() {
         ) : (
           <div className="space-y-2">
             {filtered.map((v) => (
-              <Card key={v.id} className="hover:border-primary/30 transition-colors cursor-pointer" onClick={() => setDetailTarget(v)}>
+              <Card key={v.id} className="hover:border-primary/30 transition-colors">
                 <CardContent className="p-3">
                   <div className="flex items-center gap-3">
                     {/* Thumbnail */}
@@ -827,7 +826,7 @@ export default function VehiclesPage() {
                     </div>
 
                     {/* Actions */}
-                    <div className="flex gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex gap-1.5 shrink-0">
                       {!isViewer && (
                         <>
                           <Button variant="ghost" size="sm" className="h-8 w-8 p-0"
@@ -839,17 +838,11 @@ export default function VehiclesPage() {
                             title={v.status === "blacklisted" ? t("vehicles.unblacklist") : t("vehicles.blacklist")}>
                             <AlertTriangle className={cn("w-3.5 h-3.5", v.status === "blacklisted" ? "text-red-400" : "text-muted-foreground")} />
                           </Button>
+                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                            onClick={() => deleteMut.mutate(v.id)} disabled={deleteMut.isPending}>
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
                         </>
-                      )}
-                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0"
-                        onClick={() => setDetailTarget(v)}>
-                        <Eye className="w-3.5 h-3.5" />
-                      </Button>
-                      {!isViewer && (
-                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                          onClick={() => deleteMut.mutate(v.id)} disabled={deleteMut.isPending}>
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </Button>
                       )}
                     </div>
                   </div>
@@ -861,7 +854,6 @@ export default function VehiclesPage() {
       </div>
 
       <VehicleFormDialog open={formOpen} onClose={() => { setFormOpen(false); setEditTarget(null); }} vehicle={editTarget} />
-      <VehicleDetailDialog vehicle={detailTarget} open={!!detailTarget} onClose={() => setDetailTarget(null)} />
     </AppLayout>
   );
 }
