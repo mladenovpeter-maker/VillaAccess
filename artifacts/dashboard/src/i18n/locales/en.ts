@@ -9,7 +9,6 @@ const en = {
     entrances: "Entrances",
     cameras: "Cameras",
     intercoms: "Door Controllers",
-    gallery: "Snapshot Gallery",
     events: "Event Stream",
     logs: "Logs",
     administration: "Administration",
@@ -565,13 +564,6 @@ const en = {
       storage: "Storage & Retention",
       system: "System",
     },
-  },
-  gallery: {
-    title: "Snapshot Gallery",
-    subtitle: "All vehicle recognition captures — filter by plate or access status",
-    searchPlate: "Search by plate…",
-    snapshots: "snapshots",
-    noSnapshots: "No snapshots found.",
   },
   health: {
     title: "System Health",

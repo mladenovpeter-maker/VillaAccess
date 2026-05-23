@@ -18,7 +18,6 @@ import EventsPage from "@/pages/events";
 import MockPage from "@/pages/mock";
 import DiagnosticsPage from "@/pages/diagnostics";
 import SettingsPage from "@/pages/settings";
-import GalleryPage from "@/pages/gallery";
 import HealthPage from "@/pages/health";
 import TimelinePage from "@/pages/timeline";
 import ExportPage from "@/pages/export";
@@ -69,7 +68,6 @@ function Router() {
       <Route path="/timeline" component={() => <ProtectedRoute component={TimelinePage} />} />
       <Route path="/events"   component={() => <ProtectedRoute component={EventsPage} />} />
       <Route path="/logs"     component={() => <ProtectedRoute component={LogsPage} />} />
-      <Route path="/gallery"  component={() => <ProtectedRoute component={GalleryPage} />} />
 
       {/* Operator and above — viewer gets read-only via backend */}
       <Route path="/villas"        component={() => <ProtectedRoute component={VillasPage}       />} />

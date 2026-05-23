@@ -9,7 +9,6 @@ const bg = {
     entrances: "Входове",
     cameras: "Камери",
     intercoms: "Контролери на врати",
-    gallery: "Галерия снимки",
     events: "Поток от събития",
     logs: "Логове",
     administration: "Администрация",
@@ -565,13 +564,6 @@ const bg = {
       storage: "Съхранение и задържане",
       system: "Система",
     },
-  },
-  gallery: {
-    title: "Галерия снимки",
-    subtitle: "Всички заснети разпознавания — филтрирайте по табела или статус",
-    searchPlate: "Търси по табела…",
-    snapshots: "снимки",
-    noSnapshots: "Няма намерени снимки.",
   },
   health: {
     title: "Системно здраве",
