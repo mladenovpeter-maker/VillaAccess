@@ -106,6 +106,7 @@ export interface AnprDetectionResult {
   action:
     | "skipped_cooldown"
     | "skipped_no_villa"
+    | "skipped_low_quality"
     | "denied"
     | "allowed_relay_ok"
     | "allowed_relay_failed";
@@ -126,6 +127,33 @@ export interface AnprDetectionResult {
 
 function normalisePlate(p: string): string {
   return p.trim().toUpperCase().replace(/\s+/g, "");
+}
+
+/**
+ * Plate plausibility gate — used ONLY to decide whether to persist a
+ * "denied" event row + publish a denial to the live feed. Allowed events
+ * are always saved (the plate already passed the validator AND triggered
+ * the relay, so by definition it isn't OCR garbage).
+ *
+ * A detection is plausible only when ALL of the below hold:
+ *   • normalised plate is between 5 and 10 chars (real EU plates are 6–8)
+ *   • plate is alphanumeric (uppercase letters + digits only)
+ *   • plate contains at least one letter AND one digit
+ *   • OCR confidence ≥ the camera's configured `ocr_min_confidence`
+ *
+ * Implausible detections are silently dropped — the worker / OCR /
+ * fuzzy logic is unchanged; only the events log is kept clean.
+ */
+function isPlausiblePlate(
+  plate: string,
+  confidence: number,
+  minConfidence: number,
+): boolean {
+  if (plate.length < 5 || plate.length > 10) return false;
+  if (!/^[A-Z0-9]+$/.test(plate)) return false;
+  if (!/[A-Z]/.test(plate) || !/[0-9]/.test(plate)) return false;
+  if (!Number.isFinite(confidence) || confidence < minConfidence) return false;
+  return true;
 }
 
 export async function handleAnprDetection(
@@ -151,6 +179,22 @@ export async function handleAnprDetection(
   // be able to trigger access after OCR is disabled on a camera.
   if (!camera.ocr_enabled) {
     return { action: "skipped_no_villa", plate, reason: "Camera OCR disabled" };
+  }
+
+  // ── UI hygiene gate ────────────────────────────────────────────────────────
+  // Drop OCR garbage / intermediate candidates BEFORE we touch cooldown,
+  // the vehicle table, or the validator. Implausible plates (wrong length,
+  // non-alphanumeric, missing letters/digits, or below the camera's own
+  // OCR confidence threshold) can't reliably correspond to any real plate
+  // — including blacklisted ones — so skipping them here keeps the events
+  // log clean AND avoids burning cooldown on noise. Worker / OCR / relay
+  // logic is untouched.
+  if (!isPlausiblePlate(plate, input.confidence, camera.ocr_min_confidence ?? 70)) {
+    return {
+      action: "skipped_low_quality",
+      plate,
+      reason: "Below plausibility threshold (length/alphanumeric/confidence)",
+    };
   }
 
   let villa_id: string | null = null;

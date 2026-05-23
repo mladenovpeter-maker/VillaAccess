@@ -84,6 +84,22 @@ function relativeTime(iso: string): string {
   return new Date(iso).toLocaleDateString();
 }
 
+/** Explicit local date + time, e.g. "May 23, 14:32:01" or
+ *  "May 23, 2025, 14:32:01" if the event is from a previous year. */
+function formatDateTime(iso: string): string {
+  const d = new Date(iso);
+  const sameYear = d.getFullYear() === new Date().getFullYear();
+  return d.toLocaleString(undefined, {
+    month:  "short",
+    day:    "2-digit",
+    year:   sameYear ? undefined : "numeric",
+    hour:   "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  });
+}
+
 function getCategoryIcon(category: string): React.ElementType {
   return CATEGORY_ICONS[category] ?? Activity;
 }
@@ -176,8 +192,14 @@ function EventCard({ event, isLive = false }: { event: DomainEvent; isLive?: boo
                 {severityLabel}
               </span>
             )}
-            <span className="ml-auto shrink-0 text-xs text-muted-foreground">
-              {relativeTime(event.created_at)}
+            <span
+              className="ml-auto flex shrink-0 flex-col items-end text-xs text-muted-foreground"
+              title={new Date(event.created_at).toLocaleString()}
+            >
+              <span>{relativeTime(event.created_at)}</span>
+              <span className="text-[10px] tabular-nums opacity-80">
+                {formatDateTime(event.created_at)}
+              </span>
             </span>
           </div>
 
