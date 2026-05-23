@@ -62,19 +62,19 @@ function Router() {
     <Switch>
       <Route path="/login" component={() => <PublicRoute component={LoginPage} />} />
 
-      {/* All authenticated users */}
+      {/* All authenticated users (incl. operator + viewer) — pure view surfaces */}
       <Route path="/"         component={() => <ProtectedRoute component={DashboardPage} />} />
-      <Route path="/access"   component={() => <ProtectedRoute component={AccessControlPage} />} />
       <Route path="/timeline" component={() => <ProtectedRoute component={TimelinePage} />} />
       <Route path="/events"   component={() => <ProtectedRoute component={EventsPage} />} />
-      <Route path="/logs"     component={() => <ProtectedRoute component={LogsPage} />} />
 
-      {/* Operator and above — viewer gets read-only via backend */}
-      <Route path="/villas"        component={() => <ProtectedRoute component={VillasPage}       />} />
+      {/* Operator and above — operational work surfaces */}
       <Route path="/reservations"  component={() => <ProtectedRoute component={ReservationsPage} />} />
       <Route path="/vehicles"      component={() => <ProtectedRoute component={VehiclesPage}     />} />
 
-      {/* Admin only */}
+      {/* Admin only — infrastructure / system / management surfaces */}
+      <Route path="/villas"           component={() => <ProtectedRoute component={VillasPage}           roles={adminOnly} />} />
+      <Route path="/access"           component={() => <ProtectedRoute component={AccessControlPage}    roles={adminOnly} />} />
+      <Route path="/logs"             component={() => <ProtectedRoute component={LogsPage}             roles={adminOnly} />} />
       <Route path="/entrances"        component={() => <ProtectedRoute component={EntrancesPage}        roles={adminOnly} />} />
       <Route path="/cameras"          component={() => <ProtectedRoute component={CamerasPage}          roles={adminOnly} />} />
       <Route path="/access-control"   component={() => <ProtectedRoute component={IntercomsPage}        roles={adminOnly} />} />
