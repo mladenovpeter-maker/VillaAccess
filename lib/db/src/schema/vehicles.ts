@@ -85,11 +85,20 @@ export const vehiclesTable = pgTable(
     notes: text("notes"),
     created_at: timestamp("created_at").defaultNow().notNull(),
     updated_at: timestamp("updated_at").defaultNow().notNull(),
+
+    // Soft-archive marker for temporary reservation vehicles whose last
+    // reservation window (check_out + grace) has passed. NULL = active /
+    // visible in UI. NOT NULL = archived (hidden from default vehicle lists).
+    // Runtime ANPR / PIN / validator paths do NOT read this column — access is
+    // still gated by reservation window. Phase 1 (dry-run) never writes here.
+    // See services/vehicle-archive.ts.
+    archived_at: timestamp("archived_at"),
   },
   (t) => [
     index("vehicles_status_idx").on(t.status),
     index("vehicles_last_seen_idx").on(t.last_seen),
     index("vehicles_plate_region_idx").on(t.plate_region),
+    index("vehicles_archived_at_idx").on(t.archived_at),
   ]
 );
 
