@@ -96,7 +96,7 @@ function EventRow({ event }: { event: AccessEvent }) {
         </div>
         {event.confidence_score != null && (
           <p className="text-xs text-muted-foreground mt-0.5">
-            {t("dashboard.confidenceLabel")}: {Math.round(event.confidence_score * 100)}%
+            {t("dashboard.confidenceLabel")}: {event.confidence_score.toFixed(1)}%
           </p>
         )}
       </div>
@@ -111,7 +111,14 @@ function EventRow({ event }: { event: AccessEvent }) {
 export default function DashboardPage() {
   const { t } = useTranslation();
   const statsQ = useQuery({ queryKey: ["dashboard-stats"], queryFn: dashboardApi.stats, refetchInterval: 30000 });
-  const eventsQ = useQuery({ queryKey: ["dashboard-events"], queryFn: () => dashboardApi.recentEvents(15), refetchInterval: 10000 });
+  // Fetch a wider window so we still have ~15 successful entries after we
+  // filter out denials/noise. Denied events remain available on the full
+  // Events page and in audit logs — the dashboard feed is intentionally
+  // limited to allowed entries so operators see real access activity only.
+  const eventsQ = useQuery({ queryKey: ["dashboard-events"], queryFn: () => dashboardApi.recentEvents(60), refetchInterval: 10000 });
+  const allowedEvents = (eventsQ.data ?? []).filter(
+    (e) => e.status === "allowed" && e.event_type === "entry",
+  ).slice(0, 15);
 
   const s = statsQ.data;
 
@@ -149,11 +156,11 @@ export default function DashboardPage() {
                   <Skeleton key={i} className="h-12 w-full" />
                 ))}
               </div>
-            ) : eventsQ.data?.length === 0 ? (
+            ) : allowedEvents.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-8">{t("dashboard.noEvents")}</p>
             ) : (
               <div>
-                {eventsQ.data?.map((e) => <EventRow key={e.id} event={e} />)}
+                {allowedEvents.map((e) => <EventRow key={e.id} event={e} />)}
               </div>
             )}
           </CardContent>
