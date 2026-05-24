@@ -87,15 +87,29 @@ function isEnabled(): boolean {
 }
 
 // ── Snapshot URL → local file path ───────────────────────────────────────────
-function snapshotUrlToPath(url: string): string {
-  // Accepts both root-relative ("/api/uploads/snapshots/...") and absolute
-  // ("http://host:8080/api/uploads/snapshots/...") URLs.
-  const m = url.match(/\/api\/uploads\/(.+)$/);
-  const rel = m ? m[1] : url.replace(/^\/+/, "");
-  return path.resolve(process.cwd(), "uploads", rel);
+const UPLOADS_ROOT = path.resolve(process.cwd(), "uploads");
+const SNAPSHOTS_ROOT = path.resolve(UPLOADS_ROOT, "snapshots");
+
+/**
+ * Resolve a snapshot URL to a safe absolute path inside uploads/snapshots.
+ * Only URLs of the form ".../api/uploads/snapshots/<rel>" are accepted, and
+ * the resolved path MUST stay under SNAPSHOTS_ROOT — this blocks crafted
+ * "../" traversal that could leak arbitrary local files to OpenAI.
+ * Returns null when the URL is not a legitimate snapshot URL.
+ */
+function snapshotUrlToPath(url: string): string | null {
+  const m = url.match(/\/api\/uploads\/snapshots\/([^?#]+)$/);
+  if (!m) return null;
+  const rel = m[1].replace(/^\/+/, "");
+  if (!rel || rel.includes("\0")) return null;
+  const abs = path.resolve(SNAPSHOTS_ROOT, rel);
+  const rootWithSep = SNAPSHOTS_ROOT + path.sep;
+  if (abs !== SNAPSHOTS_ROOT && !abs.startsWith(rootWithSep)) return null;
+  return abs;
 }
 
-async function imageToDataUrl(absPath: string): Promise<string | null> {
+async function imageToDataUrl(absPath: string | null): Promise<string | null> {
+  if (!absPath) return null;
   try {
     const buf = await fs.readFile(absPath);
     const ext = path.extname(absPath).toLowerCase();
@@ -176,13 +190,20 @@ async function askOpenAi(snapshotUrls: string[]): Promise<AiVerdict | null> {
       confidence?: unknown; reasoning?: unknown;
     };
     const rawPlate = typeof parsed.plate === "string" ? parsed.plate : null;
+    // Confidence must be a finite number in [0,100]; anything else (NaN,
+    // Infinity, string, missing) is treated as 0 so it can NEVER bypass
+    // the AI_CONFIDENCE_MIN gate.
+    const rawConf = Number(parsed.confidence);
+    const confidence = Number.isFinite(rawConf)
+      ? Math.max(0, Math.min(100, rawConf))
+      : 0;
     return {
       plate: rawPlate
         ? rawPlate.toUpperCase().replace(/[^A-Z0-9]/g, "") || null
         : null,
       make: typeof parsed.make === "string" ? parsed.make : null,
       color: typeof parsed.color === "string" ? parsed.color : null,
-      confidence: Number(parsed.confidence ?? 0),
+      confidence,
       reasoning: typeof parsed.reasoning === "string" ? parsed.reasoning : undefined,
     };
   } catch (err) {
