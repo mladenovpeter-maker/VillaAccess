@@ -4,6 +4,7 @@ import { camerasTable, entrancesTable } from "@workspace/db";
 import { eq, sql } from "drizzle-orm";
 import { requireAuth } from "./auth";
 import { createAdapter } from "../lib/cameras/factory";
+import * as aiFallback from "../services/ai-fallback";
 import * as net from "net";
 import * as os from "os";
 import * as fs from "fs";
@@ -347,7 +348,23 @@ router.get("/system", requireAuth, async (_req, res) => {
       api:        { status: "ok",       latency_ms: 0,    detail: `Express API · RSS ${Math.round(rssBytes / 1024 / 1024)} MB` },
       event_bus:  { status: "ok",       latency_ms: null, detail: "In-process SSE event bus" },
       ocr_worker: { status: ocrStatus,  latency_ms: ocrLastSeenSec, detail: ocrDetail },
-      ai_engine:  { status: "not_configured", latency_ms: null, detail: "AI recognition — not yet active" },
+      ai_engine:  (() => {
+        const s = aiFallback.getStatus();
+        if (!s.enabled) {
+          return { status: "not_configured" as const, latency_ms: null, detail: "AI fallback disabled (set AI_FALLBACK_ENABLED=true)" };
+        }
+        if (!s.has_api_key) {
+          return { status: "error" as const, latency_ms: null, detail: "AI fallback enabled but OPENAI_API_KEY is missing" };
+        }
+        const lastAgo = s.last_activity_at ? Math.round((Date.now() - s.last_activity_at) / 1000) : null;
+        const lastTxt = lastAgo == null
+          ? "no triggers yet"
+          : lastAgo < 60 ? `last trigger ${lastAgo}s ago`
+          : lastAgo < 3600 ? `last trigger ${Math.round(lastAgo / 60)}m ago`
+          : `last trigger ${Math.round(lastAgo / 3600)}h ago`;
+        const detail = `${s.model} · threshold ${s.threshold}/${s.reset_minutes}min · tracking ${s.cameras_tracked} cam · ${s.in_flight} in-flight · ${lastTxt}`;
+        return { status: "ok" as const, latency_ms: null, detail };
+      })(),
     },
     cameras: {
       total:   cameraTotal,

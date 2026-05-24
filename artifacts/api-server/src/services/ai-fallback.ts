@@ -299,6 +299,39 @@ export function recordSuccess(cameraId: string): void {
   }
 }
 
+// ── Diagnostics (read-only snapshot for /diagnostics/system) ─────────────────
+
+export interface AiFallbackStatus {
+  enabled: boolean;
+  has_api_key: boolean;
+  model: string;
+  threshold: number;
+  reset_minutes: number;
+  cameras_tracked: number;
+  in_flight: number;
+  last_activity_at: number | null;
+}
+
+let _lastActivityAt: number | null = null;
+export function markActivity(): void {
+  _lastActivityAt = Date.now();
+}
+
+export function getStatus(): AiFallbackStatus {
+  let inFlight = 0;
+  for (const s of state.values()) if (s.inFlight) inFlight++;
+  return {
+    enabled: isEnabled(),
+    has_api_key: !!process.env.OPENAI_API_KEY,
+    model: OPENAI_MODEL,
+    threshold: FAIL_THRESHOLD,
+    reset_minutes: FAIL_RESET_MINUTES,
+    cameras_tracked: state.size,
+    in_flight: inFlight,
+    last_activity_at: _lastActivityAt,
+  };
+}
+
 // ── Core AI fallback runner ──────────────────────────────────────────────────
 async function runAiFallback(
   camera: AiFallbackCamera,
@@ -307,6 +340,7 @@ async function runAiFallback(
   console.log(
     `[ai-fallback] camera=${camera.id} triggering AI on ${fails.length} snapshots`,
   );
+  markActivity();
 
   // Persist snapshots to disk for the audit trail (best effort, in parallel).
   // We feed OpenAI directly from in-memory buffers, so a disk failure does
