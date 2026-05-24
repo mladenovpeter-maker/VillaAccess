@@ -464,7 +464,10 @@ export interface PaginatedSnapshots {
 export interface Entrance {
   id: string;
   name: string;
+  /** Legacy: mirrors villa_ids[0] for back-compat. Prefer villa_ids[]. */
   villa_id: string | null;
+  /** M:N source of truth (Phase A.2). One row per villa allowed at this entrance. */
+  villa_ids: string[];
   description: string | null;
   active: boolean;
   camera_count?: number;

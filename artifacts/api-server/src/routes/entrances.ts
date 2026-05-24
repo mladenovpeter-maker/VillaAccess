@@ -1,13 +1,33 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { entrancesTable, camerasTable, intercomsTable, villasTable } from "@workspace/db";
-import { eq, sql } from "drizzle-orm";
+import {
+  entrancesTable,
+  camerasTable,
+  intercomsTable,
+  villasTable,
+  villaEntrancesTable,
+} from "@workspace/db";
+import { eq, sql, inArray } from "drizzle-orm";
 import { requireAuth } from "./auth";
 import { z } from "zod";
 
 const router = Router();
 
-// ─── Helper: entrance with camera + intercom counts ──────────────────────────
+// ─── Helper: enrich entrance with derived villa_ids[] + counts ───────────────
+//
+// villa_ids[] is the M:N source of truth as of Phase A.2. The legacy
+// scalar villa_id column is still returned (back-compat) but is the
+// FIRST of villa_ids if any, else null — clients reading villa_id alone
+// keep working for single-villa entrances; multi-villa configurations
+// expose the full list through villa_ids[].
+
+async function fetchVillaIds(entranceId: string): Promise<string[]> {
+  const rows = await db
+    .select({ villa_id: villaEntrancesTable.villa_id })
+    .from(villaEntrancesTable)
+    .where(eq(villaEntrancesTable.entrance_id, entranceId));
+  return rows.map((r) => r.villa_id);
+}
 
 async function enrichEntrance(e: typeof entrancesTable.$inferSelect) {
   const [{ cameras }] = await db
@@ -20,7 +40,17 @@ async function enrichEntrance(e: typeof entrancesTable.$inferSelect) {
     .from(intercomsTable)
     .where(eq(intercomsTable.entrance_id, e.id));
 
-  return { ...e, camera_count: cameras, intercom_count: intercoms };
+  const villa_ids = await fetchVillaIds(e.id);
+
+  return {
+    ...e,
+    villa_ids,
+    // Back-compat: legacy clients reading scalar villa_id see the first
+    // wired villa (or the legacy column value if no rows exist yet).
+    villa_id: villa_ids[0] ?? e.villa_id ?? null,
+    camera_count: cameras,
+    intercom_count: intercoms,
+  };
 }
 
 // ─── GET /entrances ───────────────────────────────────────────────────────────
@@ -39,40 +69,84 @@ router.get("/:id", requireAuth, async (req, res) => {
 
   const cameras = await db.select().from(camerasTable).where(eq(camerasTable.entrance_id, rows[0].id));
   const intercoms = await db.select().from(intercomsTable).where(eq(intercomsTable.entrance_id, rows[0].id));
+  const enriched = await enrichEntrance(rows[0]);
 
-  res.json({ ...rows[0], cameras, intercoms });
+  res.json({ ...enriched, cameras, intercoms });
 });
 
-// ─── POST /entrances ──────────────────────────────────────────────────────────
+// ─── Body schema ──────────────────────────────────────────────────────────────
+//
+// Accepts BOTH legacy `villa_id` (scalar, optional/nullable) AND new
+// `villa_ids[]` (array of villa ids). Normalised to villa_ids[] by
+// resolveVillaIds() below:
+//   * villa_ids present → use as-is (deduped)
+//   * villa_id present  → treated as [villa_id] if non-null, else []
+//   * neither           → []  (entrance becomes dormant / no ANPR/PIN routing)
 
-const createSchema = z.object({
+const upsertSchema = z.object({
   name:        z.string().min(1),
   villa_id:    z.string().optional().nullable(),
+  villa_ids:   z.array(z.string()).optional(),
   description: z.string().optional().nullable(),
   active:      z.boolean().optional(),
 });
 
-async function validateVilla(villa_id: string | null | undefined) {
-  if (!villa_id) return true;
-  const v = await db.select({ id: villasTable.id }).from(villasTable)
-    .where(eq(villasTable.id, villa_id)).limit(1);
-  return !!v[0];
+function resolveVillaIds(body: z.infer<typeof upsertSchema>): string[] {
+  if (Array.isArray(body.villa_ids)) {
+    return Array.from(new Set(body.villa_ids));
+  }
+  if (body.villa_id) return [body.villa_id];
+  return [];
 }
 
+async function validateVillaIds(villaIds: string[]): Promise<boolean> {
+  if (villaIds.length === 0) return true;
+  const rows = await db
+    .select({ id: villasTable.id })
+    .from(villasTable)
+    .where(inArray(villasTable.id, villaIds));
+  return rows.length === villaIds.length;
+}
+
+// Re-sync villa_entrances rows for one entrance to exactly the given set
+// (delete-then-insert; transactional). Idempotent. Empty array clears all.
+async function syncVillaEntrances(entranceId: string, villaIds: string[]) {
+  await db.transaction(async (tx) => {
+    await tx
+      .delete(villaEntrancesTable)
+      .where(eq(villaEntrancesTable.entrance_id, entranceId));
+    if (villaIds.length > 0) {
+      await tx.insert(villaEntrancesTable).values(
+        villaIds.map((villa_id) => ({ villa_id, entrance_id: entranceId })),
+      );
+    }
+  });
+}
+
+// ─── POST /entrances ──────────────────────────────────────────────────────────
+
 router.post("/", requireAuth, async (req, res) => {
-  const body = createSchema.safeParse(req.body);
+  const body = upsertSchema.safeParse(req.body);
   if (!body.success) { res.status(400).json({ detail: "Invalid request", errors: body.error.issues }); return; }
 
-  if (!(await validateVilla(body.data.villa_id))) {
-    res.status(400).json({ detail: "Villa not found" }); return;
+  const villaIds = resolveVillaIds(body.data);
+  if (!(await validateVillaIds(villaIds))) {
+    res.status(400).json({ detail: "One or more villas not found" }); return;
   }
+
+  // entrances.villa_id legacy column: keep mirroring the FIRST villa for
+  // back-compat with any code/queries that still read it directly. Multi-villa
+  // setups are fully expressed in villa_entrances.
+  const legacyVillaId = villaIds[0] ?? null;
 
   const [e] = await db.insert(entrancesTable).values({
     name:        body.data.name,
-    villa_id:    body.data.villa_id ?? null,
+    villa_id:    legacyVillaId,
     description: body.data.description ?? null,
     active:      body.data.active ?? true,
   }).returning();
+
+  await syncVillaEntrances(e.id, villaIds);
 
   res.status(201).json(await enrichEntrance(e));
 });
@@ -83,20 +157,25 @@ router.put("/:id", requireAuth, async (req, res) => {
   const rows = await db.select().from(entrancesTable).where(eq(entrancesTable.id, req.params.id)).limit(1);
   if (!rows[0]) { res.status(404).json({ detail: "Entrance not found" }); return; }
 
-  const body = createSchema.safeParse(req.body);
+  const body = upsertSchema.safeParse(req.body);
   if (!body.success) { res.status(400).json({ detail: "Invalid request", errors: body.error.issues }); return; }
 
-  if (!(await validateVilla(body.data.villa_id))) {
-    res.status(400).json({ detail: "Villa not found" }); return;
+  const villaIds = resolveVillaIds(body.data);
+  if (!(await validateVillaIds(villaIds))) {
+    res.status(400).json({ detail: "One or more villas not found" }); return;
   }
+
+  const legacyVillaId = villaIds[0] ?? null;
 
   const [updated] = await db.update(entrancesTable).set({
     name:        body.data.name,
-    villa_id:    body.data.villa_id ?? null,
+    villa_id:    legacyVillaId,
     description: body.data.description ?? null,
     active:      body.data.active ?? rows[0].active,
     updated_at:  new Date(),
   }).where(eq(entrancesTable.id, req.params.id)).returning();
+
+  await syncVillaEntrances(updated.id, villaIds);
 
   res.json(await enrichEntrance(updated));
 });
@@ -106,6 +185,7 @@ router.put("/:id", requireAuth, async (req, res) => {
 router.delete("/:id", requireAuth, async (req, res) => {
   const rows = await db.select().from(entrancesTable).where(eq(entrancesTable.id, req.params.id)).limit(1);
   if (!rows[0]) { res.status(404).json({ detail: "Entrance not found" }); return; }
+  // villa_entrances has ON DELETE CASCADE → no manual cleanup needed.
   await db.delete(entrancesTable).where(eq(entrancesTable.id, req.params.id));
   res.status(204).send();
 });
