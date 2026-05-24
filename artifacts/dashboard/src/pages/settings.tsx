@@ -51,14 +51,21 @@ function SettingField({
   onChange: (key: string, val: string) => void;
 }) {
   const { t } = useTranslation();
+  // Labels + descriptions are seeded in English in the DB. We translate
+  // on the frontend keyed by setting.key — falls back to the English DB
+  // value if no translation exists (e.g. settings added later).
+  const label = t(`settings.labels.${setting.key}`, { defaultValue: setting.label });
+  const description = t(`settings.descriptions.${setting.key}`, {
+    defaultValue: setting.description ?? "",
+  });
 
   if (setting.value_type === "boolean") {
     return (
       <div className="flex items-center justify-between py-3 border-b border-border/40 last:border-0">
         <div className="flex-1 pr-4">
-          <Label className="text-sm font-medium text-foreground">{setting.label}</Label>
-          {setting.description && (
-            <p className="text-xs text-muted-foreground mt-0.5">{setting.description}</p>
+          <Label className="text-sm font-medium text-foreground">{label}</Label>
+          {description && (
+            <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
           )}
         </div>
         <Switch
@@ -74,9 +81,9 @@ function SettingField({
       <div className="py-3 border-b border-border/40 last:border-0">
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1">
-            <Label className="text-sm font-medium text-foreground">{setting.label}</Label>
-            {setting.description && (
-              <p className="text-xs text-muted-foreground mt-0.5">{setting.description}</p>
+            <Label className="text-sm font-medium text-foreground">{label}</Label>
+            {description && (
+              <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
             )}
           </div>
           <Input
@@ -95,9 +102,9 @@ function SettingField({
     <div className="py-3 border-b border-border/40 last:border-0">
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1">
-          <Label className="text-sm font-medium text-foreground">{setting.label}</Label>
-          {setting.description && (
-            <p className="text-xs text-muted-foreground mt-0.5">{setting.description}</p>
+          <Label className="text-sm font-medium text-foreground">{label}</Label>
+          {description && (
+            <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
           )}
         </div>
         <Input
