@@ -27,114 +27,13 @@ import { db } from "@workspace/db";
 import {
   vehiclesTable,
   camerasTable,
-  entrancesTable,
   villaEntrancesTable,
   accessEventsTable,
 } from "@workspace/db";
 import { and, eq, isNull, isNotNull, lt, or, sql } from "drizzle-orm";
-import {
-  validateVehicleAccess,
-  validateVehicleAccessMulti,
-} from "../lib/validation/reservation-validator";
+import { validateVehicleAccessMulti } from "../lib/validation/reservation-validator";
 import { createAdapter } from "../lib/cameras/factory";
 import { eventBus } from "../lib/events";
-
-// ── Shadow validator (Phase A.0) ─────────────────────────────────────────────
-//
-// When SHADOW_VALIDATOR=true, every ANPR detection that reaches the validator
-// step ALSO runs the future M:N validator (validateVehicleAccessMulti) using
-// villa_entrances derived villa_ids. The shadow result is compared to the
-// live decision and logged. It NEVER influences relay, event log, or
-// response — pure observation. Wrapped in try/catch with a hard timeout so
-// shadow failures cannot impact the live ANPR path.
-//
-// Sample rate is 1.0 (every detection). Tune via SHADOW_SAMPLE_RATE if the
-// log volume becomes a problem.
-//
-// This entire block is removed in Phase A.1 once 24h of zero-mismatch
-// observation greenlights the flip.
-const SHADOW_TIMEOUT_MS = 500;
-
-function shadowSampleRate(): number {
-  const raw = process.env.SHADOW_SAMPLE_RATE;
-  if (!raw) return 1.0;
-  const n = Number(raw);
-  return Number.isFinite(n) && n >= 0 && n <= 1 ? n : 1.0;
-}
-
-async function runShadowComparison(args: {
-  camera_id: string;
-  entrance_id: string;
-  plate: string;
-  vehicle_id: string | null;
-  live_villa_id: string | null;
-  liveDecision: { allowed: boolean; denial_code?: string | null | undefined };
-}): Promise<void> {
-  const started = Date.now();
-  try {
-    // Derive future villa_ids[] from the new join table.
-    const rows = await Promise.race([
-      db
-        .select({ villa_id: villaEntrancesTable.villa_id })
-        .from(villaEntrancesTable)
-        .where(eq(villaEntrancesTable.entrance_id, args.entrance_id)),
-      new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error("shadow_timeout_join")), SHADOW_TIMEOUT_MS),
-      ),
-    ]);
-    const futureVillaIds = (rows as { villa_id: string }[]).map((r) => r.villa_id);
-
-    // Run NEW validator only if we have a vehicle_id (mirrors live path).
-    let newDecision: { allowed: boolean; denial_code?: string | null | undefined; matched_villa_id?: string | null };
-    if (!args.vehicle_id) {
-      newDecision = { allowed: false, denial_code: "NO_RESERVATION" };
-    } else {
-      newDecision = (await Promise.race([
-        validateVehicleAccessMulti(args.vehicle_id, futureVillaIds),
-        new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error("shadow_timeout_validator")), SHADOW_TIMEOUT_MS),
-        ),
-      ])) as typeof newDecision;
-    }
-
-    const oldAllowed = args.liveDecision.allowed;
-    const oldDenial = args.liveDecision.denial_code ?? null;
-    const newAllowed = newDecision.allowed;
-    const newDenial = newDecision.denial_code ?? null;
-    const match = oldAllowed === newAllowed && oldDenial === newDenial;
-    const elapsed = Date.now() - started;
-
-    if (match) {
-      console.log(
-        `[anpr-shadow] camera_id=${args.camera_id} plate=${args.plate} ` +
-          `vehicle_id=${args.vehicle_id ?? "null"} ` +
-          `live_villa_id=${args.live_villa_id ?? "null"} ` +
-          `future_villa_ids=[${futureVillaIds.join(",")}] ` +
-          `OLD={allowed:${oldAllowed},denial:${oldDenial}} ` +
-          `NEW={allowed:${newAllowed},denial:${newDenial},matched_villa:${newDecision.matched_villa_id ?? "null"}} ` +
-          `MATCH=true shadow_latency_ms=${elapsed}`,
-      );
-    } else {
-      console.warn(
-        `[anpr-shadow][MISMATCH] camera_id=${args.camera_id} plate=${args.plate} ` +
-          `vehicle_id=${args.vehicle_id ?? "null"} ` +
-          `live_villa_id=${args.live_villa_id ?? "null"} ` +
-          `future_villa_ids=[${futureVillaIds.join(",")}] ` +
-          `OLD.allowed=${oldAllowed} NEW.allowed=${newAllowed} ` +
-          `OLD.denial_code=${oldDenial} NEW.denial_code=${newDenial} ` +
-          `matched_villa_id=${newDecision.matched_villa_id ?? "null"} ` +
-          `shadow_latency_ms=${elapsed}`,
-      );
-    }
-  } catch (err) {
-    const elapsed = Date.now() - started;
-    const msg = err instanceof Error ? err.message : String(err);
-    console.warn(
-      `[anpr-shadow][ERROR] camera_id=${args.camera_id} plate=${args.plate} ` +
-        `error=${msg} shadow_latency_ms=${elapsed}`,
-    );
-  }
-}
 
 // ─── Fuzzy plate matching helpers ───────────────────────────────────────────
 //
@@ -322,20 +221,23 @@ export async function handleAnprDetection(
     };
   }
 
-  let villa_id: string | null = null;
+  // Derive the set of villas this entrance serves from the M:N join table
+  // (villa_entrances). This is the source of truth as of Phase A.1.
+  // entrances.villa_id remains in the schema for backward-compat reads but
+  // is no longer consulted by the ANPR validator.
+  let villa_ids: string[] = [];
   if (camera.entrance_id) {
-    const entRows = await db
-      .select({ villa_id: entrancesTable.villa_id })
-      .from(entrancesTable)
-      .where(eq(entrancesTable.id, camera.entrance_id))
-      .limit(1);
-    villa_id = entRows[0]?.villa_id ?? null;
+    const rows = await db
+      .select({ villa_id: villaEntrancesTable.villa_id })
+      .from(villaEntrancesTable)
+      .where(eq(villaEntrancesTable.entrance_id, camera.entrance_id));
+    villa_ids = rows.map((r) => r.villa_id);
   }
-  if (!villa_id) {
+  if (villa_ids.length === 0) {
     return {
       action: "skipped_no_villa",
       plate,
-      reason: "Camera has no entrance/villa link",
+      reason: "Camera's entrance has no villas wired (configure in Entrances → Allowed Villas)",
     };
   }
 
@@ -381,9 +283,9 @@ export async function handleAnprDetection(
     .limit(1);
   let vehicle_id: string | null = existing[0]?.id ?? null;
 
-  // ── 4. Validate via existing single source of truth ───────────────────────
+  // ── 4. Validate via single source of truth (M:N villa scope) ─────────────
   let decision = vehicle_id
-    ? await validateVehicleAccess(vehicle_id, villa_id)
+    ? await validateVehicleAccessMulti(vehicle_id, villa_ids)
     : {
         allowed: false,
         reason: "No reservation found for this vehicle",
@@ -457,7 +359,7 @@ export async function handleAnprDetection(
     }
 
     if (best) {
-      const partialDecision = await validateVehicleAccess(best.id, villa_id);
+      const partialDecision = await validateVehicleAccessMulti(best.id, villa_ids);
       if (partialDecision.allowed) {
         decision = partialDecision;
         vehicle_id = best.id;
@@ -466,24 +368,6 @@ export async function handleAnprDetection(
         similarity = best.sim;
       }
     }
-  }
-
-  // ── 5b. Shadow validator comparison (Phase A.0, OFF by default) ──────────
-  // Fire-and-forget — never blocks or affects the live decision. See block
-  // comment near the top of this file for full rationale + lifecycle.
-  if (
-    process.env.SHADOW_VALIDATOR === "true" &&
-    camera.entrance_id &&
-    Math.random() < shadowSampleRate()
-  ) {
-    void runShadowComparison({
-      camera_id: camera.id,
-      entrance_id: camera.entrance_id,
-      plate,
-      vehicle_id,
-      live_villa_id: villa_id,
-      liveDecision: { allowed: decision.allowed, denial_code: (decision as any).denial_code ?? null },
-    });
   }
 
   // ── 6. Build notes (for future multi-factor matching + UI visibility) ────
