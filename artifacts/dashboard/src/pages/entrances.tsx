@@ -12,9 +12,6 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
-import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
@@ -47,13 +44,13 @@ interface EntranceEvent {
 
 interface EntranceForm {
   name: string;
-  villa_id: string;
+  villa_ids: string[];
   description: string;
   active: boolean;
 }
 
 const defaultForm: EntranceForm = {
-  name: "", villa_id: "", description: "", active: true,
+  name: "", villa_ids: [], description: "", active: true,
 };
 
 // ─── Status badges ────────────────────────────────────────────────────────────
@@ -94,7 +91,7 @@ function EntranceDialog({ open, onClose, entrance, villas }: {
   const [form, setForm] = useState<EntranceForm>(
     entrance ? {
       name:        entrance.name,
-      villa_id:    entrance.villa_id ?? "",
+      villa_ids:   entrance.villa_ids ?? (entrance.villa_id ? [entrance.villa_id] : []),
       description: entrance.description ?? "",
       active:      entrance.active,
     } : defaultForm,
@@ -103,11 +100,23 @@ function EntranceDialog({ open, onClose, entrance, villas }: {
   const set = <K extends keyof EntranceForm>(k: K, v: EntranceForm[K]) =>
     setForm((f) => ({ ...f, [k]: v }));
 
+  function toggleVilla(villaId: string, checked: boolean) {
+    setForm((f) => {
+      const next = new Set(f.villa_ids);
+      if (checked) next.add(villaId);
+      else next.delete(villaId);
+      return { ...f, villa_ids: Array.from(next) };
+    });
+  }
+
+  function selectAll() { set("villa_ids", villas.map((v) => v.id)); }
+  function clearAll()  { set("villa_ids", []); }
+
   const mutation = useMutation({
     mutationFn: async () => {
       const body = {
         name:        form.name,
-        villa_id:    form.villa_id || null,
+        villa_ids:   form.villa_ids,
         description: form.description || null,
         active:      form.active,
       };
@@ -123,6 +132,9 @@ function EntranceDialog({ open, onClose, entrance, villas }: {
     onError: (e: Error) => toast({ title: t("common.error"), description: e.message, variant: "destructive" }),
   });
 
+  const selectedCount = form.villa_ids.length;
+  const totalVillas = villas.length;
+
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-lg">
@@ -134,18 +146,52 @@ function EntranceDialog({ open, onClose, entrance, villas }: {
             <Label>{t("entrances.entranceName")}</Label>
             <Input placeholder="e.g. Main Gate" value={form.name} onChange={(e) => set("name", e.target.value)} />
           </div>
+
           <div className="space-y-1.5">
-            <Label>{t("entrances.villa")}</Label>
-            <Select value={form.villa_id || "__none__"} onValueChange={(v) => set("villa_id", v === "__none__" ? "" : v)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__none__">{t("entrances.noVilla")}</SelectItem>
-                {villas.map((v) => (
-                  <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="flex items-baseline justify-between gap-3">
+              <Label>{t("entrances.allowedVillas")}</Label>
+              <span className="text-xs text-muted-foreground">
+                {t("entrances.villasSelected", { count: selectedCount, total: totalVillas })}
+              </span>
+            </div>
+            <div className="rounded-lg border border-border bg-muted/20 p-3 space-y-2">
+              {totalVillas === 0 ? (
+                <p className="text-xs text-muted-foreground py-2 text-center">{t("entrances.noVillasWired")}</p>
+              ) : (
+                <>
+                  <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 max-h-56 overflow-y-auto pr-1">
+                    {villas.map((v) => {
+                      const checked = form.villa_ids.includes(v.id);
+                      return (
+                        <label
+                          key={v.id}
+                          className="flex items-center gap-2 cursor-pointer text-sm py-1 px-1.5 rounded hover:bg-muted/40 select-none"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={(e) => toggleVilla(v.id, e.target.checked)}
+                            className="accent-primary shrink-0"
+                          />
+                          <span className="truncate">{v.name}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                  <div className="flex items-center gap-2 pt-2 border-t border-border/60">
+                    <Button type="button" variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={selectAll}>
+                      {t("entrances.selectAll")}
+                    </Button>
+                    <Button type="button" variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={clearAll}>
+                      {t("entrances.clearAll")}
+                    </Button>
+                  </div>
+                </>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground">{t("entrances.allowedVillasHint")}</p>
           </div>
+
           <div className="space-y-1.5">
             <Label>{t("entrances.description")}</Label>
             <Textarea
@@ -220,7 +266,8 @@ function EntranceDetailSheet({ entrance, villas, onClose, onEdit }: {
   }
 
   if (!entrance) return null;
-  const villaName = villas.find((v) => v.id === entrance.villa_id)?.name;
+  const wiredVillaIds = entrance.villa_ids ?? (entrance.villa_id ? [entrance.villa_id] : []);
+  const wiredVillas = villas.filter((v) => wiredVillaIds.includes(v.id));
 
   return (
     <Sheet open={!!entrance} onOpenChange={(o) => !o && onClose()}>
@@ -231,13 +278,18 @@ function EntranceDetailSheet({ entrance, villas, onClose, onEdit }: {
               <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
                 <DoorOpen className="w-5 h-5 text-primary" />
               </div>
-              <div>
+              <div className="min-w-0">
                 <SheetTitle className="text-base">{entrance.name}</SheetTitle>
-                {villaName && (
-                  <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
-                    <Building2 className="w-3 h-3" />{villaName}
-                  </div>
-                )}
+                <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
+                  <Building2 className="w-3 h-3 shrink-0" />
+                  <span className="truncate">
+                    {wiredVillas.length === 0
+                      ? t("entrances.noVillasWired")
+                      : wiredVillas.length <= 2
+                        ? wiredVillas.map((v) => v.name).join(", ")
+                        : `${wiredVillas.slice(0, 2).map((v) => v.name).join(", ")} +${wiredVillas.length - 2}`}
+                  </span>
+                </div>
               </div>
             </div>
             <StatusBadge active={entrance.active} />
@@ -455,7 +507,16 @@ export default function EntrancesPage() {
         ) : (
           <div className="space-y-2">
             {entrances.map((e) => {
-              const villaName = villas.find((v) => v.id === e.villa_id)?.name;
+              const wiredVillaIds = e.villa_ids ?? (e.villa_id ? [e.villa_id] : []);
+              const wiredVillas = villas.filter((v) => wiredVillaIds.includes(v.id));
+              const villaLabel =
+                wiredVillas.length === 0
+                  ? t("entrances.noVillasWired")
+                  : wiredVillas.length === 1
+                    ? wiredVillas[0].name
+                    : wiredVillas.length <= 3
+                      ? wiredVillas.map((v) => v.name).join(", ")
+                      : `${wiredVillas.slice(0, 2).map((v) => v.name).join(", ")} +${wiredVillas.length - 2}`;
               return (
                 <div
                   key={e.id}
@@ -469,9 +530,15 @@ export default function EntrancesPage() {
                     <div className="flex items-center gap-2 flex-wrap">
                       <div className="font-medium text-foreground truncate">{e.name}</div>
                       <StatusBadge active={e.active} />
+                      <Badge className="text-xs bg-muted text-muted-foreground border-border hover:bg-muted">
+                        {t("entrances.villasCount", { count: wiredVillas.length })}
+                      </Badge>
                     </div>
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground mt-0.5">
-                      {villaName && <span className="flex items-center gap-1"><Building2 className="w-3 h-3" />{villaName}</span>}
+                      <span className="flex items-center gap-1 min-w-0 max-w-full">
+                        <Building2 className="w-3 h-3 shrink-0" />
+                        <span className="truncate">{villaLabel}</span>
+                      </span>
                       <span className="flex items-center gap-1"><Camera className="w-3 h-3" />{e.camera_count ?? 0}</span>
                       <span className="flex items-center gap-1"><Phone className="w-3 h-3" />{e.intercom_count ?? 0}</span>
                     </div>
