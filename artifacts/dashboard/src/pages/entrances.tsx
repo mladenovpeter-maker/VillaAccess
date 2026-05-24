@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Button } from "@/components/ui/button";
@@ -88,14 +88,22 @@ function EntranceDialog({ open, onClose, entrance, villas }: {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { t } = useTranslation();
-  const [form, setForm] = useState<EntranceForm>(
-    entrance ? {
+  const [form, setForm] = useState<EntranceForm>(defaultForm);
+
+  // Sync form whenever the dialog opens or the target entrance changes.
+  // The dialog component is always mounted, so useState's initializer only
+  // runs once — without this effect, opening the edit modal for a real
+  // entrance keeps the previous form state (empty defaults from the last
+  // create attempt), making the form look like a fresh "Add entrance".
+  useEffect(() => {
+    if (!open) return;
+    setForm(entrance ? {
       name:        entrance.name,
       villa_ids:   entrance.villa_ids ?? (entrance.villa_id ? [entrance.villa_id] : []),
       description: entrance.description ?? "",
       active:      entrance.active,
-    } : defaultForm,
-  );
+    } : defaultForm);
+  }, [open, entrance]);
 
   const set = <K extends keyof EntranceForm>(k: K, v: EntranceForm[K]) =>
     setForm((f) => ({ ...f, [k]: v }));

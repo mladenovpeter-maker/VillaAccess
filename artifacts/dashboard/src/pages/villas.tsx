@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, villasApi, type Villa } from "@/lib/api";
 import { AppLayout } from "@/components/layout/app-layout";
@@ -85,9 +85,23 @@ function VillaDialog({ open, onClose, villa }: { open: boolean; onClose: () => v
   const qc = useQueryClient();
   const { toast } = useToast();
   const { t } = useTranslation();
-  const [form, setForm] = useState<VillaForm>(
-    villa ? { name: villa.name, description: villa.description ?? "", location: villa.location ?? "", status: villa.status as VillaForm["status"] } : defaultForm
-  );
+  const [form, setForm] = useState<VillaForm>(defaultForm);
+
+  // Sync form whenever the dialog opens or the target villa changes.
+  // The dialog component is always mounted, so useState's initializer only
+  // runs once — without this effect, opening the edit modal for a real
+  // villa keeps the previous form state (empty defaults from the last
+  // create attempt), making placeholders like "e.g. Villa Serenity" appear
+  // as if no data had loaded.
+  useEffect(() => {
+    if (!open) return;
+    setForm(villa ? {
+      name:        villa.name,
+      description: villa.description ?? "",
+      location:    villa.location ?? "",
+      status:      villa.status as VillaForm["status"],
+    } : defaultForm);
+  }, [open, villa]);
 
   const set = (k: keyof VillaForm, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
