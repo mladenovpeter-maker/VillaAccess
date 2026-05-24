@@ -22,10 +22,14 @@ const router = Router();
 // expose the full list through villa_ids[].
 
 async function fetchVillaIds(entranceId: string): Promise<string[]> {
+  // ORDER BY villa_id keeps the array stable across reads so the legacy
+  // scalar villa_id mirror (= villa_ids[0]) is deterministic and does not
+  // flap between requests when an entrance is wired to multiple villas.
   const rows = await db
     .select({ villa_id: villaEntrancesTable.villa_id })
     .from(villaEntrancesTable)
-    .where(eq(villaEntrancesTable.entrance_id, entranceId));
+    .where(eq(villaEntrancesTable.entrance_id, entranceId))
+    .orderBy(villaEntrancesTable.villa_id);
   return rows.map((r) => r.villa_id);
 }
 
@@ -109,18 +113,23 @@ async function validateVillaIds(villaIds: string[]): Promise<boolean> {
 }
 
 // Re-sync villa_entrances rows for one entrance to exactly the given set
-// (delete-then-insert; transactional). Idempotent. Empty array clears all.
-async function syncVillaEntrances(entranceId: string, villaIds: string[]) {
-  await db.transaction(async (tx) => {
-    await tx
-      .delete(villaEntrancesTable)
-      .where(eq(villaEntrancesTable.entrance_id, entranceId));
-    if (villaIds.length > 0) {
-      await tx.insert(villaEntrancesTable).values(
-        villaIds.map((villa_id) => ({ villa_id, entrance_id: entranceId })),
-      );
-    }
-  });
+// (delete-then-insert). Idempotent. Empty array clears all. Caller MUST
+// pass a tx — parent entrance write + this sync are wrapped in a single
+// outer transaction so concurrent PUTs cannot interleave and leave the
+// legacy scalar villa_id out of sync with the join rows.
+async function syncVillaEntrances(
+  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  entranceId: string,
+  villaIds: string[],
+) {
+  await tx
+    .delete(villaEntrancesTable)
+    .where(eq(villaEntrancesTable.entrance_id, entranceId));
+  if (villaIds.length > 0) {
+    await tx.insert(villaEntrancesTable).values(
+      villaIds.map((villa_id) => ({ villa_id, entrance_id: entranceId })),
+    );
+  }
 }
 
 // ─── POST /entrances ──────────────────────────────────────────────────────────
@@ -136,17 +145,24 @@ router.post("/", requireAuth, async (req, res) => {
 
   // entrances.villa_id legacy column: keep mirroring the FIRST villa for
   // back-compat with any code/queries that still read it directly. Multi-villa
-  // setups are fully expressed in villa_entrances.
-  const legacyVillaId = villaIds[0] ?? null;
+  // setups are fully expressed in villa_entrances. Sorted villaIds give a
+  // deterministic mirror across calls.
+  const sortedVillaIds = [...villaIds].sort();
+  const legacyVillaId = sortedVillaIds[0] ?? null;
 
-  const [e] = await db.insert(entrancesTable).values({
-    name:        body.data.name,
-    villa_id:    legacyVillaId,
-    description: body.data.description ?? null,
-    active:      body.data.active ?? true,
-  }).returning();
-
-  await syncVillaEntrances(e.id, villaIds);
+  // Single transaction: parent insert + join sync are atomic. Eliminates
+  // the race window where two concurrent POSTs could interleave a parent
+  // write of A with a join sync of B.
+  const e = await db.transaction(async (tx) => {
+    const [row] = await tx.insert(entrancesTable).values({
+      name:        body.data.name,
+      villa_id:    legacyVillaId,
+      description: body.data.description ?? null,
+      active:      body.data.active ?? true,
+    }).returning();
+    await syncVillaEntrances(tx, row.id, sortedVillaIds);
+    return row;
+  });
 
   res.status(201).json(await enrichEntrance(e));
 });
@@ -165,17 +181,23 @@ router.put("/:id", requireAuth, async (req, res) => {
     res.status(400).json({ detail: "One or more villas not found" }); return;
   }
 
-  const legacyVillaId = villaIds[0] ?? null;
+  const sortedVillaIds = [...villaIds].sort();
+  const legacyVillaId = sortedVillaIds[0] ?? null;
 
-  const [updated] = await db.update(entrancesTable).set({
-    name:        body.data.name,
-    villa_id:    legacyVillaId,
-    description: body.data.description ?? null,
-    active:      body.data.active ?? rows[0].active,
-    updated_at:  new Date(),
-  }).where(eq(entrancesTable.id, req.params.id)).returning();
-
-  await syncVillaEntrances(updated.id, villaIds);
+  // Single transaction: parent update + join sync are atomic. Two
+  // concurrent PUTs are serialised at the row level — the surviving
+  // final state is one request's full intent, never a mixed merge.
+  const updated = await db.transaction(async (tx) => {
+    const [row] = await tx.update(entrancesTable).set({
+      name:        body.data.name,
+      villa_id:    legacyVillaId,
+      description: body.data.description ?? null,
+      active:      body.data.active ?? rows[0].active,
+      updated_at:  new Date(),
+    }).where(eq(entrancesTable.id, req.params.id)).returning();
+    await syncVillaEntrances(tx, row.id, sortedVillaIds);
+    return row;
+  });
 
   res.json(await enrichEntrance(updated));
 });
