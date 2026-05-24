@@ -66,12 +66,18 @@ services:
       dockerfile: docker/backend/Dockerfile
     restart: unless-stopped
     environment:
-      PORT:              "8080"
-      DATABASE_URL:      postgresql://villa_user:${POSTGRES_PASSWORD}@postgres:5432/villa_access
-      JWT_SECRET:        ${JWT_SECRET}
-      ANPR_WORKER_TOKEN: ${ANPR_WORKER_TOKEN}
-      NODE_ENV:          production
-      LOG_LEVEL:         info
+      PORT:                 "8080"
+      DATABASE_URL:         postgresql://villa_user:${POSTGRES_PASSWORD}@postgres:5432/villa_access
+      JWT_SECRET:           ${JWT_SECRET}
+      ANPR_WORKER_TOKEN:    ${ANPR_WORKER_TOKEN}
+      NODE_ENV:             production
+      LOG_LEVEL:            info
+      # AI fallback after 3 OCR failures (opt-in, default OFF).
+      # When ON, after 3 denied detections on the same camera within 10 min
+      # the snapshots are sent to OpenAI gpt-4o-mini vision to re-read the
+      # plate. Set AI_FALLBACK_ENABLED=true in .env.docker to enable.
+      OPENAI_API_KEY:       ${OPENAI_API_KEY:-}
+      AI_FALLBACK_ENABLED:  ${AI_FALLBACK_ENABLED:-false}
     ports:
       - "8080:8080"
     volumes:
