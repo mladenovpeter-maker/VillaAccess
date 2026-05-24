@@ -34,6 +34,7 @@ import { and, eq, isNull, isNotNull, lt, or, sql } from "drizzle-orm";
 import { validateVehicleAccessMulti } from "../lib/validation/reservation-validator";
 import { createAdapter } from "../lib/cameras/factory";
 import { eventBus } from "../lib/events";
+import * as aiFallback from "./ai-fallback";
 
 // ─── Fuzzy plate matching helpers ───────────────────────────────────────────
 //
@@ -421,6 +422,11 @@ export async function handleAnprDetection(
       },
     });
 
+    // AI fallback hook (additive, gated by AI_FALLBACK_ENABLED env). No-op
+    // when disabled, when no snapshot was attached, or when we haven't yet
+    // hit FAIL_THRESHOLD on this camera. Fire-and-forget — never blocks.
+    aiFallback.recordFailure(camera, input.snapshot_url, plate);
+
     return {
       action: "denied",
       plate,
@@ -474,6 +480,10 @@ export async function handleAnprDetection(
       gate_error: gate.error,
     },
   });
+
+  // AI fallback hook: a real allowed detection resets this camera's
+  // consecutive-failure counter (no-op when AI_FALLBACK_ENABLED is off).
+  aiFallback.recordSuccess(camera.id);
 
   return {
     action: gate.success ? "allowed_relay_ok" : "allowed_relay_failed",

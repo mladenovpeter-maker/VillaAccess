@@ -29,6 +29,8 @@ export type EventType =
   | "ai.fingerprint_updated"     // AI fingerprint/embedding stored
   | "ai.recognition_complete"    // full AI pipeline finished
   | "ai.ocr_scan"                // raw OCR scan (simulator / AI worker)
+  | "ai.fallback_allowed"        // GPT fallback after N OCR fails → gate opened
+  | "ai.fallback_denied"         // GPT fallback after N OCR fails → denied / no-op
   // ── Reservation ────────────────────────────────────────────────────────────
   | "reservation.created"
   | "reservation.updated"
@@ -60,6 +62,8 @@ export const EVENT_CATEGORY_MAP: Record<EventType, EventCategory> = {
   "ai.fingerprint_updated":    "ai",
   "ai.recognition_complete":   "ai",
   "ai.ocr_scan":               "ai",
+  "ai.fallback_allowed":       "ai",
+  "ai.fallback_denied":        "ai",
   "reservation.created":       "reservation",
   "reservation.updated":       "reservation",
   "reservation.checked_in":    "reservation",
