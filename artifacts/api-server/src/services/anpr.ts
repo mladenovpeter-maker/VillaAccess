@@ -423,9 +423,10 @@ export async function handleAnprDetection(
     });
 
     // AI fallback hook (additive, gated by AI_FALLBACK_ENABLED env). No-op
-    // when disabled, when no snapshot was attached, or when we haven't yet
-    // hit FAIL_THRESHOLD on this camera. Fire-and-forget — never blocks.
-    aiFallback.recordFailure(camera, input.snapshot_url, plate);
+    // when disabled. The hook itself grabs a fresh snapshot from the camera
+    // (worker doesn't ship images), buffers up to FAIL_THRESHOLD, and then
+    // calls OpenAI vision in the background. Fire-and-forget — never blocks.
+    aiFallback.recordFailure(camera, plate);
 
     return {
       action: "denied",
