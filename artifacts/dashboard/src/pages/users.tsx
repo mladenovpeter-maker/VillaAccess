@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { AppLayout } from "@/components/layout/app-layout";
@@ -65,10 +65,26 @@ function UserDialog({ open, onClose, user }: { open: boolean; onClose: () => voi
   const qc = useQueryClient();
   const { toast } = useToast();
   const { t } = useTranslation();
-  const [form, setForm] = useState<UserForm>(
-    user ? { username: user.username, full_name: user.full_name ?? "", role: user.role, password: "" } : defaultForm
-  );
+  const [form, setForm] = useState<UserForm>(defaultForm);
   const [showPw, setShowPw] = useState(false);
+
+  // Sync form whenever the dialog opens or the target user changes.
+  // The dialog component stays mounted across opens, so useState's
+  // initialiser only runs once — without this effect, opening the edit
+  // modal for a real user keeps the previous form state (empty defaults
+  // from the last create attempt), making the form look like a fresh
+  // "Add user" instead of an edit. Same pattern as villas/entrances/
+  // vehicles dialogs.
+  useEffect(() => {
+    if (!open) return;
+    setForm(user ? {
+      username:  user.username,
+      full_name: user.full_name ?? "",
+      role:      user.role,
+      password:  "",
+    } : defaultForm);
+    setShowPw(false);
+  }, [open, user]);
 
   const set = (k: keyof UserForm, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
