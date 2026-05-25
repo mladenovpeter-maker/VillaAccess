@@ -214,7 +214,7 @@ export default function ControlsPage() {
       title={t("controls.title")}
       subtitle={t("controls.subtitle")}
     >
-      <div className="p-6 space-y-8 max-w-6xl mx-auto">
+      <div className="space-y-6 md:space-y-8 max-w-6xl mx-auto">
 
         {/* Header summary */}
         {!isLoading && (
