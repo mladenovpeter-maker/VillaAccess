@@ -237,11 +237,11 @@ function VillaDetailSheet({ villa, onClose, onEdit, readOnly }: { villa: VillaDe
           <div>
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                <Lock className="w-4 h-4 text-cyan-400" />Smart Lock
+                <Lock className="w-4 h-4 text-cyan-400" />{t("smartLock.title")}
               </h3>
               <Link href="/locks">
                 <Button variant="ghost" size="sm" className="h-7 text-xs gap-1">
-                  Manage<ChevronRight className="w-3 h-3" />
+                  {t("smartLock.manage")}<ChevronRight className="w-3 h-3" />
                 </Button>
               </Link>
             </div>
@@ -274,16 +274,16 @@ function VillaDetailSheet({ villa, onClose, onEdit, readOnly }: { villa: VillaDe
                 )}
                 {smartLock.last_seen && (
                   <div className="text-[11px] text-muted-foreground">
-                    Last seen: <span className="font-mono">{new Date(smartLock.last_seen).toLocaleString()}</span>
+                    {t("smartLock.lastSeen")}: <span className="font-mono">{new Date(smartLock.last_seen).toLocaleString()}</span>
                   </div>
                 )}
               </div>
             ) : (
               <div className="bg-muted/20 border border-dashed border-border rounded-lg p-4 text-center">
-                <div className="text-sm text-muted-foreground mb-2">No smart lock assigned</div>
+                <div className="text-sm text-muted-foreground mb-2">{t("smartLock.none")}</div>
                 <Link href="/locks">
                   <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5">
-                    <Plus className="w-3 h-3" />Add one
+                    <Plus className="w-3 h-3" />{t("smartLock.addOne")}
                   </Button>
                 </Link>
               </div>

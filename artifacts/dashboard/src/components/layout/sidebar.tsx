@@ -33,7 +33,7 @@ export function Sidebar() {
 
   const mainItems: NavItem[] = [
     { href: "/",             label: t("nav.dashboard"),    icon: LayoutDashboard,      roles: ["admin", "operator", "viewer"] },
-    { href: "/controls",     label: "Quick Controls",      icon: Zap,                  roles: ["admin", "operator"] },
+    { href: "/controls",     label: t("nav.controls"),     icon: Zap,                  roles: ["admin", "operator"] },
     { href: "/villas",       label: t("nav.villas"),       icon: Building2,            roles: ["admin"] },
     { href: "/reservations", label: t("nav.reservations"), icon: CalendarDays,         roles: ["admin", "operator", "viewer"] },
     { href: "/vehicles",     label: t("nav.vehicles"),     icon: Car,                  roles: ["admin", "operator", "viewer"] },
@@ -42,7 +42,7 @@ export function Sidebar() {
     // { href: "/timeline",     label: t("nav.timeline"),     icon: GitCommitHorizontal,  roles: ["admin", "operator", "viewer"] },
     { href: "/cameras",      label: t("nav.cameras"),      icon: Camera,               roles: ["admin"] },
     { href: "/access-control", label: t("nav.intercoms"),  icon: KeyRound,             roles: ["admin"] },
-    { href: "/locks",          label: "Smart Locks",        icon: Lock,                 roles: ["admin"] },
+    { href: "/locks",          label: t("nav.locks"),       icon: Lock,                 roles: ["admin"] },
     { href: "/entrances",    label: t("nav.entrances"),    icon: DoorOpen,             roles: ["admin"] },
     // Hidden from menu (backend + routes still active). Access by typing URL directly.
     // { href: "/events",       label: t("nav.events"),       icon: Activity,             roles: ["admin", "operator", "viewer"] },

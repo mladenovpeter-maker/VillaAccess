@@ -17,6 +17,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
+import { useTranslation } from "react-i18next";
 import {
   smartLocksApi, villasApi,
   type SmartLock, type SmartLockEvent, type Villa,
@@ -49,14 +50,14 @@ function BatteryBadge({ pct }: { pct: number | null }) {
   );
 }
 
-function formatRelative(iso: string | null): string {
-  if (!iso) return "never";
-  const t = new Date(iso).getTime();
-  const ageSec = Math.max(0, Math.floor((Date.now() - t) / 1000));
-  if (ageSec < 60) return `${ageSec}s ago`;
-  if (ageSec < 3600) return `${Math.floor(ageSec / 60)}m ago`;
-  if (ageSec < 86400) return `${Math.floor(ageSec / 3600)}h ago`;
-  return `${Math.floor(ageSec / 86400)}d ago`;
+function formatRelative(iso: string | null, t: (k: string, opts?: any) => string): string {
+  if (!iso) return t("locks.never");
+  const ts = new Date(iso).getTime();
+  const ageSec = Math.max(0, Math.floor((Date.now() - ts) / 1000));
+  if (ageSec < 60) return t("locks.secondsAgo", { n: ageSec });
+  if (ageSec < 3600) return t("locks.minutesAgo", { n: Math.floor(ageSec / 60) });
+  if (ageSec < 86400) return t("locks.hoursAgo", { n: Math.floor(ageSec / 3600) });
+  return t("locks.daysAgo", { n: Math.floor(ageSec / 86400) });
 }
 
 // ─── Create / Edit dialog ─────────────────────────────────────────────────────
@@ -75,6 +76,7 @@ function LockDialog({ open, onClose, target, villas, takenVillaIds }: {
 }) {
   const qc = useQueryClient();
   const { toast } = useToast();
+  const { t } = useTranslation();
   const [form, setForm] = useState<LockForm>(
     target
       ? { name: target.name, villa_id: target.villa_id ?? "", tuya_device_id: target.tuya_device_id ?? "" }
@@ -94,10 +96,10 @@ function LockDialog({ open, onClose, target, villas, takenVillaIds }: {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["smart-locks"] });
-      toast({ title: target ? "Smart lock updated" : "Smart lock created" });
+      toast({ title: target ? t("locks.updated") : t("locks.created") });
       onClose();
     },
-    onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onError: (e: Error) => toast({ title: t("locks.error"), description: e.message, variant: "destructive" }),
   });
 
   const canSave = form.name.trim() && form.tuya_device_id.trim();
@@ -106,69 +108,62 @@ function LockDialog({ open, onClose, target, villas, takenVillaIds }: {
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>{target ? "Edit Smart Lock" : "Add Smart Lock"}</DialogTitle>
-          <DialogDescription>
-            Register a Tuya-backed smart lock and optionally attach it to a villa. PINs from active
-            reservations on that villa will be synced to the lock automatically.
-          </DialogDescription>
+          <DialogTitle>{target ? t("locks.edit") : t("locks.add")}</DialogTitle>
+          <DialogDescription>{t("locks.dialogDesc")}</DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-2">
           <div className="space-y-1.5">
-            <Label>Name</Label>
+            <Label>{t("locks.name")}</Label>
             <Input
               value={form.name}
               onChange={(e) => set("name", e.target.value)}
-              placeholder="e.g. Villa 1 — Front Door"
+              placeholder={t("locks.namePlaceholder")}
             />
           </div>
 
           <div className="space-y-1.5">
-            <Label>Tuya Device ID</Label>
+            <Label>{t("locks.tuyaDeviceId")}</Label>
             <Input
               value={form.tuya_device_id}
               onChange={(e) => set("tuya_device_id", e.target.value)}
               placeholder="bf1234567890abcdef"
               className="font-mono text-xs"
             />
-            <p className="text-[11px] text-muted-foreground">
-              Found in Tuya IoT Platform → Cloud → Devices, after linking your Smart Life account.
-            </p>
+            <p className="text-[11px] text-muted-foreground">{t("locks.tuyaDeviceIdHint")}</p>
           </div>
 
           <div className="space-y-1.5">
-            <Label>Villa</Label>
+            <Label>{t("locks.villa")}</Label>
             <Select
               value={form.villa_id || "__none__"}
               onValueChange={(v) => set("villa_id", v === "__none__" ? "" : v)}
             >
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="__none__">Unassigned</SelectItem>
+                <SelectItem value="__none__">{t("locks.villaUnassigned")}</SelectItem>
                 {villas.map((v) => {
                   const disabled = takenVillaIds.has(v.id) && v.id !== target?.villa_id;
                   return (
                     <SelectItem key={v.id} value={v.id} disabled={disabled}>
-                      {v.name}{disabled ? " (already has a lock)" : ""}
+                      {v.name}{disabled ? ` ${t("locks.villaAlreadyHasLock")}` : ""}
                     </SelectItem>
                   );
                 })}
               </SelectContent>
             </Select>
-            <p className="text-[11px] text-muted-foreground">
-              One smart lock per villa. PIN sync is wired automatically once assigned.
-            </p>
+            <p className="text-[11px] text-muted-foreground">{t("locks.villaHint")}</p>
           </div>
 
           <div className="space-y-1.5">
-            <Label>Protocol</Label>
+            <Label>{t("locks.protocol")}</Label>
             <Input value="Tuya Cloud" disabled className="font-mono text-xs" />
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button variant="outline" onClick={onClose}>{t("locks.cancel")}</Button>
           <Button onClick={() => mutation.mutate()} disabled={!canSave || mutation.isPending}>
             {mutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-            {target ? "Save changes" : "Add lock"}
+            {target ? t("locks.save") : t("locks.add")}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -179,6 +174,7 @@ function LockDialog({ open, onClose, target, villas, takenVillaIds }: {
 // ─── Events dialog (recent unlocks) ───────────────────────────────────────────
 
 function EventsDialog({ lock, onClose }: { lock: SmartLock | null; onClose: () => void }) {
+  const { t } = useTranslation();
   const { data, isLoading, error, refetch, isFetching } = useQuery({
     queryKey: ["lock-events", lock?.id],
     queryFn: () => smartLocksApi.events(lock!.id, 1, 30),
@@ -193,11 +189,9 @@ function EventsDialog({ lock, onClose }: { lock: SmartLock | null; onClose: () =
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <History className="w-4 h-4" />
-            Recent unlocks — {lock?.name}
+            {t("locks.recentUnlocksTitle", { name: lock?.name ?? "" })}
           </DialogTitle>
-          <DialogDescription>
-            Live open-records pulled from Tuya Cloud. Newest first.
-          </DialogDescription>
+          <DialogDescription>{t("locks.recentUnlocksSubtitle")}</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-2">
@@ -210,17 +204,17 @@ function EventsDialog({ lock, onClose }: { lock: SmartLock | null; onClose: () =
               {(error as Error).message}
             </div>
           ) : records.length === 0 ? (
-            <div className="text-center py-8 text-sm text-muted-foreground">No unlock records yet</div>
+            <div className="text-center py-8 text-sm text-muted-foreground">{t("locks.noRecords")}</div>
           ) : (
             <div className="space-y-1.5 font-mono text-xs">
               {records.map((r, i) => {
-                const t = r.event_time != null
+                const ts = r.event_time != null
                   ? new Date(typeof r.event_time === "number" ? r.event_time : Date.parse(r.event_time as string))
                   : null;
                 return (
                   <div key={(r.id ?? i).toString()} className="flex items-center justify-between gap-3 bg-muted/30 rounded-lg px-3 py-2">
                     <div className="text-foreground/80">
-                      {t ? t.toLocaleString() : "—"}
+                      {ts ? ts.toLocaleString() : "—"}
                     </div>
                     <div className="flex items-center gap-2 text-muted-foreground">
                       {r.event_type && <span>{r.event_type}</span>}
@@ -237,9 +231,9 @@ function EventsDialog({ lock, onClose }: { lock: SmartLock | null; onClose: () =
         <DialogFooter>
           <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching}>
             <RefreshCw className={cn("w-3.5 h-3.5 mr-2", isFetching && "animate-spin")} />
-            Refresh
+            {t("locks.refresh")}
           </Button>
-          <Button onClick={onClose}>Close</Button>
+          <Button onClick={onClose}>{t("locks.close")}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -257,6 +251,7 @@ function LockCard({ lock, villaName, onEdit, onDelete, onShowEvents }: {
 }) {
   const qc = useQueryClient();
   const { toast } = useToast();
+  const { t } = useTranslation();
 
   const statusMut = useMutation({
     mutationFn: () => smartLocksApi.status(lock.id),
@@ -274,15 +269,15 @@ function LockCard({ lock, villaName, onEdit, onDelete, onShowEvents }: {
       );
       qc.invalidateQueries({ queryKey: ["smart-locks"], refetchType: "none" });
       toast({
-        title: r.online ? "Lock online" : "Lock offline",
-        description: `${lock.name} · ${r.latency_ms}ms${r.battery_pct != null ? ` · battery ${r.battery_pct}%` : ""}`,
+        title: r.online ? t("locks.statusOnline") : t("locks.statusOffline"),
+        description: `${lock.name} · ${r.latency_ms}ms${r.battery_pct != null ? ` · ${t("locks.battery")} ${r.battery_pct}%` : ""}`,
         variant: r.online ? "default" : "destructive",
       });
     },
     onError: (e: any) => {
       // Backend already marks status=error in DB on failure — refetch to pick it up.
       qc.invalidateQueries({ queryKey: ["smart-locks"] });
-      toast({ title: "Status check failed", description: `${lock.name}: ${e.message}`, variant: "destructive" });
+      toast({ title: t("locks.statusFailed"), description: `${lock.name}: ${e.message}`, variant: "destructive" });
     },
   });
 
@@ -304,10 +299,10 @@ function LockCard({ lock, villaName, onEdit, onDelete, onShowEvents }: {
           </div>
         </div>
         <div className="flex items-center gap-1 shrink-0">
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onEdit(lock)} title="Edit">
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onEdit(lock)} title={t("locks.edit")}>
             <Pencil className="w-4 h-4" />
           </Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8 hover:text-red-400" onClick={() => onDelete(lock)} title="Delete">
+          <Button variant="ghost" size="icon" className="h-8 w-8 hover:text-red-400" onClick={() => onDelete(lock)} title={t("locks.delete")}>
             <Trash2 className="w-4 h-4" />
           </Button>
         </div>
@@ -325,9 +320,9 @@ function LockCard({ lock, villaName, onEdit, onDelete, onShowEvents }: {
           </div>
         )}
         <div>
-          Last seen: <span className="font-mono">{formatRelative(lock.last_seen)}</span>
+          {t("locks.lastSeen")}: <span className="font-mono">{formatRelative(lock.last_seen, t)}</span>
           {lock.last_status_check && (
-            <span className="text-muted-foreground/70"> · checked {formatRelative(lock.last_status_check)}</span>
+            <span className="text-muted-foreground/70"> · {t("locks.checked")} {formatRelative(lock.last_status_check, t)}</span>
           )}
           {lock.last_status_latency_ms != null && (
             <span className="text-muted-foreground/70"> · {lock.last_status_latency_ms}ms</span>
@@ -341,14 +336,14 @@ function LockCard({ lock, villaName, onEdit, onDelete, onShowEvents }: {
           onClick={() => statusMut.mutate()} disabled={statusMut.isPending}
         >
           {statusMut.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
-          Refresh status
+          {t("locks.refreshStatus")}
         </Button>
         <Button
           variant="outline" size="sm" className="h-8 text-xs gap-1.5"
           onClick={() => onShowEvents(lock)}
         >
           <History className="w-3.5 h-3.5" />
-          Recent unlocks
+          {t("locks.recentUnlocks")}
         </Button>
       </div>
     </div>
@@ -360,6 +355,7 @@ function LockCard({ lock, villaName, onEdit, onDelete, onShowEvents }: {
 export default function LocksPage() {
   const qc = useQueryClient();
   const { toast } = useToast();
+  const { t } = useTranslation();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<SmartLock | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<SmartLock | null>(null);
@@ -380,10 +376,10 @@ export default function LocksPage() {
     mutationFn: (id: string) => smartLocksApi.delete(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["smart-locks"] });
-      toast({ title: "Smart lock deleted" });
+      toast({ title: t("locks.deleted") });
       setDeleteTarget(null);
     },
-    onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onError: (e: Error) => toast({ title: t("locks.error"), description: e.message, variant: "destructive" }),
   });
 
   const villaMap: Record<string, string> = Object.fromEntries(villas.map((v) => [v.id, v.name]));
@@ -394,11 +390,11 @@ export default function LocksPage() {
 
   return (
     <AppLayout
-      title="Smart Locks"
-      subtitle="Tuya-backed door locks for villas. PINs from active reservations are synced automatically."
+      title={t("locks.title")}
+      subtitle={t("locks.subtitle")}
       actions={
         <Button onClick={openCreate} className="gap-2">
-          <Plus className="w-4 h-4" />Add Smart Lock
+          <Plus className="w-4 h-4" />{t("locks.add")}
         </Button>
       }
     >
@@ -408,11 +404,9 @@ export default function LocksPage() {
         ) : locks.length === 0 ? (
           <div className="bg-card border border-border rounded-xl p-12 text-center">
             <Lock className="w-12 h-12 mx-auto text-muted-foreground/30 mb-3" />
-            <h3 className="text-lg font-medium text-foreground">No smart locks yet</h3>
-            <p className="text-sm text-muted-foreground mt-1 mb-4">
-              Add a Tuya-backed lock and assign it to a villa to enable automatic PIN sync.
-            </p>
-            <Button onClick={openCreate} className="gap-2"><Plus className="w-4 h-4" />Add your first lock</Button>
+            <h3 className="text-lg font-medium text-foreground">{t("locks.noLocks")}</h3>
+            <p className="text-sm text-muted-foreground mt-1 mb-4">{t("locks.noLocksDesc")}</p>
+            <Button onClick={openCreate} className="gap-2"><Plus className="w-4 h-4" />{t("locks.addFirst")}</Button>
           </div>
         ) : (
           <div className="grid gap-3 md:grid-cols-2">
@@ -448,21 +442,18 @@ export default function LocksPage() {
       <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete this smart lock?</AlertDialogTitle>
+            <AlertDialogTitle>{t("locks.deleteTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
-              The lock <span className="font-medium text-foreground">{deleteTarget?.name}</span> will be
-              removed from this dashboard. The physical device in your Tuya / Smart Life account is not
-              touched. Existing active reservation PINs already pushed to the device remain on the lock
-              until they expire or you remove them manually in the app.
+              {t("locks.deleteDesc", { name: deleteTarget?.name ?? "" })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t("locks.cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => deleteTarget && deleteMut.mutate(deleteTarget.id)}
               className="bg-red-600 hover:bg-red-700"
             >
-              Delete
+              {t("locks.delete")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

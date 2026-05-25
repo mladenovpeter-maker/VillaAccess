@@ -12,6 +12,7 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -47,6 +48,7 @@ function StatusIcon({ status }: { status: "online" | "offline" | "error" }) {
 
 function IntercomActionCard({ intercom, entranceName }: { intercom: Intercom; entranceName?: string }) {
   const { toast } = useToast();
+  const { t } = useTranslation();
   const qc = useQueryClient();
 
   const openMut = useMutation({
@@ -54,15 +56,15 @@ function IntercomActionCard({ intercom, entranceName }: { intercom: Intercom; en
     onSuccess: (r: any) => {
       qc.invalidateQueries({ queryKey: ["intercoms"] });
       toast({
-        title: r?.success ? "Door opened" : "Door open failed",
+        title: r?.success ? t("controls.doorOpened") : t("controls.doorFailed"),
         description: r?.close_warning
-          ? `${intercom.name} · relay closed (${r.close_warning})`
+          ? `${intercom.name} · ${r.close_warning}`
           : intercom.name,
         variant: r?.success ? "default" : "destructive",
       });
     },
     onError: (e: any) => toast({
-      title: "Door open failed",
+      title: t("controls.doorFailed"),
       description: `${intercom.name}: ${e.message}`,
       variant: "destructive",
     }),
@@ -104,7 +106,7 @@ function IntercomActionCard({ intercom, entranceName }: { intercom: Intercom; en
         disabled={openMut.isPending}
       >
         {openMut.isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : <DoorOpen className="w-5 h-5" />}
-        {openMut.isPending ? "Opening…" : "Open door"}
+        {openMut.isPending ? t("controls.opening") : t("controls.openDoor")}
       </Button>
     </div>
   );
@@ -114,6 +116,7 @@ function IntercomActionCard({ intercom, entranceName }: { intercom: Intercom; en
 
 function CameraActionCard({ camera, entranceName }: { camera: Camera; entranceName?: string }) {
   const { toast } = useToast();
+  const { t } = useTranslation();
   const qc = useQueryClient();
 
   const gateMut = useMutation({
@@ -121,15 +124,15 @@ function CameraActionCard({ camera, entranceName }: { camera: Camera; entranceNa
     onSuccess: (r) => {
       qc.invalidateQueries({ queryKey: ["cameras"] });
       toast({
-        title: r.success ? "Gate opened" : "Gate open failed",
+        title: r.success ? t("controls.gateOpened") : t("controls.gateFailed"),
         description: r.success
           ? `${camera.name} · gate ${camera.gate_no}`
-          : `${camera.name}: ${r.error ?? "unknown error"}`,
+          : `${camera.name}: ${r.error ?? t("controls.unknownError")}`,
         variant: r.success ? "default" : "destructive",
       });
     },
     onError: (e: any) => toast({
-      title: "Gate open failed",
+      title: t("controls.gateFailed"),
       description: `${camera.name}: ${e.message}`,
       variant: "destructive",
     }),
@@ -172,7 +175,7 @@ function CameraActionCard({ camera, entranceName }: { camera: Camera; entranceNa
         disabled={gateMut.isPending}
       >
         {gateMut.isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Zap className="w-5 h-5" />}
-        {gateMut.isPending ? "Opening…" : "Open gate"}
+        {gateMut.isPending ? t("controls.opening") : t("controls.openGate")}
       </Button>
     </div>
   );
@@ -181,6 +184,7 @@ function CameraActionCard({ camera, entranceName }: { camera: Camera; entranceNa
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function ControlsPage() {
+  const { t } = useTranslation();
   const { data: intercoms = [], isLoading: icLoading } = useQuery<Intercom[]>({
     queryKey: ["intercoms"],
     queryFn: () => intercomsApi.list(),
@@ -207,8 +211,8 @@ export default function ControlsPage() {
 
   return (
     <AppLayout
-      title="Quick Controls"
-      subtitle="One-tap door and gate access for every intercom and camera in the system."
+      title={t("controls.title")}
+      subtitle={t("controls.subtitle")}
     >
       <div className="p-6 space-y-8 max-w-6xl mx-auto">
 
@@ -217,7 +221,7 @@ export default function ControlsPage() {
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <div className="bg-card border border-border rounded-xl p-3">
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <KeyRound className="w-3.5 h-3.5" />Intercoms
+                <KeyRound className="w-3.5 h-3.5" />{t("controls.intercomsLabel")}
               </div>
               <div className="text-2xl font-bold mt-1 font-mono">
                 <span className="text-emerald-400">{intercomsOnline}</span>
@@ -226,7 +230,7 @@ export default function ControlsPage() {
             </div>
             <div className="bg-card border border-border rounded-xl p-3">
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <CameraIcon className="w-3.5 h-3.5" />Gate cameras
+                <CameraIcon className="w-3.5 h-3.5" />{t("controls.camerasLabel")}
               </div>
               <div className="text-2xl font-bold mt-1 font-mono">
                 <span className="text-emerald-400">{camerasOnline}</span>
@@ -240,11 +244,11 @@ export default function ControlsPage() {
         <section>
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
-              <KeyRound className="w-5 h-5 text-violet-400" />Video intercoms
+              <KeyRound className="w-5 h-5 text-violet-400" />{t("controls.intercomsTitle")}
             </h2>
             {!isLoading && (
               <span className="text-xs text-muted-foreground">
-                {intercoms.length} device{intercoms.length === 1 ? "" : "s"}
+                {t("controls.deviceCount", { count: intercoms.length })}
               </span>
             )}
           </div>
@@ -256,9 +260,7 @@ export default function ControlsPage() {
           ) : intercoms.length === 0 ? (
             <div className="bg-card border border-dashed border-border rounded-xl p-8 text-center">
               <KeyRound className="w-10 h-10 mx-auto text-muted-foreground/30 mb-2" />
-              <p className="text-sm text-muted-foreground">
-                No video intercoms registered yet.
-              </p>
+              <p className="text-sm text-muted-foreground">{t("controls.noIntercoms")}</p>
             </div>
           ) : (
             <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
@@ -277,11 +279,11 @@ export default function ControlsPage() {
         <section>
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
-              <CameraIcon className="w-5 h-5 text-sky-400" />Gate cameras
+              <CameraIcon className="w-5 h-5 text-sky-400" />{t("controls.camerasTitle")}
             </h2>
             {!isLoading && (
               <span className="text-xs text-muted-foreground">
-                {cameras.length} device{cameras.length === 1 ? "" : "s"}
+                {t("controls.deviceCount", { count: cameras.length })}
               </span>
             )}
           </div>
@@ -293,9 +295,7 @@ export default function ControlsPage() {
           ) : cameras.length === 0 ? (
             <div className="bg-card border border-dashed border-border rounded-xl p-8 text-center">
               <CameraIcon className="w-10 h-10 mx-auto text-muted-foreground/30 mb-2" />
-              <p className="text-sm text-muted-foreground">
-                No cameras registered yet.
-              </p>
+              <p className="text-sm text-muted-foreground">{t("controls.noCameras")}</p>
             </div>
           ) : (
             <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
@@ -311,7 +311,7 @@ export default function ControlsPage() {
         </section>
 
         <p className="text-[11px] text-muted-foreground/60 text-center pt-2">
-          Status auto-refreshes every 30 s. Every action is logged with your username.
+          {t("controls.autoRefreshNote")}
         </p>
       </div>
     </AppLayout>

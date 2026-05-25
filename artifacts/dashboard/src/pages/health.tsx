@@ -256,7 +256,7 @@ export default function HealthPage() {
                 { label: t("health.camerasOnline"), value: `${data.cameras.online}/${data.cameras.total}`, icon: Camera, color: data.cameras.offline > 0 ? "text-amber-400" : "text-green-400" },
                 { label: t("health.entrancesActive"), value: `${data.entrances.active}/${data.entrances.total}`, icon: DoorOpen, color: "text-primary" },
                 ...(data.smart_locks && data.smart_locks.total > 0 ? [{
-                  label: "Smart Locks Online",
+                  label: t("nav.locks"),
                   value: `${data.smart_locks.online}/${data.smart_locks.total}`,
                   icon: Lock,
                   color:
