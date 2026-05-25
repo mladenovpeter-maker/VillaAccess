@@ -5,6 +5,7 @@ export * from "./intercoms";
 export * from "./villas";
 export * from "./cameras";
 export * from "./smart_locks";
+export * from "./smart_lock_passwords";
 export * from "./vehicles";
 export * from "./reservations";
 export * from "./access_events";

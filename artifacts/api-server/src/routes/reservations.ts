@@ -12,6 +12,7 @@ import {
   syncReservationStatus,
 } from "../lib/validation/reservation-validator";
 import { syncPinToIntercoms, revokePinFromIntercoms } from "../services/pin-sync";
+import { syncPinToLocks, revokePinFromLocks } from "../services/lock-sync";
 
 const router = Router();
 
@@ -175,9 +176,10 @@ router.post("/", requireAuth, async (req: any, res) => {
     return;
   }
 
+  // Phase 2: PIN unified to 6 digits across intercom + Tuya lock.
   const pinCode = (body.data.pin_code && body.data.pin_code.trim())
     ? body.data.pin_code.trim()
-    : Math.floor(1000 + Math.random() * 9000).toString();
+    : Math.floor(100000 + Math.random() * 900000).toString();
 
   const ACCESS_GRACE_MS = 60 * 60 * 1000;
   const [reservation] = await db.insert(reservationsTable).values({
@@ -217,8 +219,11 @@ router.post("/", requireAuth, async (req: any, res) => {
     },
   });
 
-  // Async PIN sync — does not block the response
+  // Async PIN sync — does not block the response.
+  // Intercom + smart-lock pushes run in parallel; either may no-op if
+  // the deployment has no intercoms / no Tuya lock for the villa.
   void syncPinToIntercoms(reservation, req.user?.id);
+  void syncPinToLocks(reservation, req.user?.id);
 
   res.status(201).json(enriched);
 });
@@ -318,9 +323,10 @@ router.put("/:id", requireAuth, async (req: any, res) => {
     payload: { guest_name: body.data.guest_name, check_in: checkIn.toISOString(), check_out: checkOut.toISOString(), dates_changed: datesChanged },
   });
 
-  // Re-sync PIN if dates changed
+  // Re-sync PIN if dates changed (intercoms + smart locks)
   if (datesChanged) {
     void syncPinToIntercoms(rows[0], req.user?.id);
+    void syncPinToLocks(rows[0], req.user?.id);
   }
 
   res.json(await enrichReservation(rows[0], true));
@@ -347,6 +353,18 @@ router.delete("/:id", requireAuth, async (req: any, res) => {
         failures: result.results.filter((r) => !r.success).map((r) => ({ intercom: r.intercom_name, error: r.error })),
       });
       return;
+    }
+    // Best-effort: revoke the smart-lock password as well. If it fails,
+    // log + continue — the sweep will retry. We don't block the delete
+    // on smart-lock revoke because the smart_lock_passwords row is
+    // ON DELETE CASCADE'd anyway, and Tuya temp-passwords self-expire.
+    try {
+      const lockResult = await revokePinFromLocks(rows[0], req.user?.id);
+      if (lockResult.failed > 0) {
+        console.warn(`[reservations.delete] smart-lock revoke had ${lockResult.failed}/${lockResult.total} failure(s) — proceeding (sweep will retry)`);
+      }
+    } catch (err) {
+      console.error(`[reservations.delete] smart-lock revoke threw (non-fatal):`, err);
     }
   } catch (err) {
     console.error(`[reservations.delete] aborted — revoke threw for reservation ${rows[0].id}:`, err);
@@ -412,8 +430,9 @@ router.post("/:id/check-out", requireAuth, async (req: any, res) => {
     payload: { guest_name: updated.guest_name, actual_check_out: now.toISOString() },
   });
 
-  // Revoke PIN on checkout
+  // Revoke PIN on checkout (intercoms + smart locks)
   void revokePinFromIntercoms(updated, req.user?.id);
+  void revokePinFromLocks(updated, req.user?.id);
 
   res.json(await enrichReservation(updated, true));
 });
@@ -460,6 +479,15 @@ router.post("/:id/cancel", requireAuth, async (req: any, res) => {
   } catch (err) {
     console.error(`[reservations.cancel] revoke threw for reservation ${updated.id}:`, err);
   }
+  // Smart-lock revoke runs in parallel — log but don't block.
+  try {
+    const lockResult = await revokePinFromLocks(updated, req.user?.id);
+    if (lockResult.failed > 0) {
+      console.warn(`[reservations.cancel] smart-lock revoke had ${lockResult.failed} failure(s) for reservation ${updated.id}`);
+    }
+  } catch (err) {
+    console.error(`[reservations.cancel] smart-lock revoke threw for reservation ${updated.id}:`, err);
+  }
 
   res.json(await enrichReservation(updated, true));
 });
@@ -484,10 +512,12 @@ router.post("/:id/regenerate-pin", requireAuth, async (req: any, res) => {
     return;
   }
 
-  // Revoke old PIN first
+  // Revoke old PIN first (intercoms + smart locks)
   void revokePinFromIntercoms(r, req.user?.id);
+  void revokePinFromLocks(r, req.user?.id);
 
-  const newPin = Math.floor(1000 + Math.random() * 9000).toString();
+  // Phase 2: PIN unified to 6 digits across intercom + Tuya lock.
+  const newPin = Math.floor(100000 + Math.random() * 900000).toString();
   const [updated] = await db.update(reservationsTable)
     .set({ pin_code: newPin, pin_sync_status: "pending", pin_last_synced_at: null, updated_at: new Date() })
     .where(eq(reservationsTable.id, req.params.id))
@@ -499,10 +529,15 @@ router.post("/:id/regenerate-pin", requireAuth, async (req: any, res) => {
     payload: { guest_name: updated.guest_name },
   });
 
-  // Push new PIN
+  // Push new PIN — intercom first (await for response), then smart lock (async).
   const syncResult = await syncPinToIntercoms(updated, req.user?.id);
+  const lockSyncResult = await syncPinToLocks(updated, req.user?.id);
 
-  res.json({ ...(await enrichReservation(updated, true)), sync_result: syncResult });
+  res.json({
+    ...(await enrichReservation(updated, true)),
+    sync_result: syncResult,
+    lock_sync_result: lockSyncResult,
+  });
 });
 
 // ── POST /:id/force-sync ──────────────────────────────────────────────────────
@@ -518,9 +553,14 @@ router.post("/:id/force-sync", requireAuth, async (req: any, res) => {
   }
 
   const syncResult = await syncPinToIntercoms(r, req.user?.id);
+  const lockSyncResult = await syncPinToLocks(r, req.user?.id);
   const updated = await db.select().from(reservationsTable).where(eq(reservationsTable.id, r.id)).limit(1);
 
-  res.json({ ...(await enrichReservation(updated[0], true)), sync_result: syncResult });
+  res.json({
+    ...(await enrichReservation(updated[0], true)),
+    sync_result: syncResult,
+    lock_sync_result: lockSyncResult,
+  });
 });
 
 // ── POST /:id/revoke-pin ──────────────────────────────────────────────────────
@@ -530,9 +570,14 @@ router.post("/:id/revoke-pin", requireAuth, async (req: any, res) => {
   if (!rows[0]) { res.status(404).json({ detail: "Not found" }); return; }
 
   const syncResult = await revokePinFromIntercoms(rows[0], req.user?.id);
+  const lockSyncResult = await revokePinFromLocks(rows[0], req.user?.id);
   const updated = await db.select().from(reservationsTable).where(eq(reservationsTable.id, rows[0].id)).limit(1);
 
-  res.json({ ...(await enrichReservation(updated[0], true)), sync_result: syncResult });
+  res.json({
+    ...(await enrichReservation(updated[0], true)),
+    sync_result: syncResult,
+    lock_sync_result: lockSyncResult,
+  });
 });
 
 export { router as reservationsRouter };

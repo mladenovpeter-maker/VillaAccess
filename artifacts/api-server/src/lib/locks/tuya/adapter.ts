@@ -1,35 +1,75 @@
 /**
  * Tuya implementation of the LockAdapter interface.
  *
- * Phase 1 scope: read-only — getStatus() + listOpenRecords().
+ * Phase 1: getStatus() + listOpenRecords()    (read-only)
+ * Phase 2: temp-password CRUD                 (encrypted PIN push)
  *
- * Status mapping:
- *   - `online` flag comes from /v1.0/iot-03/devices/{id}/status.online
- *     (Tuya returns it as a top-level field on device-info, NOT inside
- *     the `status` array). We fall back to inspecting the `status` array
- *     code="online" if present.
- *   - `battery_pct` is read from status[] code IN
- *     ("battery_percentage", "residual_electricity", "battery_state").
- *     Some locks only expose a coarse "low/middle/high" string — we map
- *     those to 20/55/90 respectively. Returns null if unknown.
- *   - `last_seen_at` uses device-info.update_time (epoch SECONDS) when
- *     available, else null.
+ * ── Status mapping (Phase 1, unchanged) ──────────────────────────────────────
+ *   - `online`        ← /v1.0/iot-03/devices/{id}.online (fallback to
+ *                       status[] code="online")
+ *   - `battery_pct`   ← status[] code IN ("battery_percentage",
+ *                       "residual_electricity", "battery_state"). Coarse
+ *                       string values (low/middle/high) → 20/55/90.
+ *   - `last_seen_at`  ← device-info.update_time (epoch seconds), fallback
+ *                       to active_time, else null.
  *
- * Open records mapping:
- *   - GET /v1.0/devices/{id}/door-lock/open-records returns
- *     { logs: [...], total, has_more } with each log shaped as
- *     { time, unlock_method, user_name, user_id, ... }. We normalise
- *     into the LockOpenRecord interface.
+ * ── Temp-password flow (Phase 2) ─────────────────────────────────────────────
+ * Tuya door locks require the PIN to be transmitted ENCRYPTED. The flow is:
+ *
+ *   1. GET  /v1.0/devices/{deviceId}/door-lock/password-ticket
+ *           → { ticket_id, ticket_key }
+ *           ticket_key is hex-encoded AES-128-ECB ciphertext of a random
+ *           per-ticket AES key, encrypted with the project's AccessSecret
+ *           (first 16 bytes) as the AES-128 key.
+ *
+ *   2. AES-128-ECB DECRYPT (ticket_key, key=AccessSecret[0:16])
+ *           → raw 16-byte AES-128 session key
+ *
+ *   3. AES-128-ECB ENCRYPT (PIN, key=session_key)
+ *           → hex(encrypted_pin)
+ *
+ *   4. POST /v1.0/devices/{deviceId}/door-lock/temp-password
+ *           body: {
+ *             password:       <hex>,
+ *             password_type:  "ticket",
+ *             ticket_id:      <ticket from step 1>,
+ *             effective_time: <epoch seconds>,
+ *             invalid_time:   <epoch seconds>,
+ *             name:           <label shown in Smart Life>,
+ *             type:           0,   // 0 = temporary, single-period
+ *             phone:          "",  // required by spec, can be empty
+ *             time_zone:      "+02:00",
+ *           }
+ *           → { id: "<provider_password_id>" }
+ *
+ *   5. DELETE /v1.0/devices/{deviceId}/door-lock/temp-password/{password_id}
+ *
+ *   6. GET  /v1.0/devices/{deviceId}/door-lock/temp-passwords
+ *           → list of existing passwords (for diagnostics + force-sync)
+ *
+ * NOTE on the cloud-project requirement: the project must have the
+ * "IoT Core" + "Authorization Token Management" + "Smart Lock Open
+ * Service" (or "Smart Home Devices Management") API products linked.
+ * If the device returns code=1106 ("permission denied") on the
+ * password-ticket call, those services are missing in the Cloud Project.
  */
 
+import * as crypto from "crypto";
 import type {
   LockAdapter,
   LockStatusResult,
   LockOpenRecord,
   ListOpenRecordsOptions,
   LockRow,
+  CreateTempPasswordInput,
+  CreateTempPasswordResult,
+  TempPasswordSummary,
 } from "../types";
 import { tuyaRequest } from "./client";
+
+// ────────────────────────────────────────────────────────────────────────────
+// Status / open-records types (Phase 1)
+// ────────────────────────────────────────────────────────────────────────────
 
 interface TuyaStatusItem {
   code: string;
@@ -63,7 +103,7 @@ const BATTERY_CODES = new Set([
   "battery_percentage",
   "residual_electricity",
   "battery_state",
-  "battery", // some older lock profiles
+  "battery",
 ]);
 
 const COARSE_BATTERY_MAP: Record<string, number> = {
@@ -109,6 +149,99 @@ function extractLastSeen(info: TuyaDeviceInfo): string | null {
   return null;
 }
 
+// ────────────────────────────────────────────────────────────────────────────
+// Temp-password types (Phase 2)
+// ────────────────────────────────────────────────────────────────────────────
+
+interface TuyaPasswordTicket {
+  ticket_id: string;
+  ticket_key: string; // hex, AES-128-ECB encrypted with AccessSecret[0:16]
+  expire_time?: number;
+}
+
+interface TuyaCreateTempPasswordResponse {
+  id: number | string;
+}
+
+interface TuyaTempPasswordItem {
+  id?: number | string;
+  name?: string | null;
+  effective_time?: number; // epoch seconds
+  invalid_time?: number;   // epoch seconds
+  status?: string;
+  [k: string]: unknown;
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Crypto helpers — Tuya temp-password encryption
+// ────────────────────────────────────────────────────────────────────────────
+
+function readAccessSecret(): string {
+  const s = process.env.TUYA_ACCESS_SECRET;
+  if (!s) throw new Error("TUYA_ACCESS_SECRET is not set");
+  return s;
+}
+
+/**
+ * Decrypt the per-ticket AES-128 session key.
+ *
+ *   ticket_key (hex) = AES-128-ECB-NoPadding(plain_session_key,
+ *                                            key=AccessSecret[0:16])
+ *
+ * Returns the raw 16-byte session key. Throws on length mismatch.
+ */
+function decryptTicketKey(ticketKeyHex: string): Buffer {
+  const secret = readAccessSecret();
+  const aesKey = Buffer.from(secret.slice(0, 16), "utf8");
+  const ciphertext = Buffer.from(ticketKeyHex, "hex");
+  if (ciphertext.length === 0 || ciphertext.length % 16 !== 0) {
+    throw new Error(
+      `Tuya ticket_key has unexpected length ${ciphertext.length} (must be multiple of 16)`,
+    );
+  }
+  const decipher = crypto.createDecipheriv("aes-128-ecb", aesKey, null);
+  decipher.setAutoPadding(false);
+  const plain = Buffer.concat([decipher.update(ciphertext), decipher.final()]);
+  // The decrypted buffer should be exactly 16 bytes (one AES block) — the
+  // session key. Some Tuya regions return additional PKCS#7 padding bytes;
+  // in that case take the first 16.
+  return plain.subarray(0, 16);
+}
+
+/**
+ * AES-128-ECB ENCRYPT the PIN with PKCS#7 padding, returned as lowercase hex.
+ * Tuya's spec requires PKCS#7 padding for the password field.
+ */
+function encryptPin(pin: string, sessionKey: Buffer): string {
+  const cipher = crypto.createCipheriv("aes-128-ecb", sessionKey, null);
+  cipher.setAutoPadding(true);
+  const ct = Buffer.concat([cipher.update(pin, "utf8"), cipher.final()]);
+  return ct.toString("hex");
+}
+
+/** Best-effort local time-zone offset string, e.g. "+02:00". */
+function localTimeZoneOffset(): string {
+  const off = -new Date().getTimezoneOffset();
+  const sign = off >= 0 ? "+" : "-";
+  const abs = Math.abs(off);
+  const hh = String(Math.floor(abs / 60)).padStart(2, "0");
+  const mm = String(abs % 60).padStart(2, "0");
+  return `${sign}${hh}:${mm}`;
+}
+
+function toEpochSeconds(d: Date): number {
+  return Math.floor(d.getTime() / 1000);
+}
+
+function toIsoOrNull(secs: number | undefined): string | null {
+  if (typeof secs !== "number" || secs <= 0) return null;
+  return new Date(secs * 1000).toISOString();
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Adapter
+// ────────────────────────────────────────────────────────────────────────────
+
 export class TuyaLockAdapter implements LockAdapter {
   private readonly deviceId: string;
 
@@ -118,6 +251,8 @@ export class TuyaLockAdapter implements LockAdapter {
     }
     this.deviceId = row.tuya_device_id;
   }
+
+  // ── Phase 1 ────────────────────────────────────────────────────────────
 
   async getStatus(): Promise<LockStatusResult> {
     const info = await tuyaRequest<TuyaDeviceInfo>({
@@ -135,10 +270,7 @@ export class TuyaLockAdapter implements LockAdapter {
   async listOpenRecords(opts: ListOpenRecordsOptions = {}): Promise<LockOpenRecord[]> {
     const page_no = Math.max(1, opts.page ?? 1);
     const page_size = Math.max(1, Math.min(100, opts.page_size ?? 20));
-    const query: Record<string, string | number | undefined> = {
-      page_no,
-      page_size,
-    };
+    const query: Record<string, string | number | undefined> = { page_no, page_size };
     if (opts.start_time) query.start_time = opts.start_time;
     if (opts.end_time) query.end_time = opts.end_time;
 
@@ -154,6 +286,70 @@ export class TuyaLockAdapter implements LockAdapter {
       method: r.unlock_method ?? "unknown",
       user: r.user_name ?? r.user_id ?? null,
       raw: r,
+    }));
+  }
+
+  // ── Phase 2 ────────────────────────────────────────────────────────────
+
+  async createTempPassword(input: CreateTempPasswordInput): Promise<CreateTempPasswordResult> {
+    // Step 1 — fetch a one-shot encryption ticket for this device.
+    const ticket = await tuyaRequest<TuyaPasswordTicket>({
+      method: "GET",
+      path: `/v1.0/devices/${encodeURIComponent(this.deviceId)}/door-lock/password-ticket`,
+    });
+    if (!ticket?.ticket_id || !ticket?.ticket_key) {
+      throw new Error(`Tuya password-ticket response missing ticket_id/ticket_key for device ${this.deviceId}`);
+    }
+
+    // Step 2/3 — decrypt the session key, then encrypt the PIN.
+    const sessionKey = decryptTicketKey(ticket.ticket_key);
+    const encryptedPin = encryptPin(input.pin, sessionKey);
+
+    // Step 4 — create the temp password on the device.
+    const body = {
+      password:        encryptedPin,
+      password_type:   "ticket",
+      ticket_id:       ticket.ticket_id,
+      effective_time:  toEpochSeconds(input.valid_from),
+      invalid_time:    toEpochSeconds(input.valid_to),
+      name:            input.name.slice(0, 32), // Tuya caps name length
+      type:            0,                       // temporary (single-period)
+      phone:           "",
+      time_zone:       localTimeZoneOffset(),
+    };
+
+    const resp = await tuyaRequest<TuyaCreateTempPasswordResponse>({
+      method: "POST",
+      path: `/v1.0/devices/${encodeURIComponent(this.deviceId)}/door-lock/temp-password`,
+      body,
+    });
+
+    if (resp?.id == null) {
+      throw new Error(`Tuya temp-password response missing id for device ${this.deviceId}`);
+    }
+    return { password_id: String(resp.id), raw: resp };
+  }
+
+  async deleteTempPassword(passwordId: string): Promise<void> {
+    await tuyaRequest({
+      method: "DELETE",
+      path: `/v1.0/devices/${encodeURIComponent(this.deviceId)}/door-lock/temp-password/${encodeURIComponent(passwordId)}`,
+    });
+  }
+
+  async listTempPasswords(): Promise<TempPasswordSummary[]> {
+    const list = await tuyaRequest<TuyaTempPasswordItem[]>({
+      method: "GET",
+      path: `/v1.0/devices/${encodeURIComponent(this.deviceId)}/door-lock/temp-passwords`,
+    });
+    const items = Array.isArray(list) ? list : [];
+    return items.map((p) => ({
+      password_id: String(p.id ?? ""),
+      name: p.name ?? null,
+      effective_time: toIsoOrNull(p.effective_time),
+      invalid_time: toIsoOrNull(p.invalid_time),
+      status: typeof p.status === "string" ? p.status : null,
+      raw: p,
     }));
   }
 }
