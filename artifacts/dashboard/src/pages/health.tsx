@@ -285,7 +285,7 @@ export default function HealthPage() {
                     <HostMetricCard label="Disk" icon={HardDrive} primary="—" pct={null} secondary="unavailable" />
                   )}
                   <HostMetricCard
-                    label={data.host.uptime_source === "host" ? "Host Uptime" : "API Uptime"}
+                    label={data.host.uptime_source === "host" ? t("health.hostUptime") : t("health.apiUptime")}
                     icon={Clock}
                     primary={formatUptime(data.host.uptime_seconds)}
                     pct={null}

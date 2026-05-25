@@ -615,6 +615,8 @@ const en = {
     refresh: "Refresh",
     checkedAt: "Checked at",
     uptime: "Uptime",
+    hostUptime: "Host Uptime",
+    apiUptime: "API Uptime",
     memory: "Heap RAM",
     camerasOnline: "Cameras Online",
     entrancesActive: "Entrances Active",
