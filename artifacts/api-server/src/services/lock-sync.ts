@@ -107,10 +107,14 @@ export async function syncPinToLocks(
   const validFrom = reservation.pin_valid_from ?? reservation.check_in;
   const validTo   = reservation.pin_valid_to   ?? reservation.check_out;
 
+  // Note: PIN is masked in logs — it's an access credential and must
+  // not leak into long-lived log storage. Full PIN is only visible in
+  // the dashboard / encrypted ledger.
+  const pinLen = reservation.pin_code.length;
   console.log(`[lock-sync] ──────────────────────────────────────────────────`);
   console.log(`[lock-sync] reservation=${reservation.id}  guest="${reservation.guest_name}"`);
   console.log(`[lock-sync] lock=${lock.name} (${lock.id})  protocol=${lock.protocol}`);
-  console.log(`[lock-sync] pin=${reservation.pin_code}  ${validFrom.toISOString()} → ${validTo.toISOString()}`);
+  console.log(`[lock-sync] pin=******(len=${pinLen})  ${validFrom.toISOString()} → ${validTo.toISOString()}`);
 
   // Defensive: revoke any prior active password for this reservation on
   // this lock — handles re-sync after PIN regen or date change.
@@ -125,12 +129,31 @@ export async function syncPinToLocks(
       valid_from: validFrom,
       valid_to:   validTo,
     });
-    await db.insert(smartLockPasswordsTable).values({
-      reservation_id:       reservation.id,
-      smart_lock_id:        lock.id,
-      provider_password_id: created.password_id,
-      status:               "active",
-    });
+    // Insert ledger row. The partial unique index
+    // (reservation_id, smart_lock_id) WHERE status='active'
+    // (migration 0019) prevents two concurrent syncs from leaving
+    // two active passwords. If we're the race loser, undo the Tuya
+    // creation we just performed so the lock doesn't carry an
+    // orphan PIN whose ledger row we can't reach.
+    try {
+      await db.insert(smartLockPasswordsTable).values({
+        reservation_id:       reservation.id,
+        smart_lock_id:        lock.id,
+        provider_password_id: created.password_id,
+        status:               "active",
+      });
+    } catch (insertErr) {
+      const code = (insertErr as { code?: string })?.code;
+      if (code === "23505") {
+        console.warn(`[lock-sync] race-loser detected (unique violation) — deleting orphan Tuya password ${created.password_id}`);
+        try { await adapter.deleteTempPassword(created.password_id); }
+        catch (cleanupErr) {
+          console.error(`[lock-sync] orphan cleanup FAILED — Tuya password ${created.password_id} will expire at invalid_time:`, cleanupErr);
+        }
+        throw new Error(`concurrent sync detected for reservation ${reservation.id} — winner's password is active`);
+      }
+      throw insertErr;
+    }
     result = {
       smart_lock_id:        lock.id,
       smart_lock_name:      lock.name,

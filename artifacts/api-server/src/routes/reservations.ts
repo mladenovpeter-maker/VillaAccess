@@ -18,6 +18,31 @@ const router = Router();
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
+/**
+ * Phase 2: PINs are now exactly 6 digits across intercoms + Tuya locks.
+ *
+ * We accept absent / null / empty pin_code (auto-generated downstream)
+ * but if a value IS supplied it must be exactly 6 numeric digits — no
+ * leading zeros are stripped, no letters allowed. Enforced via Zod
+ * refine() on both POST and PUT so a manual pin override cannot
+ * silently push a 4-digit (legacy) or alphanumeric PIN to devices.
+ */
+const PIN_FORMAT_MSG = "PIN must be exactly 6 digits";
+const pinCodeSchema = z.string().max(20).nullable().optional().refine(
+  (v) => !v || /^\d{6}$/.test(v.trim()),
+  { message: PIN_FORMAT_MSG },
+);
+
+/**
+ * Mask a PIN for logging — keeps log line shape but does not leak the
+ * actual access credential into long-lived log storage.
+ */
+function maskPin(pin: string | null | undefined): string {
+  if (!pin) return "(none)";
+  return `******(len=${pin.length})`;
+}
+export { maskPin as _maskPinForTests };
+
 type DbReservation = typeof reservationsTable.$inferSelect;
 
 async function enrichReservation(r: DbReservation, includeWindow = false) {
@@ -148,7 +173,7 @@ router.post("/", requireAuth, async (req: any, res) => {
     check_in:       z.string(),
     check_out:      z.string(),
     notes:          z.string().nullable().optional(),
-    pin_code:       z.string().max(20).nullable().optional(),
+    pin_code:       pinCodeSchema,
     license_plates: z.array(plateEntrySchema).optional(),
     vehicle_ids:    z.array(z.string()).optional(),
   });
@@ -254,7 +279,7 @@ router.put("/:id", requireAuth, async (req: any, res) => {
     check_in:       z.string(),
     check_out:      z.string(),
     notes:          z.string().nullable().optional(),
-    pin_code:       z.string().max(20).nullable().optional(),
+    pin_code:       pinCodeSchema,
     license_plates: z.array(plateEntrySchema).optional(),
     vehicle_ids:    z.array(z.string()).optional(),
   });
@@ -354,10 +379,16 @@ router.delete("/:id", requireAuth, async (req: any, res) => {
       });
       return;
     }
-    // Best-effort: revoke the smart-lock password as well. If it fails,
-    // log + continue — the sweep will retry. We don't block the delete
-    // on smart-lock revoke because the smart_lock_passwords row is
-    // ON DELETE CASCADE'd anyway, and Tuya temp-passwords self-expire.
+    // Best-effort: revoke the smart-lock password as well. We do NOT
+    // block the delete on smart-lock revoke failure for two reasons:
+    //   (a) Tuya temp-passwords self-expire at invalid_time, so an
+    //       orphaned password on the device stops working at check-out
+    //       even without an explicit revoke (housekeeping only);
+    //   (b) the smart_lock_passwords ledger row is ON DELETE CASCADE'd
+    //       once the reservation row is removed, which means the sweep
+    //       has NO record to retry from. Failures here are therefore
+    //       silently absorbed by Tuya's TTL — they are logged for
+    //       operator visibility but cannot be reconciled later.
     try {
       const lockResult = await revokePinFromLocks(rows[0], req.user?.id);
       if (lockResult.failed > 0) {
