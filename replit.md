@@ -42,7 +42,8 @@ _Describe the high-level user-facing capabilities of this app once they exist._
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
+- **Docker compose env file:** compose чете `.env` по default, не `.env.docker`. На сървъра е създаден symlink `.env -> .env.docker`, така че `docker compose up -d` работи без флаг. Ако symlink-ът липсва, използвай `docker compose --env-file .env.docker up -d` или `${POSTGRES_PASSWORD}` ще се разшири на празно и migrate ще падне с `28P01: password authentication failed`.
+- **Postgres password lives in volume:** `POSTGRES_PASSWORD` се чете само при първи init. Ако паролата в `.env.docker` се промени след това, postgres продължава със старата. Fix: `docker compose exec postgres psql -U villa_user -d villa_access -c "ALTER USER villa_user WITH PASSWORD '<new>';"` (Unix socket вътре в контейнера има trust auth, не иска парола).
 
 ## Pointers
 
