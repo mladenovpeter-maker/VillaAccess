@@ -87,7 +87,7 @@ function Router() {
       <Route path="/export"           component={() => <ProtectedRoute component={ExportPage}           roles={adminOnly} />} />
       <Route path="/settings"         component={() => <ProtectedRoute component={SettingsPage}         roles={adminOnly} />} />
       <Route path="/users"            component={() => <ProtectedRoute component={UsersPage}            roles={adminOnly} />} />
-      <Route path="/temp-credentials" component={() => <ProtectedRoute component={TempCredentialsPage} roles={adminOnly} />} />
+      <Route path="/temp-credentials" component={() => <ProtectedRoute component={TempCredentialsPage} roles={opOrAbove} />} />
       <Route path="/mock"             component={() => <ProtectedRoute component={MockPage}             roles={adminOnly} />} />
 
       <Route component={NotFound} />

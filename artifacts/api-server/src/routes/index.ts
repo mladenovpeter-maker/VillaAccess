@@ -51,7 +51,7 @@ router.use("/diagnostics",      requireAuth, adminOnly, diagnosticsRouter);
 router.use("/settings",         requireAuth, adminOnly, settingsRouter);
 router.use("/export",           requireAuth, adminOnly, exportRouter);
 router.use("/users",            requireAuth, adminOnly, usersRouter);
-router.use("/temp-credentials", requireAuth, adminOnly, tempCredentialsRouter);
+router.use("/temp-credentials", requireAuth, writeAccess, tempCredentialsRouter);
 router.use("/mock",             requireAuth, adminOnly, mockRouter);
 
 // ANPR — worker-token-authed (no user session). Mounted last to avoid

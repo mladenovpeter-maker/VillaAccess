@@ -51,7 +51,7 @@ export function Sidebar() {
 
   const adminItems: NavItem[] = [
     { href: "/users",            label: t("nav.users"),           icon: Users,    roles: ["admin"] },
-    { href: "/temp-credentials", label: t("nav.tempCredentials"), icon: KeyRound, roles: ["admin"] },
+    { href: "/temp-credentials", label: t("nav.tempCredentials"), icon: KeyRound, roles: ["admin", "operator"] },
   ];
 
   const toolItems: NavItem[] = [
