@@ -392,7 +392,7 @@ router.delete("/:id", requireAuth, async (req: any, res) => {
     try {
       const lockResult = await revokePinFromLocks(rows[0], req.user?.id);
       if (lockResult.failed > 0) {
-        console.warn(`[reservations.delete] smart-lock revoke had ${lockResult.failed}/${lockResult.total} failure(s) — proceeding (sweep will retry)`);
+        console.warn(`[reservations.delete] smart-lock revoke had ${lockResult.failed}/${lockResult.total} failure(s) — proceeding; ledger row will be cascade-deleted so no retry record remains (Tuya temp-password will self-expire at invalid_time)`);
       }
     } catch (err) {
       console.error(`[reservations.delete] smart-lock revoke threw (non-fatal):`, err);
