@@ -122,6 +122,28 @@ services:
       backend:
         condition: service_healthy
 
+  # ── Cloudflare Tunnel (public HTTPS without router config) ────────────────
+  # Outbound-only tunnel from this host to Cloudflare's edge. Exposes the
+  # frontend nginx (which proxies /api/* to backend) at the public hostname
+  # configured in the Cloudflare Zero Trust dashboard (e.g. app.villaaccess.com).
+  # HTTPS / TLS is terminated by Cloudflare — no certs needed locally.
+  #
+  # Setup:
+  #   1. Zero Trust → Networks → Tunnels → Create a tunnel (Cloudflared, Docker).
+  #   2. Copy the token (string after `--token` in the docker run command).
+  #   3. Put it in .env.docker as CF_TUNNEL_TOKEN=...
+  #   4. In the tunnel's Public Hostname, point app.villaaccess.com → HTTP → frontend:80
+  #   5. Add the public origin to CORS_ALLOWED_ORIGINS in .env.docker.
+  #
+  # Leave CF_TUNNEL_TOKEN empty / unset to keep the tunnel disabled — the
+  # container will just exit. The rest of the stack is unaffected.
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run --token ${CF_TUNNEL_TOKEN}
+    depends_on:
+      - frontend
+
   # ── ANPR / OCR worker (Python + EasyOCR) ──────────────────────────────────
   # Polls cameras with ocr_enabled=true via the backend's /api/anpr endpoints.
   # No published ports — only talks to `backend` over the default compose
