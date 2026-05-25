@@ -5,7 +5,7 @@ import {
   LayoutDashboard, CalendarDays, Car, ShieldCheck, Camera, ScrollText,
   Activity, LogOut, Menu, X, Building2, DoorOpen, FlaskConical,
   Stethoscope, Settings2, HeartPulse, GitCommitHorizontal,
-  Download, Users, KeyRound, Phone, Lock,
+  Download, Users, KeyRound, Phone, Lock, Zap,
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -33,6 +33,7 @@ export function Sidebar() {
 
   const mainItems: NavItem[] = [
     { href: "/",             label: t("nav.dashboard"),    icon: LayoutDashboard,      roles: ["admin", "operator", "viewer"] },
+    { href: "/controls",     label: "Quick Controls",      icon: Zap,                  roles: ["admin", "operator"] },
     { href: "/villas",       label: t("nav.villas"),       icon: Building2,            roles: ["admin"] },
     { href: "/reservations", label: t("nav.reservations"), icon: CalendarDays,         roles: ["admin", "operator", "viewer"] },
     { href: "/vehicles",     label: t("nav.vehicles"),     icon: Car,                  roles: ["admin", "operator", "viewer"] },

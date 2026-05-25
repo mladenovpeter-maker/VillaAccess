@@ -14,6 +14,7 @@ import CamerasPage from "@/pages/cameras";
 import EntrancesPage from "@/pages/entrances";
 import IntercomsPage from "@/pages/intercoms";
 import LocksPage from "@/pages/locks";
+import ControlsPage from "@/pages/controls";
 import LogsPage from "@/pages/logs";
 import EventsPage from "@/pages/events";
 import MockPage from "@/pages/mock";
@@ -71,6 +72,7 @@ function Router() {
       {/* Operator and above — operational work surfaces */}
       <Route path="/reservations"  component={() => <ProtectedRoute component={ReservationsPage} />} />
       <Route path="/vehicles"      component={() => <ProtectedRoute component={VehiclesPage}     />} />
+      <Route path="/controls"      component={() => <ProtectedRoute component={ControlsPage}     roles={opOrAbove} />} />
 
       {/* Admin only — infrastructure / system / management surfaces */}
       <Route path="/villas"           component={() => <ProtectedRoute component={VillasPage}           roles={adminOnly} />} />
