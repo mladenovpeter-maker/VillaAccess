@@ -1,4 +1,5 @@
 import { Router } from "express";
+import rateLimit from "express-rate-limit";
 import { db } from "@workspace/db";
 import { usersTable, refreshTokensTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
@@ -7,6 +8,29 @@ import jwt from "jsonwebtoken";
 import { z } from "zod";
 
 const router = Router();
+
+// Brute-force protection on credential endpoints. Counted per real client IP
+// (requires app.set("trust proxy", 1) which is configured in app.ts).
+// skipSuccessfulRequests so a legit user typing wrong password 3x then
+// correctly does NOT get locked out by their own success.
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: true,
+  message: { detail: "Too many login attempts. Try again in 15 minutes." },
+});
+
+// Refresh endpoint also abusable for token grinding; cap more generously
+// since legitimate clients hit it once per 15min on the access token TTL.
+const refreshLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { detail: "Too many refresh attempts. Try again later." },
+});
 
 const JWT_SECRET = process.env.JWT_SECRET ?? "villa_jwt_secret_dev_only";
 const ACCESS_TOKEN_EXPIRES_IN = "15m";
@@ -120,7 +144,7 @@ export async function requireAuth(req: any, res: any, next: any) {
 }
 
 // POST /auth/login
-router.post("/login", async (req, res) => {
+router.post("/login", loginLimiter, async (req, res) => {
   const schema = z.object({ username: z.string(), password: z.string() });
   const body = schema.safeParse(req.body);
   if (!body.success) {
@@ -159,7 +183,7 @@ router.post("/login", async (req, res) => {
 });
 
 // POST /auth/refresh
-router.post("/refresh", async (req, res) => {
+router.post("/refresh", refreshLimiter, async (req, res) => {
   const schema = z.object({ refresh_token: z.string() });
   const body = schema.safeParse(req.body);
   if (!body.success) {

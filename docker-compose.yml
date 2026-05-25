@@ -27,8 +27,14 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
+    # Postgres is reachable only from other compose services via the default
+    # bridge network. To debug from the host, use:
+    #   docker compose exec postgres psql -U villa_user villa_access
+    # To connect from your laptop, use an SSH tunnel:
+    #   ssh -L 5432:localhost:5432 user@6.5.4.254
+    # (was published as 5432:5432; removed for security.)
+    expose:
+      - "5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U villa_user -d villa_access"]
       interval: 5s
@@ -84,8 +90,14 @@ services:
       TUYA_ACCESS_ID:       ${TUYA_ACCESS_ID:-}
       TUYA_ACCESS_SECRET:   ${TUYA_ACCESS_SECRET:-}
       TUYA_REGION:          ${TUYA_REGION:-eu}
-    ports:
-      - "8080:8080"
+    # Backend is reachable only from the frontend nginx container (which
+    # proxies /api/* to backend:8080 over the compose network) and from
+    # the ai-worker. Public traffic comes in via frontend:3000 only.
+    # To debug from the host, use:
+    #   docker compose exec backend wget -qO- http://localhost:8080/api/healthz
+    # (was published as 8080:8080; removed for security.)
+    expose:
+      - "8080"
     volumes:
       - uploads_data:/app/uploads
     depends_on:
