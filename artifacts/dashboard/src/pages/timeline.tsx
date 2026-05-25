@@ -289,9 +289,9 @@ export default function TimelinePage() {
     <AppLayout title={t("timeline.title")} subtitle={t("timeline.subtitle")}>
       <div className="max-w-3xl mx-auto space-y-4">
         {/* Filter */}
-        <div className="flex gap-3 items-center">
+        <div className="flex flex-wrap gap-3 items-center">
           <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(1); }}>
-            <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="w-full sm:w-40"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">{t("common.all")}</SelectItem>
               <SelectItem value="allowed">{t("access.status.allowed")}</SelectItem>

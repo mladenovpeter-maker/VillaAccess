@@ -331,7 +331,7 @@ function SnapshotGallery({
 
   if (isLoading) {
     return (
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
         {Array.from({ length: 6 }).map((_, i) => (
           <Skeleton key={i} className="aspect-video w-full rounded-lg" />
         ))}
@@ -352,7 +352,7 @@ function SnapshotGallery({
 
   return (
     <>
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
         {data.items.map((snap) => (
           <div
             key={snap.id}
@@ -439,7 +439,7 @@ function SnapshotGallery({
 
       {/* Lightbox */}
       <Dialog open={!!lightbox} onOpenChange={(o) => !o && setLightbox(null)}>
-        <DialogContent className="max-w-3xl p-2 gap-0 bg-black/95 border-border/20">
+        <DialogContent className="max-w-3xl w-[95vw] p-2 gap-0 bg-black/95 border-border/20">
           <div className="relative">
             {lightbox && (
               <>
@@ -493,7 +493,7 @@ function VehicleDetailDialog({
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col gap-0 p-0 overflow-hidden">
+      <DialogContent className="max-w-2xl w-[95vw] max-h-[90vh] flex flex-col gap-0 p-0 overflow-hidden">
         {/* Header with primary snapshot */}
         <div className="relative h-40 shrink-0 bg-card overflow-hidden">
           <SnapshotImage
@@ -521,7 +521,7 @@ function VehicleDetailDialog({
         </div>
 
         {/* Quick stats bar */}
-        <div className="flex items-center gap-4 px-4 py-2.5 border-b border-border bg-muted/30 text-xs text-muted-foreground shrink-0">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-2.5 border-b border-border bg-muted/30 text-xs text-muted-foreground shrink-0">
           <span><span className="font-semibold text-foreground">{vehicle.total_visits}</span> {t("vehicles.visits")}</span>
           {vehicle.confidence_score != null && (
             <span>{t("vehicles.aiConf")} <span className="font-semibold text-foreground">{formatConf(vehicle.confidence_score)}</span></span>

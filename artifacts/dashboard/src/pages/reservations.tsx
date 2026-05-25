@@ -329,7 +329,7 @@ export default function ReservationsPage() {
 
       {/* ── Create/Edit Dialog ───────────────────────────────────────────────── */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-lg max-h-screen overflow-y-auto">
+        <DialogContent className="max-w-lg w-[95vw] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editTarget ? t("reservations.editReservation") : t("reservations.newReservation")}</DialogTitle>
           </DialogHeader>
@@ -337,7 +337,7 @@ export default function ReservationsPage() {
             <FormField label={t("reservations.guestName")}>
               <Input value={form.guest_name} onChange={(e) => setForm({ ...form, guest_name: e.target.value })} placeholder={t("reservations.fullName")} />
             </FormField>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <FormField label={t("reservations.phone")}>
                 <Input value={form.guest_phone} onChange={(e) => setForm({ ...form, guest_phone: e.target.value })} placeholder="+359..." />
               </FormField>
@@ -353,7 +353,7 @@ export default function ReservationsPage() {
                 </SelectContent>
               </Select>
             </FormField>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <FormField label={t("reservations.checkIn")}>
                 <Input type="date" value={form.check_in} onChange={(e) => setForm({ ...form, check_in: e.target.value })} />
               </FormField>
@@ -399,7 +399,7 @@ export default function ReservationsPage() {
                         </Button>
                       )}
                     </div>
-                    <div className="grid grid-cols-3 gap-2 pl-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pl-6">
                       <Input value={entry.make}  onChange={(e) => updatePlate(idx, "make",  e.target.value)} placeholder="Make"  className="text-xs h-7" />
                       <Input value={entry.model} onChange={(e) => updatePlate(idx, "model", e.target.value)} placeholder="Model" className="text-xs h-7" />
                       <Input value={entry.color} onChange={(e) => updatePlate(idx, "color", e.target.value)} placeholder="Color" className="text-xs h-7" />

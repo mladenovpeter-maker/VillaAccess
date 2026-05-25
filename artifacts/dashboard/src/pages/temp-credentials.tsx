@@ -128,7 +128,7 @@ function CreateCredDialog({ open, onClose }: { open: boolean; onClose: () => voi
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md w-[95vw]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <KeyRound className="w-4 h-4" />{t("tempCreds.generateAccess")}
@@ -181,7 +181,7 @@ function CreateCredDialog({ open, onClose }: { open: boolean; onClose: () => voi
             <p className="text-xs text-muted-foreground">{t("tempCreds.pinHint")}</p>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>{t("tempCreds.validFrom")} *</Label>
               <Input type="datetime-local" value={form.valid_from} onChange={(e) => set("valid_from", e.target.value)} />
@@ -283,7 +283,7 @@ export default function TempCredentialsPage() {
             { label: "Revoked", value: revokedCount, color: "text-red-400" },
           ].map(({ label, value, color }) => (
             <div key={label} className="bg-card border border-border rounded-xl p-4">
-              <div className={`text-2xl font-bold ${color}`}>{value}</div>
+              <div className={`text-xl md:text-2xl font-bold ${color}`}>{value}</div>
               <div className="text-xs text-muted-foreground mt-0.5">{label}</div>
             </div>
           ))}
@@ -292,7 +292,7 @@ export default function TempCredentialsPage() {
         {/* Filter */}
         <div>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-40">
+            <SelectTrigger className="w-full sm:w-40">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -338,7 +338,7 @@ export default function TempCredentialsPage() {
                   <div>
                     <div className="flex items-center gap-2 mb-0.5">
                       <KeyRound className="w-3.5 h-3.5 text-primary" />
-                      <span className="font-mono text-2xl font-bold tracking-widest text-primary">{cred.pin_code}</span>
+                      <span className="font-mono text-xl md:text-2xl font-bold tracking-widest text-primary">{cred.pin_code}</span>
                     </div>
                     {cred.label && <div className="text-xs font-medium text-foreground">{cred.label}</div>}
                   </div>
