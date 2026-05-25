@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "zOE6FBC0i2SMepevCxH9D"
+uri = "file://exports/VillaAccess_Report_BG.pdf"
+type = "pdf"
+title = "Villa Access Control — Отчет (BG)"
