@@ -285,6 +285,23 @@ router.get("/system", requireAuth, async (_req, res) => {
     }
   } catch { /* counters stay 0 */ }
 
+  // Smart locks (Tuya) counters — additive, optional.
+  let lockTotal = 0, lockOnline = 0, lockOffline = 0, lockError = 0;
+  let lockBatteryLow = 0;
+  try {
+    const lkRes: any = await db.execute(sql`SELECT status, COUNT(*)::int AS n FROM smart_locks GROUP BY status`);
+    const lkRows = (lkRes?.rows ?? lkRes) as Array<{ status: string; n: number }>;
+    for (const r of lkRows) {
+      lockTotal += Number(r.n);
+      if (r.status === "online")  lockOnline  = Number(r.n);
+      if (r.status === "offline") lockOffline = Number(r.n);
+      if (r.status === "error")   lockError   = Number(r.n);
+    }
+    const batRes: any = await db.execute(sql`SELECT COUNT(*)::int AS n FROM smart_locks WHERE battery_pct IS NOT NULL AND battery_pct < 20`);
+    const batRows = (batRes?.rows ?? batRes) as Array<{ n: number }>;
+    lockBatteryLow = batRows?.[0]?.n != null ? Number(batRows[0].n) : 0;
+  } catch { /* table may not exist on very old prod, counters stay 0 */ }
+
   let entranceTotal = 0, entranceActive = 0;
   try {
     const entRes: any = await db.execute(sql`SELECT status, COUNT(*)::int AS n FROM entrances GROUP BY status`);
@@ -365,12 +382,38 @@ router.get("/system", requireAuth, async (_req, res) => {
         const detail = `${s.model} · threshold ${s.threshold}/${s.reset_minutes}min · tracking ${s.cameras_tracked} cam · ${s.in_flight} in-flight · ${lastTxt}`;
         return { status: "ok" as const, latency_ms: null, detail };
       })(),
+      smart_locks: (() => {
+        const tuyaConfigured = !!(process.env.TUYA_ACCESS_ID && process.env.TUYA_ACCESS_SECRET);
+        if (lockTotal === 0 && !tuyaConfigured) {
+          return { status: "not_configured" as const, latency_ms: null, detail: "Tuya not configured & no locks added" };
+        }
+        if (!tuyaConfigured) {
+          return { status: "error" as const, latency_ms: null, detail: `${lockTotal} lock(s) defined but Tuya creds missing` };
+        }
+        if (lockTotal === 0) {
+          return { status: "not_configured" as const, latency_ms: null, detail: `Tuya configured (region=${(process.env.TUYA_REGION ?? "eu").toLowerCase()}) · no locks added yet` };
+        }
+        const status: "ok" | "degraded" | "error" =
+          lockError > 0 ? "error" : lockOffline > 0 || lockBatteryLow > 0 ? "degraded" : "ok";
+        const parts = [`${lockOnline}/${lockTotal} online`];
+        if (lockOffline > 0) parts.push(`${lockOffline} offline`);
+        if (lockError > 0) parts.push(`${lockError} error`);
+        if (lockBatteryLow > 0) parts.push(`${lockBatteryLow} battery <20%`);
+        return { status, latency_ms: null, detail: parts.join(" · ") };
+      })(),
     },
     cameras: {
       total:   cameraTotal,
       online:  cameraOnline,
       offline: cameraOffline,
       error:   cameraError,
+    },
+    smart_locks: {
+      total:       lockTotal,
+      online:      lockOnline,
+      offline:     lockOffline,
+      error:       lockError,
+      battery_low: lockBatteryLow,
     },
     entrances: {
       total:  entranceTotal,

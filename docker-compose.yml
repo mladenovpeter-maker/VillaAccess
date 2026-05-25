@@ -78,6 +78,12 @@ services:
       # plate. Set AI_FALLBACK_ENABLED=true in .env.docker to enable.
       OPENAI_API_KEY:       ${OPENAI_API_KEY:-}
       AI_FALLBACK_ENABLED:  ${AI_FALLBACK_ENABLED:-false}
+      # Tuya smart-lock cloud integration (Phase 1: read-only).
+      # Get these from iot.tuya.com → your Cloud Project → Overview.
+      # TUYA_REGION: eu | us | in | cn (default eu).
+      TUYA_ACCESS_ID:       ${TUYA_ACCESS_ID:-}
+      TUYA_ACCESS_SECRET:   ${TUYA_ACCESS_SECRET:-}
+      TUYA_REGION:          ${TUYA_REGION:-eu}
     ports:
       - "8080:8080"
     volumes:
