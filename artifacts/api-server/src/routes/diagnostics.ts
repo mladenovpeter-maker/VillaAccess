@@ -2,7 +2,7 @@ import { Router } from "express";
 import { db } from "@workspace/db";
 import { camerasTable, entrancesTable } from "@workspace/db";
 import { eq, sql } from "drizzle-orm";
-import { requireAuth } from "./auth";
+import { requireAuth, requireRole } from "./auth";
 import { createAdapter } from "../lib/cameras/factory";
 import * as aiFallback from "../services/ai-fallback";
 import * as net from "net";
@@ -367,11 +367,14 @@ router.get("/system", requireAuth, async (_req, res) => {
       ocr_worker: { status: ocrStatus,  latency_ms: ocrLastSeenSec, detail: ocrDetail },
       ai_engine:  (() => {
         const s = aiFallback.getStatus();
+        if (s.env_enabled && s.kill_switch_engaged) {
+          return { status: "not_configured" as const, latency_ms: null, detail: "AI fallback paused by admin kill-switch", env_enabled: true, kill_switch_engaged: true, has_api_key: s.has_api_key } as any;
+        }
         if (!s.enabled) {
-          return { status: "not_configured" as const, latency_ms: null, detail: "AI fallback disabled (set AI_FALLBACK_ENABLED=true)" };
+          return { status: "not_configured" as const, latency_ms: null, detail: "AI fallback disabled (set AI_FALLBACK_ENABLED=true)", env_enabled: s.env_enabled, kill_switch_engaged: s.kill_switch_engaged, has_api_key: s.has_api_key } as any;
         }
         if (!s.has_api_key) {
-          return { status: "error" as const, latency_ms: null, detail: "AI fallback enabled but OPENAI_API_KEY is missing" };
+          return { status: "error" as const, latency_ms: null, detail: "AI fallback enabled but OPENAI_API_KEY is missing", env_enabled: s.env_enabled, kill_switch_engaged: s.kill_switch_engaged, has_api_key: false } as any;
         }
         const lastAgo = s.last_activity_at ? Math.round((Date.now() - s.last_activity_at) / 1000) : null;
         const lastTxt = lastAgo == null
@@ -380,7 +383,7 @@ router.get("/system", requireAuth, async (_req, res) => {
           : lastAgo < 3600 ? `last trigger ${Math.round(lastAgo / 60)}m ago`
           : `last trigger ${Math.round(lastAgo / 3600)}h ago`;
         const detail = `${s.model} · threshold ${s.threshold}/${s.reset_minutes}min · tracking ${s.cameras_tracked} cam · ${s.in_flight} in-flight · ${lastTxt}`;
-        return { status: "ok" as const, latency_ms: null, detail };
+        return { status: "ok" as const, latency_ms: null, detail, env_enabled: true, kill_switch_engaged: false, has_api_key: true } as any;
       })(),
       smart_locks: (() => {
         const tuyaConfigured = !!(process.env.TUYA_ACCESS_ID && process.env.TUYA_ACCESS_SECRET);
@@ -450,5 +453,39 @@ router.get("/system", requireAuth, async (_req, res) => {
     memory_mb: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
   });
 });
+
+// ─── GET /diagnostics/ai-fallback/kill-switch — owner readout ───────────────
+router.get("/ai-fallback/kill-switch", requireAuth, async (_req, res) => {
+  res.json(aiFallback.getKillSwitchState());
+});
+
+// ─── POST /diagnostics/ai-fallback/kill-switch — admin-only toggle ──────────
+// Body: { engaged: boolean }. When engaged=true, creates a file-flag on the
+// uploads volume that suppresses AI fallback regardless of AI_FALLBACK_ENABLED.
+// Survives container restarts. No DB writes. Intended as an owner kill-switch
+// for when the OpenAI budget is exhausted.
+router.post(
+  "/ai-fallback/kill-switch",
+  requireAuth,
+  requireRole("admin"),
+  async (req: any, res) => {
+    const { engaged } = req.body ?? {};
+    if (typeof engaged !== "boolean") {
+      res.status(400).json({ detail: "body must be { engaged: boolean }" });
+      return;
+    }
+    try {
+      await aiFallback.setKillSwitch(engaged);
+      const state = aiFallback.getKillSwitchState();
+      console.log(
+        `[ai-fallback] kill-switch ${engaged ? "ENGAGED" : "DISENGAGED"} by user=${req.user?.id ?? "?"}`,
+      );
+      res.json(state);
+    } catch (err: any) {
+      console.error("[ai-fallback] kill-switch toggle failed:", err);
+      res.status(500).json({ detail: err?.message ?? "toggle failed" });
+    }
+  },
+);
 
 export { router as diagnosticsRouter };

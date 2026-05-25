@@ -1,8 +1,11 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Switch } from "@/components/ui/switch";
+import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/lib/auth-context";
 import { useTranslation } from "react-i18next";
 import {
   Database, Server, Activity, Radio, Brain, Camera,
@@ -16,6 +19,9 @@ interface ComponentHealth {
   status: "ok" | "error" | "not_configured" | "degraded";
   latency_ms: number | null;
   detail: string;
+  env_enabled?: boolean;
+  kill_switch_engaged?: boolean;
+  has_api_key?: boolean;
 }
 
 interface HostCpu { cores: number; load_1: number; load_5: number; load_15: number; used_pct: number; source: "host" | "container" }
@@ -116,6 +122,33 @@ function StatusDot({ status }: { status: string }) {
 function ComponentCard({ name, health }: { name: string; health: ComponentHealth }) {
   const Icon = COMPONENT_ICONS[name] ?? Server;
   const label = COMPONENT_LABELS[name] ?? name.replace(/_/g, " ");
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const qc = useQueryClient();
+  const isAdmin = user?.role === "admin";
+  const showAiToggle =
+    name === "ai_engine" && isAdmin && health.env_enabled === true && health.has_api_key === true;
+
+  const toggleKill = useMutation({
+    mutationFn: (engage: boolean) =>
+      api.post("/diagnostics/ai-fallback/kill-switch", { engaged: engage }),
+    onSuccess: (_d, engaged) => {
+      qc.invalidateQueries({ queryKey: ["system-health"] });
+      toast({
+        title: engaged ? "AI fallback изключен" : "AI fallback включен",
+        description: engaged
+          ? "OpenAI повикванията са спрени докато не го включиш отново."
+          : "AI ще се задейства след 3 неуспешни OCR опита.",
+      });
+    },
+    onError: (err: any) => {
+      toast({
+        title: "Грешка",
+        description: err?.message ?? "Неуспешно превключване",
+        variant: "destructive",
+      });
+    },
+  });
 
   const borderCls = health.status === "ok"
     ? "border-green-500/20 bg-green-500/5"
@@ -147,8 +180,23 @@ function ComponentCard({ name, health }: { name: string; health: ComponentHealth
               <span className="text-xs font-mono text-muted-foreground">{health.latency_ms}ms</span>
             )}
           </div>
-          <div className={cn("text-xs font-semibold uppercase tracking-wide shrink-0", textCls)}>
-            {health.status === "not_configured" ? "N/A" : health.status.toUpperCase()}
+          <div className="flex flex-col items-end gap-1 shrink-0">
+            <div className={cn("text-xs font-semibold uppercase tracking-wide", textCls)}>
+              {health.status === "not_configured" ? "N/A" : health.status.toUpperCase()}
+            </div>
+            {showAiToggle && (
+              <div className="flex items-center gap-1.5" title="Включи/изключи AI fallback (само админ)">
+                <span className="text-[10px] text-muted-foreground uppercase tracking-wide">
+                  {health.kill_switch_engaged ? "OFF" : "ON"}
+                </span>
+                <Switch
+                  checked={!health.kill_switch_engaged}
+                  disabled={toggleKill.isPending}
+                  onCheckedChange={(checked) => toggleKill.mutate(!checked)}
+                  aria-label="AI fallback kill-switch"
+                />
+              </div>
+            )}
           </div>
         </div>
       </CardContent>

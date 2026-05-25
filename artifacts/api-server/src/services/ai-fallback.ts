@@ -32,7 +32,7 @@
  */
 
 import OpenAI from "openai";
-import { promises as fs } from "fs";
+import { promises as fs, existsSync } from "fs";
 import path from "path";
 import * as crypto from "crypto";
 import { db } from "@workspace/db";
@@ -97,8 +97,60 @@ function getClient(): OpenAI | null {
   return _client;
 }
 
-function isEnabled(): boolean {
+// ── Kill switch (file-flag on disk, no DB) ───────────────────────────────────
+// Owner-only runtime override: when /app/uploads/.ai_fallback_disabled exists
+// (or its dev equivalent), isEnabled() returns false regardless of env. The
+// file lives in the uploads_data Docker volume so it survives restarts. It is
+// flipped via POST /diagnostics/ai-fallback/kill-switch (admin role) or by
+// `touch /data/.ai_fallback_disabled` over SSH if the dashboard is down.
+const KILL_SWITCH_FILE = path.resolve(UPLOADS_ROOT, ".ai_fallback_disabled");
+
+function isEnvEnabled(): boolean {
   return process.env.AI_FALLBACK_ENABLED === "true";
+}
+
+function isKillSwitchEngaged(): boolean {
+  // existsSync is cheap (single fs syscall) and isEnabled() is called only
+  // on the AI path, which is gated behind 3 OCR failures — i.e. orders of
+  // magnitude less frequent than the per-detection hot path.
+  return existsSync(KILL_SWITCH_FILE);
+}
+
+function isEnabled(): boolean {
+  return isEnvEnabled() && !isKillSwitchEngaged();
+}
+
+export async function setKillSwitch(engaged: boolean): Promise<void> {
+  if (engaged) {
+    await fs.mkdir(UPLOADS_ROOT, { recursive: true });
+    await fs.writeFile(
+      KILL_SWITCH_FILE,
+      `disabled at ${new Date().toISOString()}\n`,
+      "utf8",
+    );
+  } else {
+    try {
+      await fs.unlink(KILL_SWITCH_FILE);
+    } catch (err: any) {
+      if (err?.code !== "ENOENT") throw err;
+    }
+  }
+}
+
+export function getKillSwitchState(): {
+  env_enabled: boolean;
+  has_api_key: boolean;
+  kill_switch_engaged: boolean;
+  effective_enabled: boolean;
+} {
+  const env = isEnvEnabled();
+  const kill = isKillSwitchEngaged();
+  return {
+    env_enabled: env,
+    has_api_key: !!process.env.OPENAI_API_KEY,
+    kill_switch_engaged: kill,
+    effective_enabled: env && !kill,
+  };
 }
 
 // ── Snapshot capture (server-side, from the camera adapter) ──────────────────
@@ -303,6 +355,8 @@ export function recordSuccess(cameraId: string): void {
 
 export interface AiFallbackStatus {
   enabled: boolean;
+  env_enabled: boolean;
+  kill_switch_engaged: boolean;
   has_api_key: boolean;
   model: string;
   threshold: number;
@@ -322,6 +376,8 @@ export function getStatus(): AiFallbackStatus {
   for (const s of state.values()) if (s.inFlight) inFlight++;
   return {
     enabled: isEnabled(),
+    env_enabled: isEnvEnabled(),
+    kill_switch_engaged: isKillSwitchEngaged(),
     has_api_key: !!process.env.OPENAI_API_KEY,
     model: OPENAI_MODEL,
     threshold: FAIL_THRESHOLD,
