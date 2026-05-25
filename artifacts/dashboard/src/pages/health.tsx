@@ -7,7 +7,7 @@ import { useTranslation } from "react-i18next";
 import {
   Database, Server, Activity, Radio, Brain, Camera,
   Wifi, WifiOff, AlertCircle, CheckCircle2, Clock, Cpu, MemoryStick,
-  DoorOpen, RefreshCw, HardDrive, Gauge,
+  DoorOpen, RefreshCw, HardDrive, Gauge, Lock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -26,6 +26,7 @@ interface SystemHealth {
   checked_at: string;
   components: Record<string, ComponentHealth>;
   cameras: { total: number; online: number; offline: number; error: number };
+  smart_locks?: { total: number; online: number; offline: number; error: number; battery_low: number };
   entrances: { total: number; active: number };
   host?: {
     cpu: HostCpu;
@@ -254,6 +255,15 @@ export default function HealthPage() {
                 { label: "API Heap", value: `${data.memory_mb} MB`, icon: Cpu, color: "text-blue-400" },
                 { label: t("health.camerasOnline"), value: `${data.cameras.online}/${data.cameras.total}`, icon: Camera, color: data.cameras.offline > 0 ? "text-amber-400" : "text-green-400" },
                 { label: t("health.entrancesActive"), value: `${data.entrances.active}/${data.entrances.total}`, icon: DoorOpen, color: "text-primary" },
+                ...(data.smart_locks && data.smart_locks.total > 0 ? [{
+                  label: "Smart Locks Online",
+                  value: `${data.smart_locks.online}/${data.smart_locks.total}`,
+                  icon: Lock,
+                  color:
+                    data.smart_locks.error > 0 ? "text-red-400"
+                    : data.smart_locks.offline > 0 || data.smart_locks.battery_low > 0 ? "text-amber-400"
+                    : "text-green-400",
+                }] : []),
               ].map(({ label, value, icon: Icon, color }) => (
                 <Card key={label}>
                   <CardContent className="p-4">

@@ -13,6 +13,7 @@ import AccessControlPage from "@/pages/access";
 import CamerasPage from "@/pages/cameras";
 import EntrancesPage from "@/pages/entrances";
 import IntercomsPage from "@/pages/intercoms";
+import LocksPage from "@/pages/locks";
 import LogsPage from "@/pages/logs";
 import EventsPage from "@/pages/events";
 import MockPage from "@/pages/mock";
@@ -78,6 +79,7 @@ function Router() {
       <Route path="/entrances"        component={() => <ProtectedRoute component={EntrancesPage}        roles={adminOnly} />} />
       <Route path="/cameras"          component={() => <ProtectedRoute component={CamerasPage}          roles={adminOnly} />} />
       <Route path="/access-control"   component={() => <ProtectedRoute component={IntercomsPage}        roles={adminOnly} />} />
+      <Route path="/locks"            component={() => <ProtectedRoute component={LocksPage}            roles={adminOnly} />} />
       <Route path="/diagnostics"      component={() => <ProtectedRoute component={DiagnosticsPage}      roles={adminOnly} />} />
       <Route path="/health"           component={() => <ProtectedRoute component={HealthPage}           roles={adminOnly} />} />
       <Route path="/export"           component={() => <ProtectedRoute component={ExportPage}           roles={adminOnly} />} />

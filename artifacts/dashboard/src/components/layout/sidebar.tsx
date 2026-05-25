@@ -5,7 +5,7 @@ import {
   LayoutDashboard, CalendarDays, Car, ShieldCheck, Camera, ScrollText,
   Activity, LogOut, Menu, X, Building2, DoorOpen, FlaskConical,
   Stethoscope, Settings2, HeartPulse, GitCommitHorizontal,
-  Download, Users, KeyRound, Phone,
+  Download, Users, KeyRound, Phone, Lock,
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -41,6 +41,7 @@ export function Sidebar() {
     // { href: "/timeline",     label: t("nav.timeline"),     icon: GitCommitHorizontal,  roles: ["admin", "operator", "viewer"] },
     { href: "/cameras",      label: t("nav.cameras"),      icon: Camera,               roles: ["admin"] },
     { href: "/access-control", label: t("nav.intercoms"),  icon: KeyRound,             roles: ["admin"] },
+    { href: "/locks",          label: "Smart Locks",        icon: Lock,                 roles: ["admin"] },
     { href: "/entrances",    label: t("nav.entrances"),    icon: DoorOpen,             roles: ["admin"] },
     // Hidden from menu (backend + routes still active). Access by typing URL directly.
     // { href: "/events",       label: t("nav.events"),       icon: Activity,             roles: ["admin", "operator", "viewer"] },

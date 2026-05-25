@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api, villasApi, type Villa } from "@/lib/api";
+import { api, villasApi, smartLocksApi, type Villa, type SmartLock } from "@/lib/api";
+import { Link } from "wouter";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,6 +28,7 @@ import { useAuth } from "@/lib/auth-context";
 import {
   Building2, Plus, Pencil, Trash2, MapPin, CalendarDays, Car,
   Loader2, Search, CheckCircle2, XCircle, AlertTriangle, ExternalLink,
+  Lock, Wifi, WifiOff, AlertCircle, Battery, BatteryLow, BatteryWarning, ChevronRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -173,6 +175,14 @@ function VillaDetailSheet({ villa, onClose, onEdit, readOnly }: { villa: VillaDe
     enabled: !!villa,
   });
 
+  // Smart lock for this villa (uses the same cache as /locks page).
+  const { data: allLocks = [] } = useQuery<SmartLock[]>({
+    queryKey: ["smart-locks"],
+    queryFn: () => smartLocksApi.list(),
+    enabled: !!villa,
+  });
+  const smartLock = villa ? allLocks.find((l) => l.villa_id === villa.id) ?? null : null;
+
   if (!villa) return null;
 
   return (
@@ -221,6 +231,63 @@ function VillaDetailSheet({ villa, onClose, onEdit, readOnly }: { villa: VillaDe
             <span>{t("villas.created")}: {formatDate(villa.created_at)}</span>
             <span>·</span>
             <span>{t("villas.updated")}: {formatDate(villa.updated_at)}</span>
+          </div>
+
+          {/* Smart Lock (Tuya) */}
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                <Lock className="w-4 h-4 text-cyan-400" />Smart Lock
+              </h3>
+              <Link href="/locks">
+                <Button variant="ghost" size="sm" className="h-7 text-xs gap-1">
+                  Manage<ChevronRight className="w-3 h-3" />
+                </Button>
+              </Link>
+            </div>
+            {smartLock ? (
+              <div className="bg-muted/30 rounded-lg p-3 space-y-2">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="font-medium text-sm text-foreground truncate">{smartLock.name}</div>
+                  <div className="flex items-center gap-1.5 shrink-0 text-xs">
+                    {smartLock.status === "online" ? <Wifi className="w-3.5 h-3.5 text-emerald-400" />
+                      : smartLock.status === "error" ? <AlertCircle className="w-3.5 h-3.5 text-amber-400" />
+                      : <WifiOff className="w-3.5 h-3.5 text-zinc-500" />}
+                    <span className="capitalize text-muted-foreground">{smartLock.status}</span>
+                    {smartLock.battery_pct != null && (() => {
+                      const Icon = smartLock.battery_pct < 20 ? BatteryWarning
+                        : smartLock.battery_pct < 40 ? BatteryLow : Battery;
+                      const color = smartLock.battery_pct < 20 ? "text-red-400"
+                        : smartLock.battery_pct < 40 ? "text-amber-400" : "text-emerald-400";
+                      return (
+                        <span className={cn("inline-flex items-center gap-0.5 font-mono", color)}>
+                          <Icon className="w-3.5 h-3.5" />{smartLock.battery_pct}%
+                        </span>
+                      );
+                    })()}
+                  </div>
+                </div>
+                {smartLock.tuya_device_id && (
+                  <div className="text-[11px] text-muted-foreground font-mono truncate">
+                    Tuya · {smartLock.tuya_device_id}
+                  </div>
+                )}
+                {smartLock.last_seen && (
+                  <div className="text-[11px] text-muted-foreground">
+                    Last seen: <span className="font-mono">{new Date(smartLock.last_seen).toLocaleString()}</span>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="bg-muted/20 border border-dashed border-border rounded-lg p-4 text-center">
+                <div className="text-sm text-muted-foreground mb-2">No smart lock assigned</div>
+                <Link href="/locks">
+                  <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5">
+                    <Plus className="w-3 h-3" />Add one
+                  </Button>
+                </Link>
+              </div>
+            )}
           </div>
 
           {/* Reservations */}

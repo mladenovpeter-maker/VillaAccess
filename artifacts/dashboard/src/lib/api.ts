@@ -273,6 +273,22 @@ export const entrancesApi = {
   delete: (id: string) => api.delete(`/entrances/${id}`),
 };
 
+export const smartLocksApi = {
+  list:   () => api.get<SmartLock[]>("/locks"),
+  get:    (id: string) => api.get<SmartLock>(`/locks/${id}`),
+  create: (body: Partial<SmartLock> & { name: string; tuya_device_id?: string | null; villa_id?: string | null; protocol?: "tuya" }) =>
+            api.post<SmartLock>("/locks", body),
+  update: (id: string, body: Partial<Pick<SmartLock, "name" | "villa_id" | "tuya_device_id">>) =>
+            api.patch<SmartLock>(`/locks/${id}`, body),
+  delete: (id: string) => api.delete(`/locks/${id}`),
+  status: (id: string) =>
+            api.get<{ online: boolean; battery_pct: number | null; last_seen_at: string | null; latency_ms: number }>(`/locks/${id}/status`),
+  events: (id: string, page = 1, page_size = 20) =>
+            api.get<{ records: SmartLockEvent[]; page: number; page_size: number; count: number }>(
+              `/locks/${id}/events?page=${page}&page_size=${page_size}`,
+            ),
+};
+
 export const intercomsApi = {
   list: () => api.get<Intercom[]>("/intercoms"),
   get: (id: string) => api.get<Intercom>(`/intercoms/${id}`),
@@ -401,6 +417,37 @@ export interface Intercom {
   notes: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface SmartLock {
+  id: string;
+  name: string;
+  villa_id: string | null;
+  protocol: "tuya";
+  tuya_device_id: string | null;
+  status: "online" | "offline" | "error" | "unknown";
+  battery_pct: number | null;
+  last_seen: string | null;
+  last_status_check: string | null;
+  last_status_latency_ms: number | null;
+  device_info: Record<string, unknown> | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SmartLockEvent {
+  /** Tuya record id when available */
+  id?: string | number;
+  /** Event time in ms since epoch (Tuya `event_time`) or ISO string */
+  event_time?: number | string;
+  /** Tuya numeric event_id (1=fingerprint, 2=password, 6=app, etc.) */
+  event_id?: number;
+  /** Friendly description if backend enriches it */
+  event_type?: string;
+  user_name?: string | null;
+  operator?: string | null;
+  source?: string | null;
+  [k: string]: unknown;
 }
 
 export interface AiFingerprint {
