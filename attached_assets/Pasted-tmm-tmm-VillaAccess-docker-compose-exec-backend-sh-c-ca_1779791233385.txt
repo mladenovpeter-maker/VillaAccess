@@ -1,0 +1,149 @@
+tmm@tmm:~/VillaAccess$ docker compose exec backend sh -c 'cat > /tmp/tuya-fn-probe.cjs << "PROBE_EOF"
+const crypto = require("crypto");
+const ID = process.env.TUYA_ACCESS_ID, SEC = process.env.TUYA_ACCESS_SECRET;
+const HOST = "https://openapi.tuyaeu.com";
+const DEV = process.argv[2] || "bf56a0fe51239d19aeelmi";
+const sign = (s, k) => crypto.createHmac("sha256", k).update(s).digest("hex").toUpperCase();
+const sha = b => crypto.createHash("sha256").update(b||"").digest("hex");
+async function token() {
+  const t = Date.now().toString();
+  const p = "/v1.0/token?grant_type=1";
+  const s = sign(`${ID}${t}GET\n${sha("")}\n\n${p}`, SEC);
+  const r = await fetch(HOST+p, { headers: { client_id: ID, sign: s, t, sign_method: "HMAC-SHA256" }});
+  const j = await r.json();
+  if (!j.success) throw new Error(`Token ${j.code} ${j.msg}`);
+  return j.result.access_token;
+}
+async function get(tok, p) {
+  const t = Date.now().toString();
+  const s = sign(`${ID}${tok}${t}GET\n${sha("")}\n\n${p}`, SEC);
+  const r = await fetch(HOST+p, { headers: { client_id: ID, access_token: tok, sign: s, t, sign_method: "HMAC-SHA256" }});
+node /tmp/tuya-fn-probe.cjs bf56a0fe51239d19aeelmi';or-lock/temp-passwords`);
+WARN[0000] /home/tmm/VillaAccess/docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion 
+=== Supported functions ===
+{
+  "result": {
+    "category": "ms",
+    "functions": []
+  },
+  "success": true,
+  "t": 1779791221754,
+  "tid": "6eef433c58ed11f18f256e9984e9d316"
+}
+
+=== Specifications ===
+{
+  "result": {
+    "category": "ms",
+    "status": [
+      {
+        "code": "unlock_fingerprint",
+        "name": "指纹解锁",
+        "type": "Integer",
+        "values": "{\"unit\":\"\",\"min\":0,\"max\":999,\"scale\":0,\"step\":1}"
+      },
+      {
+        "code": "unlock_password",
+        "name": "普通密码解锁",
+        "type": "Integer",
+        "values": "{\"min\":0,\"max\":999,\"scale\":0,\"step\":1}"
+      },
+      {
+        "code": "unlock_temporary",
+        "name": "临时密码解锁",
+        "type": "Integer",
+        "values": "{\"min\":0,\"max\":999,\"scale\":0,\"step\":1}"
+      },
+      {
+        "code": "unlock_dynamic",
+        "name": "动态密码解锁",
+        "type": "Integer",
+        "values": "{\"min\":0,\"max\":999,\"scale\":0,\"step\":1}"
+      },
+      {
+        "code": "unlock_card",
+        "name": "卡片解锁",
+        "type": "Integer",
+        "values": "{\"min\":0,\"max\":999,\"scale\":0,\"step\":1}"
+      },
+      {
+        "code": "unlock_face",
+        "name": "人脸识别解锁",
+        "type": "Integer",
+        "values": "{\"min\":0,\"max\":999,\"scale\":0,\"step\":1}"
+      },
+      {
+        "code": "alarm_lock",
+        "name": "告警",
+        "type": "Enum",
+        "values": "{\"range\":[\"wrong_finger\",\"wrong_password\",\"wrong_card\",\"wrong_face\",\"tongue_bad\",\"too_hot\",\"unclosed_time\",\"tongue_not_out\",\"pry\",\"key_in\",\"low_battery\",\"power_off\",\"shock\"]}"
+      },
+      {
+        "code": "unlock_request",
+        "name": "远程开门请求倒计时",
+        "type": "Integer",
+        "values": "{\"min\":0,\"max\":90,\"scale\":0,\"step\":1}"
+      },
+      {
+        "code": "battery_state",
+        "name": "电池电量状态",
+        "type": "Enum",
+        "values": "{\"range\":[\"high\",\"medium\",\"low\",\"poweroff\"]}"
+      },
+      {
+        "code": "unlock_app",
+        "name": "App远程解锁(wifi门锁)",
+        "type": "Integer",
+        "values": "{\"min\":0,\"max\":999,\"scale\":0,\"step\":1}"
+      },
+      {
+        "code": "hijack",
+        "name": "劫持报警",
+        "type": "Boolean",
+        "values": "{}"
+      },
+      {
+        "code": "open_inside",
+        "name": "从门内侧打开门锁",
+        "type": "Boolean",
+        "values": "{}"
+      },
+      {
+        "code": "unlock_hand",
+        "name": "掌纹解锁",
+        "type": "Integer",
+        "values": "{\"min\":0,\"max\":999,\"scale\":0,\"step\":1}"
+      },
+      {
+        "code": "unlock_finger_vein",
+        "name": "指静脉解锁",
+        "type": "Integer",
+        "values": "{\"min\":0,\"max\":999,\"scale\":0,\"step\":1}"
+      }
+    ]
+  },
+  "success": true,
+  "t": 1779791221885,
+  "tid": "6f0112e158ed11f1a5282e73ccca7306"
+}
+
+=== Existing temp passwords ===
+{
+  "result": [
+    {
+      "effective_time": 1779428742,
+      "id": 765405514,
+      "invalid_time": 1779482862,
+      "name": "Meri kamer",
+      "phase": 2,
+      "phone": "",
+      "sn": 910,
+      "time_zone": "Europe/Sofia",
+      "type": 0
+    }
+  ],
+  "success": true,
+  "t": 1779791222221,
+  "tid": "6f1e5f5a58ed11f18f256e9984e9d316"
+}
+tmm@tmm:~/VillaAccess$ 
