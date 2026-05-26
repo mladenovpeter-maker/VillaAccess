@@ -230,7 +230,10 @@ function localTimeZoneOffset(): string {
 }
 
 function toEpochSeconds(d: Date): number {
-  return Math.floor(d.getTime() / 1000);
+  // NOTE: Tuya updated the door-lock/temp-password endpoint to require
+  // epoch MILLISECONDS (not seconds). Function name kept for backwards
+  // compatibility; returns ms.
+  return d.getTime();
 }
 
 function toIsoOrNull(secs: number | undefined): string | null {
