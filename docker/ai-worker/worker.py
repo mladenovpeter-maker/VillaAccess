@@ -171,6 +171,24 @@ def fetch_snapshot(camera_id: str) -> Optional[bytes]:
         return None
 
 
+def post_no_match(camera_id: str, raw_ocr_text: Optional[str]) -> None:
+    """
+    Worker saw a vehicle (YOLO box) but couldn't extract a plausible plate.
+    Notify backend so the AI fallback counter for this camera can build up.
+    Fire-and-forget — never blocks the polling loop on backend errors.
+    """
+    try:
+        r = _session.post(
+            f"{API_BASE_URL}/api/anpr/no-match",
+            json={"camera_id": camera_id, "raw_ocr_text": raw_ocr_text},
+            timeout=HTTP_TIMEOUT,
+        )
+        if r.status_code >= 400:
+            log.warning("no-match POST → HTTP %s: %s", r.status_code, r.text[:200])
+    except Exception as e:
+        log.warning("no-match POST failed: %s", e)
+
+
 def post_detection(payload: dict) -> None:
     try:
         r = _session.post(
@@ -314,29 +332,37 @@ def _run_tesseract_ocr(crop: np.ndarray) -> list[tuple[str, float]]:
     return out
 
 
-def ocr_plate(jpeg_bytes: bytes, camera_id: str = "unknown") -> Optional[tuple[str, float, str]]:
+def ocr_plate(
+    jpeg_bytes: bytes, camera_id: str = "unknown"
+) -> tuple[Optional[tuple[str, float, str]], bool, Optional[str]]:
     """
     YOLOv8 detect → crop → preprocess → Tesseract OCR.
-    Returns (normalised_plate, confidence_0_100, raw_text) or None.
+    Returns a 3-tuple:
+      - best plausible hit (normalised_plate, confidence_0_100, raw_text) or None
+      - had_yolo_box: True if YOLO detected at least one plate region
+      - best_raw_text: highest-confidence raw OCR text seen (even implausible),
+        used by the AI-fallback no-match path. None when nothing readable.
     """
     try:
         arr = np.frombuffer(jpeg_bytes, dtype=np.uint8)
         bgr = cv2.imdecode(arr, cv2.IMREAD_COLOR)
         if bgr is None:
             log.warning("image decode failed (empty buffer)")
-            return None
+            return None, False, None
     except Exception as e:
         log.warning("image decode failed: %s", e)
-        return None
+        return None, False, None
 
     try:
         det = DETECTOR.predict(bgr, conf=YOLO_CONF, verbose=False)
     except Exception as e:
         log.warning("YOLO detect failed: %s", e)
-        return None
+        return None, False, None
 
     H, W = bgr.shape[:2]
     best: Optional[tuple[str, float, str]] = None
+    had_yolo_box = False
+    best_raw: Optional[tuple[str, float]] = None  # (raw_text, conf_0_100)
 
     for r in det:
         boxes = getattr(r, "boxes", None)
@@ -351,6 +377,7 @@ def ocr_plate(jpeg_bytes: bytes, camera_id: str = "unknown") -> Optional[tuple[s
             # Shrink the YOLO box inward so Tesseract only sees the plate
             # characters (not bumper/frame text on either side or country
             # bands above/below).
+            had_yolo_box = True
             x1, y1, x2, y2 = _shrink_box(rx1, ry1, rx2, ry2, W, H)
             if x2 <= x1 or y2 <= y1:
                 continue
@@ -369,13 +396,17 @@ def ocr_plate(jpeg_bytes: bytes, camera_id: str = "unknown") -> Optional[tuple[s
                     "[%s] OCR raw=%r normalised=%r conf=%.1f plausible=%s",
                     camera_id, text, norm, prob * 100.0, plausible,
                 )
+                conf = prob * 100.0
+                # Track best raw text across all candidates (for AI-fallback
+                # no-match path). Prefer non-empty normalised reads.
+                if norm and (best_raw is None or conf > best_raw[1]):
+                    best_raw = (text, conf)
                 if not plausible:
                     continue
-                conf = prob * 100.0
                 if best is None or conf > best[1]:
                     best = (norm, conf, text)
 
-    return best
+    return best, had_yolo_box, (best_raw[0] if best_raw else None)
 
 
 # ─── Per-camera polling task ───────────────────────────────────────────────────
@@ -402,13 +433,14 @@ def camera_loop(state: CameraState) -> None:
         try:
             jpeg = fetch_snapshot(state.id)
             if jpeg is not None:
-                hit = ocr_plate(jpeg, camera_id=state.id)
+                hit, had_yolo_box, best_raw = ocr_plate(jpeg, camera_id=state.id)
+                sent_detection = False
                 if hit is not None:
                     plate, conf, raw = hit
                     if conf >= state.ocr_min_confidence:
                         now = time.time()
                         if state.last_plate == plate and (now - state.last_plate_at) < state.cooldown_seconds:
-                            pass  # skip
+                            sent_detection = True  # treat as handled, don't fire no-match
                         else:
                             state.last_plate = plate
                             state.last_plate_at = now
@@ -418,6 +450,12 @@ def camera_loop(state: CameraState) -> None:
                                 "confidence": round(conf, 2),
                                 "raw_ocr_text": raw,
                             })
+                            sent_detection = True
+                # YOLO saw a vehicle/plate but OCR couldn't extract a usable
+                # plate (heavy obstruction, dirt, glare). Notify backend so
+                # the AI fallback counter for this camera can build up.
+                if had_yolo_box and not sent_detection:
+                    post_no_match(state.id, best_raw)
         except Exception as e:
             log.warning("[%s] loop error: %s", state.name, e)
 

@@ -16,7 +16,7 @@ import { db } from "@workspace/db";
 import { camerasTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { createAdapter } from "../lib/cameras/factory";
-import { handleAnprDetection } from "../services/anpr";
+import { handleAnprDetection, handleAnprNoMatch } from "../services/anpr";
 
 const router = Router();
 
@@ -161,6 +161,37 @@ router.post("/detection", async (req, res) => {
     console.error("[anpr] detection failed", err);
     res.status(500).json({
       detail: "ANPR detection handler crashed",
+      error: err?.message ?? String(err),
+    });
+  }
+});
+
+// ─── POST /api/anpr/no-match ─────────────────────────────────────────────────
+// Worker observed a vehicle (YOLO box) but couldn't extract a plausible plate.
+// We feed this into the AI fallback counter so 3 within 10 min from the same
+// camera triggers OpenAI vision on fresh snapshots. Additive — no effect when
+// AI_FALLBACK_ENABLED is off.
+
+const noMatchSchema = z.object({
+  camera_id: z.string().min(1),
+  raw_ocr_text: z.string().nullable().optional(),
+});
+
+router.post("/no-match", async (req, res) => {
+  const body = noMatchSchema.safeParse(req.body);
+  if (!body.success) {
+    res
+      .status(400)
+      .json({ detail: "Invalid no-match payload", errors: body.error.issues });
+    return;
+  }
+  try {
+    const result = await handleAnprNoMatch(body.data);
+    res.json(result);
+  } catch (err: any) {
+    console.error("[anpr] no-match failed", err);
+    res.status(500).json({
+      detail: "ANPR no-match handler crashed",
       error: err?.message ?? String(err),
     });
   }

@@ -497,3 +497,30 @@ export async function handleAnprDetection(
     similarity_pct: similarity,
   };
 }
+
+/**
+ * Worker observed a vehicle (YOLO detected a car/plate region) but OCR
+ * couldn't extract a plausible plate (heavy obstruction / dirt / glare).
+ * Treat it as a per-camera failure so the AI fallback counter can build up
+ * and trigger OpenAI vision after the configured threshold within the
+ * reset window. Additive — does not affect any existing detection flow.
+ */
+export async function handleAnprNoMatch(input: {
+  camera_id: string;
+  raw_ocr_text?: string | null;
+}): Promise<{ action: "no_match_recorded" | "skipped_no_villa"; reason?: string }> {
+  const camRows = await db
+    .select()
+    .from(camerasTable)
+    .where(eq(camerasTable.id, input.camera_id))
+    .limit(1);
+  const camera = camRows[0];
+  if (!camera) {
+    return { action: "skipped_no_villa", reason: "Camera not found" };
+  }
+  if (!camera.ocr_enabled) {
+    return { action: "skipped_no_villa", reason: "Camera OCR disabled" };
+  }
+  aiFallback.recordFailure(camera, input.raw_ocr_text ?? null);
+  return { action: "no_match_recorded" };
+}

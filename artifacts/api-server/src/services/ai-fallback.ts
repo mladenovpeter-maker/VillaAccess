@@ -67,7 +67,7 @@ export interface AiFallbackCamera extends CameraRow {
 interface FailEntry {
   buffer: Buffer;
   mime: string;
-  plate: string;
+  plate: string | null;
   at: number; // epoch ms
 }
 
@@ -313,7 +313,7 @@ async function askOpenAi(dataUrls: string[]): Promise<AiVerdict | null> {
  */
 export function recordFailure(
   camera: AiFallbackCamera,
-  plate: string,
+  plate: string | null,
 ): void {
   if (!isEnabled()) return;
 
