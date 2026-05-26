@@ -27,9 +27,9 @@ const router = Router();
  * refine() on both POST and PUT so a manual pin override cannot
  * silently push a non-conforming or alphanumeric PIN to devices.
  */
-const PIN_FORMAT_MSG = "PIN must be exactly 4 digits";
+const PIN_FORMAT_MSG = "PIN must be exactly 8 digits";
 const pinCodeSchema = z.string().max(20).nullable().optional().refine(
-  (v) => !v || /^\d{4}$/.test(v.trim()),
+  (v) => !v || /^\d{8}$/.test(v.trim()),
   { message: PIN_FORMAT_MSG },
 );
 
@@ -204,7 +204,7 @@ router.post("/", requireAuth, async (req: any, res) => {
   // PIN unified to 4 digits across intercom + Tuya lock.
   const pinCode = (body.data.pin_code && body.data.pin_code.trim())
     ? body.data.pin_code.trim()
-    : Math.floor(1000 + Math.random() * 9000).toString();
+    : Math.floor(10000000 + Math.random() * 90000000).toString();
 
   const ACCESS_GRACE_MS = 60 * 60 * 1000;
   const [reservation] = await db.insert(reservationsTable).values({
@@ -547,8 +547,8 @@ router.post("/:id/regenerate-pin", requireAuth, async (req: any, res) => {
   void revokePinFromIntercoms(r, req.user?.id);
   void revokePinFromLocks(r, req.user?.id);
 
-  // PIN unified to 4 digits across intercom + Tuya lock.
-  const newPin = Math.floor(1000 + Math.random() * 9000).toString();
+  // PIN unified to 8 digits across intercom + Tuya lock (Tuya requires 8).
+  const newPin = Math.floor(10000000 + Math.random() * 90000000).toString();
   const [updated] = await db.update(reservationsTable)
     .set({ pin_code: newPin, pin_sync_status: "pending", pin_last_synced_at: null, updated_at: new Date() })
     .where(eq(reservationsTable.id, req.params.id))

@@ -58,7 +58,7 @@ const createSchema = z.object({
 });
 
 function generatePin(): string {
-  return String(Math.floor(1000 + Math.random() * 9000));
+  return String(Math.floor(10000000 + Math.random() * 90000000));
 }
 
 router.post("/", requireAuth, async (req, res) => {
