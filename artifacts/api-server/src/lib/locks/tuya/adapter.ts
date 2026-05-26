@@ -337,6 +337,7 @@ export class TuyaLockAdapter implements LockAdapter {
       time_zone:       localTimeZoneOffset(),
     };
 
+    console.log(`[tuya.createTempPassword] device=${this.deviceId} body=${JSON.stringify({...body, password: `<${body.password.length}hex>`})}`);
     const resp = await tuyaRequest<TuyaCreateTempPasswordResponse>({
       method: "POST",
       path: `/v1.0/devices/${encodeURIComponent(this.deviceId)}/door-lock/temp-password`,
