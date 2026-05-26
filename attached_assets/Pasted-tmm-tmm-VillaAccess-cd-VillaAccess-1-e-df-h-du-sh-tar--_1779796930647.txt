@@ -1,0 +1,83 @@
+tmm@tmm:~/VillaAccess$ cd ~/VillaAccess
+
+# 1. Виж колко място имаш и какво ядe
+df -h /
+du -sh *.tar.gz *.sql *.bak *.save *_BACKUP* docker-compose_BACKUP.yml docker-compose.new.yml 2>/dev/null
+
+# 2. Освободи място — изтрий старите backup-и (НЕ пипай .env.docker!)
+rm -f villaaccess_FULL_BACKUP_PACKAGE_20260525_151322.tar.gz
+rm -f villaaccess_FULL_CODE_20260525_151249.tar.gz
+rm -f villaaccess_backup_.tar.gz
+rm -f villa_db_backup.sql
+rm -f docker-compose.new.yml docker-compose_BACKUP.yml
+rm -f .env.docker.backup .env.docker.bak .env.docker_BACKUP .env_BACKUP
+rm -f docker/ai-worker/worker.py.save
+rm -f crop.jpg frame.jpg processed.jpg test.jpg test_thresh.jpg
+
+# 3. Изчисти Docker от ненужни image-и/слоеве
+docker system prune -af --volumes=false
+
+df -h /                          # потвърди че имаш поне 5GB свободни
+Filesystem                         Size  Used Avail Use% Mounted on
+/dev/mapper/ubuntu--vg-ubuntu--lv   98G   54G   40G  58% /
+4.1M	villaaccess_backup_.tar.gz
+13M	villaaccess_FULL_BACKUP_PACKAGE_20260525_151322.tar.gz
+8.2M	villaaccess_FULL_CODE_20260525_151249.tar.gz
+36K	villa_db_backup.sql
+8.0K	docker-compose_BACKUP.yml
+4.0K	docker-compose.new.yml
+Deleted Containers:
+663ed2c6ae9fc77c3f2a332316245be676896f8ae82f5c9b2215718e2b84b3c7
+
+Deleted Images:
+untagged: plate-test:latest
+deleted: sha256:9c1bc7dd7fc602e93474c409a7e2fabd2ad490fddf52360ba892875f379502bb
+deleted: sha256:6f785b6d1c53a6e10b1d0cda21ea8cddf3f7e9460e32f040320f3475cde235ef
+deleted: sha256:390421f67dd83950f3cb5eb61e0db3385aa146729f33417e259e77cf5d4c0d43
+untagged: villaaccess-migrate:latest
+deleted: sha256:3247a42d9f565eebb7673b71410d267f9d04a9e6e5618c1e23740446ed6a8768
+deleted: sha256:3c8061f389b0efe0c5a8bd69545bc187c2aff8b1c9cb49dff5657965e073a780
+deleted: sha256:bfd8203e9e50c60ba94fd55c4b69ebb56340efe752eea3b606189ceb3b141898
+
+Deleted build cache objects:
+rficpjwquua4w2monvwevd3r1
+kvms1f5yn57p3226ocaxbhtay
+2xrb10lc1eibpfgojla13qgn8
+64gocn3bmoye6avinncjr3dh6
+j4o9vzqysytzanp6z67b3qqol
+wnbafkijxlo6bnagi1vf4jqzv
+dsd7vfbukbmpq9io2985oaqts
+x6yqk5aghh0ll9ixltpbmt0dw
+xbrfrfvgpl2ckzt7dpqpqme42
+ibvptivgav7o5zn10p8hip941
+31l4axn1s4mepj9okvlh0w15j
+wyyast2n06dt9nftvt27qhmfp
+rvdtlgmuqgm39zuar9i83wycw
+03baaektpa53dv636jwfs2can
+ks9k0q720l0j289alnb6nkel5
+3ehsxge4e0sgseqzvnya90tww
+jdo0nj4qpns35r8rb0gckmb6f
+w1yduirixrwy45toyn2ihef39
+rf87i00z26kdmp741p7aph3mp
+1xfh98dtpgo92n1rwcnct1fqk
+i0ivcqvtmkf58uljf9ez2d99m
+n85cwjbjbnzrnh93jkkddy1hv
+1go77w42x7x21hhm61gc4xknv
+s7b4xucx5obbwfppa2k06zesg
+x4vp5l0rx3qe4c1rg050vr9te
+jvq26q6q95628sbbx4f8to182
+lm03t5owl2lgxl7b8hxs5hnwm
+p02wpnla362hxy2mkvfpw8pen
+y470gy84wn45qxgrpbqoz9qdp
+x54uy21p6ygauxf4geezwgdpz
+wxkl5d2e14xqs93ez74x79657
+eznsrady4emfrpc0b9mofkurz
+zq6lh799ig05s7ak344ylib21
+ixi9c97bhkdd1m7k19yks535s
+yrcjp1oeucwgyqbu9wqg12oak
+bx0angyw4ne9sdpjrc2y5jzxy
+
+Total reclaimed space: 18.71GB
+Filesystem                         Size  Used Avail Use% Mounted on
+/dev/mapper/ubuntu--vg-ubuntu--lv   98G   26G   68G  28% /
+tmm@tmm:~/VillaAccess$ 
