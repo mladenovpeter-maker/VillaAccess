@@ -1,0 +1,47 @@
+tmm@tmm:~/VillaAccess$ docker compose exec backend sh -c 'cat > /tmp/tuya-body-probe.cjs << "PROBE_EOF"
+const crypto = require("crypto");
+const ID = process.env.TUYA_ACCESS_ID, SEC = process.env.TUYA_ACCESS_SECRET;
+const HOST = "https://openapi.tuyaeu.com";
+const DEV = process.argv[2] || "bf56a0fe51239d19aeelmi";
+const sign = (s, k) => crypto.createHmac("sha256", k).update(s).digest("hex").toUpperCase();
+const sha = b => crypto.createHash("sha256").update(b||"").digest("hex");
+async function token() {
+  const t = Date.now().toString();
+  const p = "/v1.0/token?grant_type=1";
+  const s = sign(`${ID}${t}GET\n${sha("")}\n\n${p}`, SEC);
+  const r = await fetch(HOST+p, { headers: { client_id: ID, sign: s, t, sign_method: "HMAC-SHA256" }});
+  return (await r.json()).result.access_token;
+}
+async function req(tok, method, p, body) {
+  const t = Date.now().toString();
+  const b = body ? JSON.stringify(body) : "";
+  const s = sign(`${ID}${tok}${t}${method}\n${sha(b)}\n\n${p}`, SEC);
+  const opts = { method, headers: { client_id: ID, access_token: tok, sign: s, t, sign_method: "HMAC-SHA256" }};
+  if (body) { opts.headers["Content-Type"] = "application/json"; opts.body = b; }
+  const r = await fetch(HOST+p, opts);
+  return r.json();
+}
+function encPin(pin, sk) {
+  const c = crypto.createCipheriv("aes-128-ecb", sk, null); c.setAutoPadding(true);
+  return Buffer.concat([c.update(pin, "utf8"), c.final()]).toString("hex");
+}
+function decTicket(hex) {
+  const key = Buffer.from(SEC.slice(0, 16), "utf8");
+  const d = crypto.createDecipheriv("aes-128-ecb", key, null); d.setAutoPadding(false);
+  return Buffer.concat([d.update(Buffer.from(hex, "hex")), d.final()]).subarray(0, 16);
+}
+node /tmp/tuya-body-probe.cjs bf56a0fe51239d19aeelmi'stack)); "Test3", type: 0,d`, body);
+WARN[0000] /home/tmm/VillaAccess/docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion 
+
+[V1 full body (as our code)]
+  Body: {"password":"e5e32e62c422bec7bc7c389ad305ed74","password_type":"ticket","ticket_id":"pg1Tikct","effective_time":1779792631,"invalid_time":1779796111,"name":"Test1","type":0,"phone":"","time_zone":"Europe/Sofia"}
+  Resp: {"code":1109,"msg":"param is illegal ,please check it","success":false,"t":1779792506389,"tid":"6ca2c9a058f011f19fb6e238084b3b88"}
+
+[V2 without password_type]
+  Body: {"password":"e5e32e62c422bec7bc7c389ad305ed74","ticket_id":"pg1Tikct","effective_time":1779792631,"invalid_time":1779796111,"name":"Test2","type":0,"phone":"","time_zone":"Europe/Sofia"}
+  Resp: {"code":2302,"msg":"password encryption error","success":false,"t":1779792506638,"tid":"6cc318d958f011f1a5282e73ccca7306"}
+
+[V3 ms timestamps]
+  Body: {"password":"e5e32e62c422bec7bc7c389ad305ed74","password_type":"ticket","ticket_id":"pg1Tikct","effective_time":1779792631000,"invalid_time":1779796111000,"name":"Test3","type":0,"phone":"","time_zone":"Europe/Sofia"}
+  Resp: {"success":true,"t":1779792506808,"tid":"6ce6ec3858f011f19fb6e238084b3b88"}
+tmm@tmm:~/VillaAccess$ 
