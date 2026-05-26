@@ -1,0 +1,20 @@
+tmm@tmm:~/VillaAccess$ docker compose logs -f --tail=50 backend ai-worker 2>&1 | grep -iE 'no-match|ai-fallback|similarity|denied|allowed|expected plates|openai|verdict'
+backend-1    | {"level":30,"time":1779797851345,"pid":1,"hostname":"23a34aff82a8","req":{"id":180,"method":"POST","url":"/api/anpr/no-match"},"res":{"statusCode":200},"responseTime":6,"msg":"request completed"}
+backend-1    | {"level":30,"time":1779797855904,"pid":1,"hostname":"23a34aff82a8","req":{"id":185,"method":"POST","url":"/api/anpr/no-match"},"res":{"statusCode":200},"responseTime":2,"msg":"request completed"}
+backend-1    | {"level":30,"time":1779797857397,"pid":1,"hostname":"23a34aff82a8","req":{"id":188,"method":"POST","url":"/api/anpr/no-match"},"res":{"statusCode":200},"responseTime":2,"msg":"request completed"}
+backend-1    | [ai-fallback] camera=1a7b13b7-6932-4300-9d18-4eef7fb52045 similarity gate failed (best=15.4% < 30% for "EABAE" vs "CA3477MM") — skipping AI
+backend-1    | {"level":30,"time":1779797858863,"pid":1,"hostname":"23a34aff82a8","req":{"id":190,"method":"POST","url":"/api/anpr/no-match"},"res":{"statusCode":200},"responseTime":2,"msg":"request completed"}
+backend-1    | {"level":30,"time":1779797860370,"pid":1,"hostname":"23a34aff82a8","req":{"id":192,"method":"POST","url":"/api/anpr/no-match"},"res":{"statusCode":200},"responseTime":1,"msg":"request completed"}
+backend-1    | {"level":30,"time":1779797861889,"pid":1,"hostname":"23a34aff82a8","req":{"id":194,"method":"POST","url":"/api/anpr/no-match"},"res":{"statusCode":200},"responseTime":2,"msg":"request completed"}
+backend-1    | [ai-fallback] camera=1a7b13b7-6932-4300-9d18-4eef7fb52045 similarity gate passed (best=40% "CA" ≈ "CA3477MM") — invoking AI
+backend-1    | [ai-fallback] camera=1a7b13b7-6932-4300-9d18-4eef7fb52045 triggering AI on 3 snapshots
+backend-1    | {"level":30,"time":1779797864871,"pid":1,"hostname":"23a34aff82a8","req":{"id":197,"method":"POST","url":"/api/anpr/no-match"},"res":{"statusCode":200},"responseTime":2,"msg":"request completed"}
+backend-1    | {"level":30,"time":1779797866383,"pid":1,"hostname":"23a34aff82a8","req":{"id":200,"method":"POST","url":"/api/anpr/no-match"},"res":{"statusCode":200},"responseTime":2,"msg":"request completed"}
+backend-1    | [ai-fallback] camera=1a7b13b7-6932-4300-9d18-4eef7fb52045 verdict: {"plate":"CA347MM","make":null,"color":null,"confidence":90,"reasoning":"The license plate is clearly visible in all images."}
+backend-1    | {"level":30,"time":1779797867931,"pid":1,"hostname":"23a34aff82a8","req":{"id":202,"method":"POST","url":"/api/anpr/no-match"},"res":{"statusCode":200},"responseTime":2,"msg":"request completed"}
+backend-1    | {"level":30,"time":1779797869380,"pid":1,"hostname":"23a34aff82a8","req":{"id":204,"method":"POST","url":"/api/anpr/no-match"},"res":{"statusCode":200},"responseTime":1,"msg":"request completed"}
+backend-1    | {"level":30,"time":1779797870898,"pid":1,"hostname":"23a34aff82a8","req":{"id":206,"method":"POST","url":"/api/anpr/no-match"},"res":{"statusCode":200},"responseTime":1,"msg":"request completed"}
+backend-1    | [ai-fallback] camera=1a7b13b7-6932-4300-9d18-4eef7fb52045 similarity gate failed (best=0% < 30% for "" vs "") — skipping AI
+backend-1    | {"level":30,"time":1779797872391,"pid":1,"hostname":"23a34aff82a8","req":{"id":208,"method":"POST","url":"/api/anpr/no-match"},"res":{"statusCode":200},"responseTime":2,"msg":"request completed"}
+backend-1    | {"level":30,"time":1779797873917,"pid":1,"hostname":"23a34aff82a8","req":{"id":210,"method":"POST","url":"/api/anpr/no-match"},"res":{"statusCode":200},"responseTime":2,"msg":"request completed"}
+
