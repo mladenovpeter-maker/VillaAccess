@@ -1,0 +1,331 @@
+tmm@tmm:~/VillaAccess$ curl -s -u admin:TMM757161 --digest "http://172.16.32.106/ISAPI/Smart/Whitelight/1/capabilities"
+echo "---"
+curl -s -u admin:TMM757161 --digest "http://172.16.32.106/ISAPI/Smart/Whitelight/1"
+echo "---"
+<!DOCTYPE html>
+<html><head><title>Document Error: Not Found</title></head>
+<body><h2>Access Error: 404 -- Not Found</h2>
+<p>Can't find process for service:/ISAPI/Smart/Whitelight/1/capabilities</p>
+</body>
+</html>
+---
+<!DOCTYPE html>
+<html><head><title>Document Error: Not Found</title></head>
+<body><h2>Access Error: 404 -- Not Found</h2>
+<p>Can't find process for service:/ISAPI/Smart/Whitelight/1</p>
+</body>
+</html>
+---
+tmm@tmm:~/VillaAccess$ curl -s -u admin:TMM757161 --digest "http://172.16.32.106/ISAPI/Event/triggers"
+echo "---"
+<?xml version="1.0" encoding="UTF-8"?>
+<EventTriggerList version="2.0" xmlns="http://www.hikvision.com/ver20/XMLSchema">
+<EventTrigger>
+<id>IO-1</id>
+<eventType>IO</eventType>
+<eventDescription>IO Event trigger Information</eventDescription>
+<inputIOPortID>1</inputIOPortID>
+<videoInputChannelID>1</videoInputChannelID>
+<dynVideoInputChannelID>1</dynVideoInputChannelID>
+<EventTriggerNotificationList>
+<EventTriggerNotification>
+<id>record-1</id>
+<notificationMethod>record</notificationMethod>
+<notificationRecurrence>beginning</notificationRecurrence>
+<videoInputID>1</videoInputID>
+</EventTriggerNotification>
+<EventTriggerNotification>
+<id>center</id>
+<notificationMethod>center</notificationMethod>
+<notificationRecurrence>beginning</notificationRecurrence>
+</EventTriggerNotification>
+</EventTriggerNotificationList>
+</EventTrigger>
+<EventTrigger>
+<id>VMD-1</id>
+<eventType>VMD</eventType>
+<eventDescription>VMD Event trigger Information</eventDescription>
+<videoInputChannelID>1</videoInputChannelID>
+<dynVideoInputChannelID>1</dynVideoInputChannelID>
+<EventTriggerNotificationList>
+<EventTriggerNotification>
+<id>record-1</id>
+<notificationMethod>record</notificationMethod>
+<notificationRecurrence>beginning</notificationRecurrence>
+<videoInputID>1</videoInputID>
+</EventTriggerNotification>
+<EventTriggerNotification>
+<id>center</id>
+<notificationMethod>center</notificationMethod>
+<notificationRecurrence>beginning</notificationRecurrence>
+</EventTriggerNotification>
+</EventTriggerNotificationList>
+</EventTrigger>
+<EventTrigger>
+<id>tamper-1</id>
+<eventType>tamperdetection</eventType>
+<eventDescription>shelteralarm Event trigger Information</eventDescription>
+<videoInputChannelID>1</videoInputChannelID>
+<dynVideoInputChannelID>1</dynVideoInputChannelID>
+<EventTriggerNotificationList>
+<EventTriggerNotification>
+<id>record-1</id>
+<notificationMethod>record</notificationMethod>
+<notificationRecurrence>beginning</notificationRecurrence>
+<videoInputID>1</videoInputID>
+</EventTriggerNotification>
+<EventTriggerNotification>
+<id>center</id>
+<notificationMethod>center</notificationMethod>
+<notificationRecurrence>beginning</notificationRecurrence>
+</EventTriggerNotification>
+</EventTriggerNotificationList>
+</EventTrigger>
+<EventTrigger>
+<id>diskfull</id>
+<eventType>diskfull</eventType>
+<eventDescription>exception Information</eventDescription>
+<videoInputChannelID>1</videoInputChannelID>
+<dynVideoInputChannelID>1</dynVideoInputChannelID>
+<EventTriggerNotificationList>
+<EventTriggerNotification>
+<id>record-1</id>
+<notificationMethod>record</notificationMethod>
+<notificationRecurrence>beginning</notificationRecurrence>
+<videoInputID>1</videoInputID>
+</EventTriggerNotification>
+<EventTriggerNotification>
+<id>center</id>
+<notificationMethod>center</notificationMethod>
+<notificationRecurrence>beginning</notificationRecurrence>
+</EventTriggerNotification>
+</EventTriggerNotificationList>
+</EventTrigger>
+<EventTrigger>
+<id>diskerror</id>
+<eventType>diskerror</eventType>
+<eventDescription>exception Information</eventDescription>
+<videoInputChannelID>1</videoInputChannelID>
+<dynVideoInputChannelID>1</dynVideoInputChannelID>
+<EventTriggerNotificationList>
+<EventTriggerNotification>
+<id>record-1</id>
+<notificationMethod>record</notificationMethod>
+<notificationRecurrence>beginning</notificationRecurrence>
+<videoInputID>1</videoInputID>
+</EventTriggerNotification>
+<EventTriggerNotification>
+<id>center</id>
+<notificationMethod>center</notificationMethod>
+<notificationRecurrence>beginning</notificationRecurrence>
+</EventTriggerNotification>
+</EventTriggerNotificationList>
+</EventTrigger>
+<EventTrigger>
+<id>nicbroken</id>
+<eventType>nicbroken</eventType>
+<eventDescription>exception Information</eventDescription>
+<videoInputChannelID>1</videoInputChannelID>
+<dynVideoInputChannelID>1</dynVideoInputChannelID>
+<EventTriggerNotificationList>
+<EventTriggerNotification>
+<id>record-1</id>
+<notificationMethod>record</notificationMethod>
+<notificationRecurrence>beginning</notificationRecurrence>
+<videoInputID>1</videoInputID>
+</EventTriggerNotification>
+</EventTriggerNotificationList>
+</EventTrigger>
+<EventTrigger>
+<id>ipconflict</id>
+<eventType>ipconflict</eventType>
+<eventDescription>exception Information</eventDescription>
+<videoInputChannelID>1</videoInputChannelID>
+<dynVideoInputChannelID>1</dynVideoInputChannelID>
+<EventTriggerNotificationList>
+<EventTriggerNotification>
+<id>record-1</id>
+<notificationMethod>record</notificationMethod>
+<notificationRecurrence>beginning</notificationRecurrence>
+<videoInputID>1</videoInputID>
+</EventTriggerNotification>
+</EventTriggerNotificationList>
+</EventTrigger>
+<EventTrigger>
+<id>illaccess</id>
+<eventType>illaccess</eventType>
+<eventDescription>exception Information</eventDescription>
+<videoInputChannelID>1</videoInputChannelID>
+<dynVideoInputChannelID>1</dynVideoInputChannelID>
+<EventTriggerNotificationList>
+<EventTriggerNotification>
+<id>record-1</id>
+<notificationMethod>record</notificationMethod>
+<notificationRecurrence>beginning</notificationRecurrence>
+<videoInputID>1</videoInputID>
+</EventTriggerNotification>
+<EventTriggerNotification>
+<id>center</id>
+<notificationMethod>center</notificationMethod>
+<notificationRecurrence>beginning</notificationRecurrence>
+</EventTriggerNotification>
+</EventTriggerNotificationList>
+</EventTrigger>
+<EventTrigger>
+<id>linedetection-1</id>
+<eventType>linedetection</eventType>
+<eventDescription>Linedetection Event trigger Information</eventDescription>
+<videoInputChannelID>1</videoInputChannelID>
+<dynVideoInputChannelID>1</dynVideoInputChannelID>
+<EventTriggerNotificationList>
+<EventTriggerNotification>
+<id>record-1</id>
+<notificationMethod>record</notificationMethod>
+<notificationRecurrence>beginning</notificationRecurrence>
+<videoInputID>1</videoInputID>
+</EventTriggerNotification>
+<EventTriggerNotification>
+<id>center</id>
+<notificationMethod>center</notificationMethod>
+<notificationRecurrence>beginning</notificationRecurrence>
+</EventTriggerNotification>
+</EventTriggerNotificationList>
+</EventTrigger>
+<EventTrigger>
+<id>fielddetection-1</id>
+<eventType>fielddetection</eventType>
+<eventDescription>fielddetection Event trigger Information</eventDescription>
+<videoInputChannelID>1</videoInputChannelID>
+<dynVideoInputChannelID>1</dynVideoInputChannelID>
+<EventTriggerNotificationList>
+<EventTriggerNotification>
+<id>record-1</id>
+<notificationMethod>record</notificationMethod>
+<notificationRecurrence>beginning</notificationRecurrence>
+<videoInputID>1</videoInputID>
+</EventTriggerNotification>
+<EventTriggerNotification>
+<id>center</id>
+<notificationMethod>center</notificationMethod>
+<notificationRecurrence>beginning</notificationRecurrence>
+</EventTriggerNotification>
+</EventTriggerNotificationList>
+</EventTrigger>
+<EventTrigger>
+<id>badvideo</id>
+<eventType>badvideo</eventType>
+<eventDescription>exception Information</eventDescription>
+<videoInputChannelID>1</videoInputChannelID>
+<dynVideoInputChannelID>1</dynVideoInputChannelID>
+<EventTriggerNotificationList>
+<EventTriggerNotification>
+<id>record-1</id>
+<notificationMethod>record</notificationMethod>
+<notificationRecurrence>beginning</notificationRecurrence>
+<videoInputID>1</videoInputID>
+</EventTriggerNotification>
+<EventTriggerNotification>
+<id>center</id>
+<notificationMethod>center</notificationMethod>
+<notificationRecurrence>beginning</notificationRecurrence>
+</EventTriggerNotification>
+</EventTriggerNotificationList>
+</EventTrigger>
+<EventTrigger>
+<id>regionEntrance-1</id>
+<eventType>regionEntrance</eventType>
+<eventDescription>RegionEntrance Event trigger Information</eventDescription>
+<videoInputChannelID>1</videoInputChannelID>
+<dynVideoInputChannelID>1</dynVideoInputChannelID>
+<EventTriggerNotificationList>
+<EventTriggerNotification>
+<id>record-1</id>
+<notificationMethod>record</notificationMethod>
+<notificationRecurrence>beginning</notificationRecurrence>
+<videoInputID>1</videoInputID>
+</EventTriggerNotification>
+<EventTriggerNotification>
+<id>center</id>
+<notificationMethod>center</notificationMethod>
+<notificationRecurrence>beginning</notificationRecurrence>
+</EventTriggerNotification>
+</EventTriggerNotificationList>
+</EventTrigger>
+<EventTrigger>
+<id>regionExiting-1</id>
+<eventType>regionExiting</eventType>
+<eventDescription>RegionExiting Event trigger Information</eventDescription>
+<videoInputChannelID>1</videoInputChannelID>
+<dynVideoInputChannelID>1</dynVideoInputChannelID>
+<EventTriggerNotificationList>
+<EventTriggerNotification>
+<id>record-1</id>
+<notificationMethod>record</notificationMethod>
+<notificationRecurrence>beginning</notificationRecurrence>
+<videoInputID>1</videoInputID>
+</EventTriggerNotification>
+<EventTriggerNotification>
+<id>center</id>
+<notificationMethod>center</notificationMethod>
+<notificationRecurrence>beginning</notificationRecurrence>
+</EventTriggerNotification>
+</EventTriggerNotificationList>
+</EventTrigger>
+<EventTrigger>
+<id>storageDetection-1</id>
+<eventType>storageDetection</eventType>
+<eventDescription>storageDetection Event trigger Information</eventDescription>
+<videoInputChannelID>1</videoInputChannelID>
+<dynVideoInputChannelID>1</dynVideoInputChannelID>
+<EventTriggerNotificationList>
+<EventTriggerNotification>
+<id>record-1</id>
+<notificationMethod>record</notificationMethod>
+<notificationRecurrence>beginning</notificationRecurrence>
+<videoInputID>1</videoInputID>
+</EventTriggerNotification>
+</EventTriggerNotificationList>
+</EventTrigger>
+</EventTriggerList>
+---
+tmm@tmm:~/VillaAccess$ curl -s -u admin:TMM757161 --digest "http://172.16.32.106/ISAPI/Event/notification/httpHosts"
+<?xml version="1.0" encoding="UTF-8"?>
+<HttpHostNotificationList version="2.0" xmlns="http://www.hikvision.com/ver20/XMLSchema">
+<HttpHostNotification version="2.0" xmlns="http://www.hikvision.com/ver20/XMLSchema">
+<id>1</id>
+<url>/</url>
+<protocolType>HTTP</protocolType>
+<parameterFormatType>XML</parameterFormatType>
+<addressingFormatType>ipaddress</addressingFormatType>
+<ipAddress>0.0.0.0</ipAddress>
+<portNo>80</portNo>
+<userName></userName>
+<httpAuthenticationMethod>none</httpAuthenticationMethod>
+<httpBroken>true</httpBroken>
+</HttpHostNotification>
+<HttpHostNotification version="2.0" xmlns="http://www.hikvision.com/ver20/XMLSchema">
+<id>2</id>
+<url>/</url>
+<protocolType>HTTP</protocolType>
+<parameterFormatType>XML</parameterFormatType>
+<addressingFormatType>ipaddress</addressingFormatType>
+<ipAddress>0.0.0.0</ipAddress>
+<portNo>80</portNo>
+<userName></userName>
+<httpAuthenticationMethod>none</httpAuthenticationMethod>
+<httpBroken>true</httpBroken>
+</HttpHostNotification>
+<HttpHostNotification version="2.0" xmlns="http://www.hikvision.com/ver20/XMLSchema">
+<id>3</id>
+<url>/</url>
+<protocolType>HTTP</protocolType>
+<parameterFormatType>XML</parameterFormatType>
+<addressingFormatType>ipaddress</addressingFormatType>
+<ipAddress>0.0.0.0</ipAddress>
+<portNo>80</portNo>
+<userName></userName>
+<httpAuthenticationMethod>none</httpAuthenticationMethod>
+<httpBroken>true</httpBroken>
+</HttpHostNotification>
+</HttpHostNotificationList>
+tmm@tmm:~/VillaAccess$ 
