@@ -1,0 +1,57 @@
+tmm@tmm:~$ docker exec villaaccess-cloudflared-1 wget -qO- --timeout=5 http://villaaccess-frontend:80 2>&1 | head -20
+OCI runtime exec failed: exec failed: unable to start container process: exec: "wget": executable file not found in $PATH
+tmm@tmm:~$ docker exec villaaccess-cloudflared-1 wget -qO- --timeout=5 --header="Host: app.villasaccess.com" http://villaaccess-frontend:80 2>&1 | head -20
+OCI runtime exec failed: exec failed: unable to start container process: exec: "wget": executable file not found in $PATH
+tmm@tmm:~$ docker logs villaaccess-cloudflared-1 --tail 30
+2026-05-25T17:21:31Z INF precheck component="UDP Connectivity" details="QUIC connection successful" run_id=22a11b33-4d4e-4a27-a462-10e166e96697 status=pass target=region1.v2.argotunnel.com
+2026-05-25T17:21:31Z INF precheck component="UDP Connectivity" details="QUIC connection successful" run_id=22a11b33-4d4e-4a27-a462-10e166e96697 status=pass target=region2.v2.argotunnel.com
+2026-05-25T17:21:31Z INF precheck component="TCP Connectivity" details="HTTP/2 connection successful" run_id=22a11b33-4d4e-4a27-a462-10e166e96697 status=pass target=region1.v2.argotunnel.com
+2026-05-25T17:21:31Z INF precheck component="TCP Connectivity" details="HTTP/2 connection successful" run_id=22a11b33-4d4e-4a27-a462-10e166e96697 status=pass target=region2.v2.argotunnel.com
+2026-05-25T17:21:31Z INF precheck component="Cloudflare API" details="API is reachable" run_id=22a11b33-4d4e-4a27-a462-10e166e96697 status=pass target=api.cloudflare.com:443
+2026-05-25T17:21:31Z INF precheck complete hard_fail=false run_id=22a11b33-4d4e-4a27-a462-10e166e96697 suggested_protocol=quic
+DNS Resolution    region1.v2.argotunnel.com  PASS    DNS Resolved successfully
+DNS Resolution    region2.v2.argotunnel.com  PASS    DNS Resolved successfully
+UDP Connectivity  region1.v2.argotunnel.com  PASS    QUIC connection successful
+UDP Connectivity  region2.v2.argotunnel.com  PASS    QUIC connection successful
+TCP Connectivity  region1.v2.argotunnel.com  PASS    HTTP/2 connection successful
+TCP Connectivity  region2.v2.argotunnel.com  PASS    HTTP/2 connection successful
+Cloudflare API    api.cloudflare.com:443     PASS    API is reachable
+
+SUMMARY: Environment is healthy. cloudflared will use 'quic' as primary protocol.
+--------------------------------------------------------------------------------
+
+2026-05-26T13:25:21Z INF Updated to new configuration config="{\"ingress\":[{\"hostname\":\"app.villasaccess.com\",\"originRequest\":{},\"service\":\"http://villaaccess-frontend:80\"},{\"service\":\"http_status:404\"}],\"warp-routing\":{\"enabled\":false}}" version=1
+2026-05-26T13:27:10Z ERR  error="Unable to reach the origin service. The service may be down or it may not be responding to traffic from cloudflared: dial tcp: lookup villaaccess-frontend on 127.0.0.11:53: server misbehaving" connIndex=0 event=1 ingressRule=0 originService=http://villaaccess-frontend:80
+2026-05-26T13:27:10Z ERR Request failed error="Unable to reach the origin service. The service may be down or it may not be responding to traffic from cloudflared: dial tcp: lookup villaaccess-frontend on 127.0.0.11:53: server misbehaving" connIndex=0 dest=https://app.villasaccess.com/ event=0 ip=198.41.200.23 type=http
+2026-05-26T13:27:10Z ERR  error="Unable to reach the origin service. The service may be down or it may not be responding to traffic from cloudflared: dial tcp: lookup villaaccess-frontend on 127.0.0.11:53: server misbehaving" connIndex=0 event=1 ingressRule=0 originService=http://villaaccess-frontend:80
+2026-05-26T13:27:10Z ERR Request failed error="Unable to reach the origin service. The service may be down or it may not be responding to traffic from cloudflared: dial tcp: lookup villaaccess-frontend on 127.0.0.11:53: server misbehaving" connIndex=0 dest=https://app.villasaccess.com/favicon.ico event=0 ip=198.41.200.23 type=http
+2026-05-26T13:27:10Z ERR  error="Unable to reach the origin service. The service may be down or it may not be responding to traffic from cloudflared: dial tcp: lookup villaaccess-frontend on 127.0.0.11:53: server misbehaving" connIndex=0 event=1 ingressRule=0 originService=http://villaaccess-frontend:80
+2026-05-26T13:27:10Z ERR Request failed error="Unable to reach the origin service. The service may be down or it may not be responding to traffic from cloudflared: dial tcp: lookup villaaccess-frontend on 127.0.0.11:53: server misbehaving" connIndex=0 dest=https://app.villasaccess.com/favicon.ico event=0 ip=198.41.200.23 type=http
+2026-05-26T13:27:10Z ERR  error="Unable to reach the origin service. The service may be down or it may not be responding to traffic from cloudflared: dial tcp: lookup villaaccess-frontend on 127.0.0.11:53: server misbehaving" connIndex=0 event=1 ingressRule=0 originService=http://villaaccess-frontend:80
+2026-05-26T13:27:10Z ERR Request failed error="Unable to reach the origin service. The service may be down or it may not be responding to traffic from cloudflared: dial tcp: lookup villaaccess-frontend on 127.0.0.11:53: server misbehaving" connIndex=0 dest=https://app.villasaccess.com/apple-touch-icon-precomposed.png event=0 ip=198.41.200.23 type=http
+2026-05-26T13:27:10Z ERR  error="Unable to reach the origin service. The service may be down or it may not be responding to traffic from cloudflared: dial tcp: lookup villaaccess-frontend on 127.0.0.11:53: server misbehaving" connIndex=0 event=1 ingressRule=0 originService=http://villaaccess-frontend:80
+2026-05-26T13:27:10Z ERR Request failed error="Unable to reach the origin service. The service may be down or it may not be responding to traffic from cloudflared: dial tcp: lookup villaaccess-frontend on 127.0.0.11:53: server misbehaving" connIndex=0 dest=https://app.villasaccess.com/apple-touch-icon.png event=0 ip=198.41.200.23 type=http
+2026-05-26T13:27:56Z ERR  error="Unable to reach the origin service. The service may be down or it may not be responding to traffic from cloudflared: dial tcp: lookup villaaccess-frontend on 127.0.0.11:53: server misbehaving" connIndex=0 event=1 ingressRule=0 originService=http://villaaccess-frontend:80
+2026-05-26T13:27:56Z ERR Request failed error="Unable to reach the origin service. The service may be down or it may not be responding to traffic from cloudflared: dial tcp: lookup villaaccess-frontend on 127.0.0.11:53: server misbehaving" connIndex=0 dest=https://app.villasaccess.com/ event=0 ip=198.41.200.23 type=http
+tmm@tmm:~$ docker logs villaaccess-frontend-1 --tail 20
+172.16.32.111 - - [26/May/2026:12:48:00 +0000] "GET /api/dashboard/stats HTTP/1.1" 200 154 "http://172.16.32.105:3000/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.3.1 Safari/605.1.15" "-"
+172.16.32.111 - - [26/May/2026:12:48:07 +0000] "GET /api/auth/me HTTP/1.1" 304 0 "http://172.16.32.105:3000/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.3.1 Safari/605.1.15" "-"
+172.16.32.111 - - [26/May/2026:12:48:07 +0000] "GET /api/dashboard/stats HTTP/1.1" 304 0 "http://172.16.32.105:3000/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.3.1 Safari/605.1.15" "-"
+172.16.32.111 - - [26/May/2026:12:48:07 +0000] "GET /api/dashboard/recent-events?limit=60 HTTP/1.1" 304 0 "http://172.16.32.105:3000/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.3.1 Safari/605.1.15" "-"
+172.16.32.111 - - [26/May/2026:12:52:36 +0000] "GET /api/temp-credentials HTTP/1.1" 200 2 "http://172.16.32.105:3000/temp-credentials" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.3.1 Safari/605.1.15" "-"
+172.16.32.111 - - [26/May/2026:12:52:38 +0000] "GET /api/dashboard/stats HTTP/1.1" 304 0 "http://172.16.32.105:3000/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.3.1 Safari/605.1.15" "-"
+172.16.32.111 - - [26/May/2026:12:52:38 +0000] "GET /api/dashboard/recent-events?limit=60 HTTP/1.1" 304 0 "http://172.16.32.105:3000/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.3.1 Safari/605.1.15" "-"
+172.16.32.111 - - [26/May/2026:12:58:43 +0000] "POST /api/auth/refresh HTTP/1.1" 200 335 "http://172.16.32.105:3000/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.3.1 Safari/605.1.15" "-"
+172.16.32.111 - - [26/May/2026:12:58:43 +0000] "POST /api/auth/refresh HTTP/1.1" 401 45 "http://172.16.32.105:3000/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.3.1 Safari/605.1.15" "-"
+172.16.32.111 - - [26/May/2026:13:08:44 +0000] "POST /api/auth/login HTTP/1.1" 200 374 "http://172.16.32.105:3000/login" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.3.1 Safari/605.1.15" "-"
+172.16.32.111 - - [26/May/2026:13:08:44 +0000] "GET /api/dashboard/stats HTTP/1.1" 304 0 "http://172.16.32.105:3000/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.3.1 Safari/605.1.15" "-"
+172.16.32.111 - - [26/May/2026:13:08:44 +0000] "GET /api/dashboard/recent-events?limit=60 HTTP/1.1" 304 0 "http://172.16.32.105:3000/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.3.1 Safari/605.1.15" "-"
+172.16.32.111 - - [26/May/2026:13:15:06 +0000] "GET /api/dashboard/stats HTTP/1.1" 304 0 "http://172.16.32.105:3000/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.3.1 Safari/605.1.15" "-"
+172.16.32.111 - - [26/May/2026:13:15:06 +0000] "GET /api/dashboard/recent-events?limit=60 HTTP/1.1" 304 0 "http://172.16.32.105:3000/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.3.1 Safari/605.1.15" "-"
+172.16.32.111 - - [26/May/2026:13:18:11 +0000] "GET /api/dashboard/recent-events?limit=60 HTTP/1.1" 304 0 "http://172.16.32.105:3000/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.3.1 Safari/605.1.15" "-"
+172.16.32.111 - - [26/May/2026:13:18:11 +0000] "GET /api/dashboard/stats HTTP/1.1" 304 0 "http://172.16.32.105:3000/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.3.1 Safari/605.1.15" "-"
+172.16.32.111 - - [26/May/2026:13:23:49 +0000] "POST /api/auth/refresh HTTP/1.1" 200 335 "http://172.16.32.105:3000/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.3.1 Safari/605.1.15" "-"
+172.16.32.111 - - [26/May/2026:13:23:49 +0000] "POST /api/auth/refresh HTTP/1.1" 401 45 "http://172.16.32.105:3000/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.3.1 Safari/605.1.15" "-"
+172.16.32.111 - - [26/May/2026:13:23:49 +0000] "GET /api/dashboard/stats HTTP/1.1" 304 0 "http://172.16.32.105:3000/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.3.1 Safari/605.1.15" "-"
+172.16.32.111 - - [26/May/2026:13:23:49 +0000] "GET /api/dashboard/recent-events?limit=60 HTTP/1.1" 304 0 "http://172.16.32.105:3000/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.3.1 Safari/605.1.15" "-"
+tmm@tmm:~$ 
