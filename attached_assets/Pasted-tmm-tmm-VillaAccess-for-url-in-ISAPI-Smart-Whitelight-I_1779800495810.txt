@@ -1,0 +1,66 @@
+tmm@tmm:~/VillaAccess$ for url in \
+  "/ISAPI/Smart/Whitelight" \
+  "/ISAPI/Image/channels/1/whiteLightAlarm" \
+  "/ISAPI/Smart/SupplementLight" \
+  "/ISAPI/Smart/AlarmLightConfig" \
+  "/ISAPI/Image/channels/1/SupplementLight/whiteLight" \
+  "/ISAPI/System/Video/inputs/channels/1/whiteLightAlarm"; do
+  echo "=== $url ==="
+  curl -s -o /tmp/r.xml -w "HTTP %{http_code}\n" -u admin:TMM757161 --digest "http://172.16.32.106$url"
+  head -c 400 /tmp/r.xml; echo ""
+done
+=== /ISAPI/Smart/Whitelight ===
+HTTP 404
+<!DOCTYPE html>
+<html><head><title>Document Error: Not Found</title></head>
+<body><h2>Access Error: 404 -- Not Found</h2>
+<p>Can't find process for service:/ISAPI/Smart/Whitelight</p>
+</body>
+</html>
+
+=== /ISAPI/Image/channels/1/whiteLightAlarm ===
+HTTP 404
+<!DOCTYPE html>
+<html><head><title>Document Error: Not Found</title></head>
+<body><h2>Access Error: 404 -- Not Found</h2>
+<p>Can't find process for service:/ISAPI/Image/channels/1/whiteLightAlarm</p>
+</body>
+</html>
+
+=== /ISAPI/Smart/SupplementLight ===
+HTTP 404
+<!DOCTYPE html>
+<html><head><title>Document Error: Not Found</title></head>
+<body><h2>Access Error: 404 -- Not Found</h2>
+<p>Can't find process for service:/ISAPI/Smart/SupplementLight</p>
+</body>
+</html>
+
+=== /ISAPI/Smart/AlarmLightConfig ===
+HTTP 404
+<!DOCTYPE html>
+<html><head><title>Document Error: Not Found</title></head>
+<body><h2>Access Error: 404 -- Not Found</h2>
+<p>Can't find process for service:/ISAPI/Smart/AlarmLightConfig</p>
+</body>
+</html>
+
+=== /ISAPI/Image/channels/1/SupplementLight/whiteLight ===
+HTTP 404
+<!DOCTYPE html>
+<html><head><title>Document Error: Not Found</title></head>
+<body><h2>Access Error: 404 -- Not Found</h2>
+<p>Can't find process for service:/ISAPI/Image/channels/1/SupplementLight/whiteLight</p>
+</body>
+</html>
+
+=== /ISAPI/System/Video/inputs/channels/1/whiteLightAlarm ===
+HTTP 404
+<!DOCTYPE html>
+<html><head><title>Document Error: Not Found</title></head>
+<body><h2>Access Error: 404 -- Not Found</h2>
+<p>Can't find process for service:/ISAPI/System/Video/inputs/channels/1/whiteLightAlarm</p>
+</body>
+</html>
+
+tmm@tmm:~/VillaAccess$ 
