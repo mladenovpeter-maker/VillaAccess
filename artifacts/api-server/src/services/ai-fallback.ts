@@ -70,6 +70,15 @@ const MIN_SIMILARITY_PCT = Math.max(
   Math.min(100, Number(process.env.AI_FALLBACK_MIN_SIMILARITY) || 30),
 );
 const AI_CONFIDENCE_MIN = 70;
+// Post-verdict fuzzy match: OpenAI occasionally drops/adds 1 char (e.g.
+// "CA347MM" vs real "CA3477MM"). If exact lookup fails, try fuzzy match
+// against the same expected-plates list used by the similarity gate.
+// Default 75% requires high confidence — only forgives 1 char on ~7-char
+// plates. Disable by setting AI_FALLBACK_FUZZY_MIN=0.
+const AI_PLATE_FUZZY_MIN = Math.max(
+  0,
+  Math.min(100, Number(process.env.AI_FALLBACK_FUZZY_MIN) || 75),
+);
 const OPENAI_MODEL = "gpt-4o-mini";
 const OPENAI_TIMEOUT_MS = 25_000;
 const MAX_SNAPSHOT_BYTES = 8 * 1024 * 1024; // 8 MB per JPEG safety cap
@@ -703,6 +712,39 @@ async function runAiFallback(
       .where(eq(vehiclesTable.license_plate, verdict.plate))
       .limit(1);
     vehicle_id = existing[0]?.id ?? null;
+
+    // Fuzzy fallback: OpenAI can drop/add 1 char. If exact lookup failed,
+    // compare verdict.plate against the same expected-plates list used by
+    // the similarity gate, and adopt the best match if it clears the
+    // high-confidence fuzzy threshold. This is scoped to the camera's
+    // villas, so it cannot match an unrelated plate.
+    if (!vehicle_id && AI_PLATE_FUZZY_MIN > 0) {
+      const expected = await getExpectedPlatesForCamera(camera);
+      let bestPlate: string | null = null;
+      let bestPct = 0;
+      for (const p of expected) {
+        const pct = plateSimilarityPct(verdict.plate, p);
+        if (pct > bestPct) { bestPct = pct; bestPlate = p; }
+      }
+      if (bestPlate && bestPct >= AI_PLATE_FUZZY_MIN) {
+        console.log(
+          `[ai-fallback] camera=${camera.id} fuzzy-matched AI verdict ` +
+            `"${verdict.plate}" → "${bestPlate}" (${bestPct}%)`,
+        );
+        const fuzzy = await db
+          .select({ id: vehiclesTable.id })
+          .from(vehiclesTable)
+          .where(eq(vehiclesTable.license_plate, bestPlate))
+          .limit(1);
+        vehicle_id = fuzzy[0]?.id ?? null;
+        if (vehicle_id) verdict.plate = bestPlate;
+      } else if (bestPlate) {
+        console.log(
+          `[ai-fallback] camera=${camera.id} AI verdict "${verdict.plate}" ` +
+            `fuzzy best="${bestPlate}" ${bestPct}% < ${AI_PLATE_FUZZY_MIN}% — rejecting`,
+        );
+      }
+    }
 
     if (!vehicle_id) {
       outcome = "denied_unknown_vehicle";
