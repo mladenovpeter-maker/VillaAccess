@@ -1,0 +1,13 @@
+tmm@tmm:~/VillaAccess$ docker compose logs -f --tail=50 backend 2>&1 | grep -iE 'no-match|ai-fallback|similarity|fuzzy|verdict|allowed|denied|relay'
+backend-1  | {"level":30,"time":1779798181406,"pid":1,"hostname":"0e3caf9cc5e9","req":{"id":56,"method":"POST","url":"/api/anpr/no-match"},"res":{"statusCode":200},"responseTime":2,"msg":"request completed"}
+backend-1  | [ai-fallback] camera=1a7b13b7-6932-4300-9d18-4eef7fb52045 similarity gate passed (best=36.4% "ACA" ≈ "CA3477MM") — invoking AI
+backend-1  | [ai-fallback] camera=1a7b13b7-6932-4300-9d18-4eef7fb52045 triggering AI on 3 snapshots
+backend-1  | {"level":30,"time":1779798183005,"pid":1,"hostname":"0e3caf9cc5e9","req":{"id":58,"method":"POST","url":"/api/anpr/no-match"},"res":{"statusCode":200},"responseTime":2,"msg":"request completed"}
+backend-1  | {"level":30,"time":1779798184526,"pid":1,"hostname":"0e3caf9cc5e9","req":{"id":60,"method":"POST","url":"/api/anpr/no-match"},"res":{"statusCode":200},"responseTime":1,"msg":"request completed"}
+backend-1  | {"level":30,"time":1779798186101,"pid":1,"hostname":"0e3caf9cc5e9","req":{"id":62,"method":"POST","url":"/api/anpr/no-match"},"res":{"statusCode":200},"responseTime":1,"msg":"request completed"}
+backend-1  | [ai-fallback] camera=1a7b13b7-6932-4300-9d18-4eef7fb52045 verdict: {"plate":"CA77MM","make":null,"color":null,"confidence":90,"reasoning":"License plate is clearly visible in the last image."}
+backend-1  | [ai-fallback] camera=1a7b13b7-6932-4300-9d18-4eef7fb52045 fuzzy-matched AI verdict "CA77MM" → "CA3477MM" (85.7%)
+backend-1  | {"level":30,"time":1779798187546,"pid":1,"hostname":"0e3caf9cc5e9","req":{"id":65,"method":"POST","url":"/api/anpr/no-match"},"res":{"statusCode":200},"responseTime":1,"msg":"request completed"}
+backend-1  | {"level":30,"time":1779798188870,"pid":1,"hostname":"0e3caf9cc5e9","req":{"id":67,"method":"POST","url":"/api/anpr/no-match"},"res":{"statusCode":200},"responseTime":2,"msg":"request completed"}
+backend-1  | {"level":30,"time":1779798190402,"pid":1,"hostname":"0e3caf9cc5e9","req":{"id":70,"method":"POST","url":"/api/anpr/no-match"},"res":{"statusCode":200},"responseTime":2,"msg":"request completed"}
+backend-1  | {"level":30,"time":1779798191886,"pid":1,"hostname":"0e3caf9cc5e9","req":{"id":72,"method":"POST","url":"/api/anpr/no-match"},"res":{"statusCode":200},"responseTime":2,"msg":"request completed"}
