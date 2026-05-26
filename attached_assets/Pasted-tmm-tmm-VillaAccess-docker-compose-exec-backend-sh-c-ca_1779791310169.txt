@@ -1,0 +1,29 @@
+tmm@tmm:~/VillaAccess$ docker compose exec backend sh -c 'cat > /tmp/tuya-post-probe.cjs << "PROBE_EOF"
+const crypto = require("crypto");
+const ID = process.env.TUYA_ACCESS_ID, SEC = process.env.TUYA_ACCESS_SECRET;
+const HOST = "https://openapi.tuyaeu.com";
+const DEV = process.argv[2] || "bf56a0fe51239d19aeelmi";
+const sign = (s, k) => crypto.createHmac("sha256", k).update(s).digest("hex").toUpperCase();
+const sha = b => crypto.createHash("sha256").update(b||"").digest("hex");
+async function token() {
+  const t = Date.now().toString();
+  const p = "/v1.0/token?grant_type=1";
+  const s = sign(`${ID}${t}GET\n${sha("")}\n\n${p}`, SEC);
+  const r = await fetch(HOST+p, { headers: { client_id: ID, sign: s, t, sign_method: "HMAC-SHA256" }});
+  return (await r.json()).result.access_token;
+}
+async function req(tok, method, p, body) {
+  const t = Date.now().toString();
+  const b = body ? JSON.stringify(body) : "";
+  const s = sign(`${ID}${tok}${t}${method}\n${sha(b)}\n\n${p}`, SEC);
+  const opts = { method, headers: { client_id: ID, access_token: tok, sign: s, t, sign_method: "HMAC-SHA256" }};
+  if (body) { opts.headers["Content-Type"] = "application/json"; opts.body = b; node /tmp/tuya-post-probe.cjs bf56a0fe51239d19aeelmi'r.success?JSON.stringify(r.
+WARN[0000] /home/tmm/VillaAccess/docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion 
+✅ POST /v1.0/devices/bf56a0fe51239d19aeelmi/door-lock/password-ticket  {"expire_time":360,"ticket_id":"g3kRfiN7","ticket_key":"10E4A16AD86EA6FB0A284B502FA2AC3DFA0D5D89130104D70B7D8DF424190687"}
+✅ POST /v1.0/devices/bf56a0fe51239d19aeelmi/door-lock/password-ticket  {"expire_time":360,"ticket_id":"g3kRfiN7","ticket_key":"10E4A16AD86EA6FB0A284B502FA2AC3DFA0D5D89130104D70B7D8DF424190687"}
+❌ POST /v2.0/cloud/smart-lock/lock/bf56a0fe51239d19aeelmi/password-ticket  code=1108 uri path invalid
+❌ GET /v2.0/cloud/smart-lock/lock/bf56a0fe51239d19aeelmi/password-ticket  code=1108 uri path invalid
+✅ POST /v1.0/smart-lock/devices/bf56a0fe51239d19aeelmi/password-ticket  {"expire_time":360,"ticket_id":"g3kRfiN7","ticket_key":"10E4A16AD86EA6FB0A284B502FA2AC3DFA0D5D89130104D70B7D8DF424190687"}
+❌ GET /v1.0/devices/bf56a0fe51239d19aeelmi/door-lock/password-free/password  code=1108 uri path invalid
+✅ GET /v1.0/devices/bf56a0fe51239d19aeelmi/door-lock/dynamic-password  {"dynamic_password":"33183823"}
+tmm@tmm:~/VillaAccess$ 
