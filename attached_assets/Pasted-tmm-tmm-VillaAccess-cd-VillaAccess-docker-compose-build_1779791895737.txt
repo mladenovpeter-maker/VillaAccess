@@ -1,0 +1,43 @@
+tmm@tmm:~/VillaAccess$ cd ~/VillaAccess && docker compose build --no-cache backend && docker compose up -d backend && sleep 20
+docker compose exec backend grep -A2 "Intl.DateTimeFormat" /app/dist/lib/locks/tuya/adapter.js
+WARN[0000] /home/tmm/VillaAccess/docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion 
+[+] Building 13.3s (16/16) FINISHED                                                                              
+ => [internal] load local bake definitions                                                                  0.0s
+ => => reading from stdin 1.01kB                                                                            0.0s
+ => [internal] load build definition from Dockerfile                                                        0.0s
+ => => transferring dockerfile: 1.19kB                                                                      0.0s
+ => [internal] load metadata for docker.io/library/node:22-alpine                                           0.7s
+ => [internal] load .dockerignore                                                                           0.0s
+ => => transferring context: 251B                                                                           0.0s
+ => CACHED [builder 1/6] FROM docker.io/library/node:22-alpine@sha256:968df39aedcea65eeb078fb336ed7191baf4  0.0s
+ => => resolve docker.io/library/node:22-alpine@sha256:968df39aedcea65eeb078fb336ed7191baf48f972b447971139  0.0s
+ => [internal] load build context                                                                           0.0s
+ => => transferring context: 31.37kB                                                                        0.0s
+ => CACHED [runner 2/4] WORKDIR /app                                                                        0.0s
+ => [builder 2/6] RUN npm install -g pnpm@10 --quiet                                                        1.4s
+ => [builder 3/6] WORKDIR /workspace                                                                        0.0s
+ => [builder 4/6] COPY . .                                                                                  0.1s
+ => [builder 5/6] RUN pnpm install --frozen-lockfile                                                        8.8s 
+ => [builder 6/6] RUN pnpm --filter @workspace/api-server run build                                         1.3s 
+ => [runner 3/4] COPY --from=builder /workspace/artifacts/api-server/dist ./dist                            0.0s 
+ => [runner 4/4] RUN mkdir -p uploads                                                                       0.1s 
+ => exporting to image                                                                                      0.6s 
+ => => exporting layers                                                                                     0.4s 
+ => => exporting manifest sha256:d5541270485d700062c0c99560794f3f0342e389b5d54766b57b57c1efcd0cee           0.0s 
+ => => exporting config sha256:d405ca3799ea1bcba95ac76a344f73c50b7ca1c137d49d178ef21f8056c3e632             0.0s 
+ => => exporting attestation manifest sha256:335e4a10a3fc17332e7aedc4d095929e8b9e61ab2df28dbc0c1afe17f2654  0.0s
+ => => exporting manifest list sha256:e9ca65aafdc2ba4455d7a0c1066c4c7307cc5b08ed5d256085bad2c41b84ba12      0.0s
+ => => naming to docker.io/library/villaaccess-backend:latest                                               0.0s
+ => => unpacking to docker.io/library/villaaccess-backend:latest                                            0.1s
+ => resolving provenance for metadata file                                                                  0.0s
+[+] build 1/2
+ ⠙ Image villaaccess-migrate Building                                                                       13.3s
+ ✔ Image villaaccess-backend Built                                                                          13.3s
+WARN[0000] /home/tmm/VillaAccess/docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion 
+[+] up 3/3
+ ✔ Container villaaccess-postgres-1 Healthy                                                                 10.9s
+ ✔ Container villaaccess-backend-1  Started                                                                 11.6s
+ ✔ Container villaaccess-migrate-1  Exited                                                                   0.6s
+WARN[0000] /home/tmm/VillaAccess/docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion 
+grep: /app/dist/lib/locks/tuya/adapter.js: No such file or directory
+tmm@tmm:~/VillaAccess$ 
