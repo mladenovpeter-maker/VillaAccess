@@ -1,0 +1,41 @@
+tmm@tmm:~/VillaAccess$ cat > /tmp/p2.cjs << 'EOF'
+const crypto = require("crypto");
+const ID = process.env.TUYA_ACCESS_ID, SEC = process.env.TUYA_ACCESS_SECRET;
+const HOST = "https://openapi.tuyaeu.com";
+const DEV = "bf2a36495645512355s2na";
+const sign = (s, k) => crypto.createHmac("sha256", k).update(s).digest("hex").toUpperCase();
+const sha = b => crypto.createHash("sha256").update(b||"").digest("hex");
+async function token() {
+  const t = Date.now().toString();
+  const p = "/v1.0/token?grant_type=1";
+  const s = sign(`${ID}${t}GET\n${sha("")}\n\n${p}`, SEC);
+  const r = await fetch(HOST+p, { headers: { client_id: ID, sign: s, t, sign_method: "HMAC-SHA256" }});
+  return (await r.json()).result.access_token;
+}
+async function req(tok, method, p, body) {
+  const t = Date.now().toString();
+  const b = body ? JSON.stringify(body) : "";
+  const s = sign(`${ID}${tok}${t}${method}\n${sha(b)}\n\n${p}`, SEC);
+  const opts = { method, headers: { client_id: ID, access_token: tok, sign: s, t, sign_method: "HMAC-SHA256" }};
+  if (body) { opts.headers["Content-Type"] = "application/json"; opts.body = b; }
+  return (await fetch(HOST+p, opts)).json();
+}
+function encPin(p, sk) {
+  const c = crypto.createCipheriv("aes-128-ecb", sk, null); c.setAutoPadding(true);
+  return Buffer.concat([c.update(p, "utf8"), c.final()]).toString("hex");
+}
+function decTicket(hex) {
+  const key = Buffer.from(SEC.slice(0, 16), "utf8");
+  const d = crypto.createDecipheriv("aes-128-ecb", key, null); d.setAutoPadding(false);
+  return Buffer.concat([d.update(Buffer.from(hex, "hex")), d.final()]).subarray(0, 16);
+}
+(async () => {
+docker compose exec backend node /tmp/p2.cjs2.cjs));${DEV}/door-lock/temp-password`, body);t_id,
+WARN[0000] /home/tmm/VillaAccess/docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion 
+[+] copy 1/1
+ ✔ villaaccess-backend-1 Copied /tmp/p2.cjs to villaaccess-backend-1:/tmp/p2.cjs                             0.0s
+WARN[0000] /home/tmm/VillaAccess/docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion 
+[past_start] {"code":1109,"msg":"param is illegal ,please check it","success":false,"t":1779793476851,"tid":"af15195e58f211f19fb6e238084b3b88"}
+[now_start] {"code":1109,"msg":"param is illegal ,please check it","success":false,"t":1779793477047,"tid":"af344de558f211f19fb6e238084b3b88"}
+[future_start] {"success":true,"t":1779793477248,"tid":"af545e5658f211f19fb6e238084b3b88"}
+tmm@tmm:~/VillaAccess$ 
