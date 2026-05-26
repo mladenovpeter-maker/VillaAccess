@@ -1,0 +1,40 @@
+# 5. Гледай логовете
+docker compose logs -f backend ai-worker 2>&1 | grep -iE 'no-match|ai-fallback|similarity|denied|allowed'
+remote: Enumerating objects: 7, done.
+remote: Counting objects: 100% (5/5), done.
+remote: Total 7 (delta 5), reused 5 (delta 5), pack-reused 2 (from 1)
+Unpacking objects: 100% (7/7), 2.49 KiB | 363.00 KiB/s, done.
+From https://github.com/mladenovpeter-maker/VillaAccess
+   ec02196..a02356a  main       -> origin/main
+49dbc2e (HEAD -> main) Merge branch 'main' of https://github.com/mladenovpeter-maker/VillaAccess
+bb6b201 Merge branch 'main' of https://github.com/mladenovpeter-maker/VillaAccess
+b3ed000 Merge branch 'main' of https://github.com/mladenovpeter-maker/VillaAccess
+e66a60b Merge branch 'main' of https://github.com/mladenovpeter-maker/VillaAccess
+e5c476e Merge branch 'main' of https://github.com/mladenovpeter-maker/VillaAccess
+e28ddc6 Merge branch 'main' of https://github.com/mladenovpeter-maker/VillaAccess
+b30c3b6 Merge branch 'main' of https://github.com/mladenovpeter-maker/VillaAccess
+e0e8610 Merge branch 'main' of https://github.com/mladenovpeter-maker/VillaAccess
+5661c48 Merge branch 'main' of https://github.com/mladenovpeter-maker/VillaAccess
+e42b2a7 Merge branch 'main' of https://github.com/mladenovpeter-maker/VillaAccess
+1b0fa9a Merge branch 'main' of https://github.com/mladenovpeter-maker/VillaAccess
+905b967 Merge branch 'main' of https://github.com/mladenovpeter-maker/VillaAccess
+17d3f4d Merge branch 'main' of https://github.com/mladenovpeter-maker/VillaAccess
+98dc0ef Merge branch 'main' of https://github.com/mladenovpeter-maker/VillaAccess
+9f24d41 Merge branch 'main' of https://github.com/mladenovpeter-maker/VillaAccess
+f86ceb0 Merge branch 'main' of https://github.com/mladenovpeter-maker/VillaAccess
+83e7613 Merge branch 'main' of https://github.com/mladenovpeter-maker/VillaAccess
+122d5e9 Merge branch 'main' of https://github.com/mladenovpeter-maker/VillaAccess
+9c0cb3e Merge branch 'main' of https://github.com/mladenovpeter-maker/VillaAccess
+2c76881 Merge branch 'main' of https://github.com/mladenovpeter-maker/VillaAccess
+25a9f4d Merge branch 'main' of https://github.com/mladenovpeter-maker/VillaAccess
+2a9382f Merge branch 'main' of https://github.com/mladenovpeter-maker/VillaAccess
+6f126c8 Merge branch 'main' of https://github.com/mladenovpeter-maker/VillaAccess
+836be33 Merge branch 'main' of https://github.com/mladenovpeter-maker/VillaAccess
+20c1473 Merge branch 'main' of https://github.com/mladenovpeter-maker/VillaAccess
+3f38f6f Merge branch 'main' of https://github.com/mladenovpeter-maker/VillaAccess
+5b6380d Merge branch 'main' of https://github.com/mladenovpeter-maker/VillaAccess
+919ef49 Merge branch 'main' of https://github.com/mladenovpeter-maker/VillaAccess
+1be4af1 Merge branch 'main' of https://github.com/mladenovpeter-maker/VillaAccess
+b5768c7 Merge branch 'main' of https://github.com/mladenovpeter-maker/VillaAccess
+f53959f Merge branch 'main' of https://github.com/mladenovpeter-maker/VillaAccess
+:
