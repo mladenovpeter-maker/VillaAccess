@@ -55,8 +55,46 @@ function serializeSnapshot(s: typeof vehicleSnapshotsTable.$inferSelect) {
   };
 }
 
+// ─── Plate normalisation ──────────────────────────────────────────────────────
+//
+// Bulgarian license plates only ever use 12 letters that exist in both the
+// Latin and Cyrillic alphabets and look identical: A B E K M H O P C T Y X
+// (Latin)  ↔  А В Е К М Н О Р С Т У Х  (Cyrillic). When an operator types
+// the plate on a Bulgarian keyboard layout, some letters silently end up as
+// Cyrillic code points (U+0410..U+04?? range). Those plates pass the unique
+// constraint AND look correct in the UI, but they will NEVER equal the
+// pure-Latin string the OCR worker emits, so exact-match in anpr.ts fails
+// with "No reservation found" — even though the car is in the table.
+//
+// We normalise on the write path (POST / PUT) so:
+//   • new rows are always stored in canonical ASCII Latin uppercase, no
+//     whitespace, no dashes — the exact shape OCR produces.
+//   • OCR / YOLO / EasyOCR / fuzzy / relay / reservation logic stays
+//     completely untouched.
+//   • Pre-existing rows with Cyrillic letters keep working; operators can
+//     trigger normalisation simply by opening + saving the vehicle in the UI.
+const CYR_TO_LAT_PLATE: Record<string, string> = {
+  "А": "A", "В": "B", "Е": "E", "К": "K", "М": "M", "Н": "H",
+  "О": "O", "Р": "P", "С": "C", "Т": "T", "У": "Y", "Х": "X",
+  "а": "A", "в": "B", "е": "E", "к": "K", "м": "M", "н": "H",
+  "о": "O", "р": "P", "с": "C", "т": "T", "у": "Y", "х": "X",
+};
+
+export function normaliseLicensePlate(raw: string): string {
+  let out = "";
+  for (const ch of raw) {
+    out += CYR_TO_LAT_PLATE[ch] ?? ch;
+  }
+  return out.toUpperCase().replace(/[\s\-_.]+/g, "");
+}
+
 const vehicleBodySchema = z.object({
-  license_plate: z.string().min(1).max(20),
+  license_plate: z
+    .string()
+    .min(1)
+    .max(20)
+    .transform((s) => normaliseLicensePlate(s))
+    .refine((s) => s.length >= 1, { message: "Plate is empty after normalisation" }),
   plate_region: z.string().max(10).nullable().optional(),
   make: z.string().max(60).nullable().optional(),
   model: z.string().max(60).nullable().optional(),
