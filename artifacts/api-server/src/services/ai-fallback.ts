@@ -40,8 +40,11 @@ import {
   vehiclesTable,
   accessEventsTable,
   villaEntrancesTable,
+  reservationsTable,
+  reservationVehiclesTable,
+  camerasTable,
 } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { eq, and, inArray, or, lte, gte, ne } from "drizzle-orm";
 import { validateVehicleAccessMulti } from "../lib/validation/reservation-validator";
 import { createAdapter, type CameraRow } from "../lib/cameras/factory";
 import { eventBus } from "../lib/events";
@@ -49,7 +52,23 @@ import { uploadsUrl } from "../lib/public-url";
 
 // ── Tunables ─────────────────────────────────────────────────────────────────
 const FAIL_THRESHOLD = 3;
-const FAIL_RESET_MINUTES = 10;
+// Window during which the 3 OCR failures must occur to qualify as "same
+// vehicle waiting at the gate". Default 30s — a car physically standing
+// in front of a barrier will produce several snapshots within this window.
+// Override via AI_FALLBACK_RESET_SECONDS env var.
+const FAIL_RESET_SECONDS = Math.max(
+  5,
+  Number(process.env.AI_FALLBACK_RESET_SECONDS) || 30,
+);
+// Pre-AI guard: best raw OCR text from the 3 fails must match at least one
+// currently-expected plate (permanent-access vehicles + vehicles tied to an
+// active reservation for this camera's villa(s)) with similarity >= this
+// percent. Below this the snapshots are almost certainly an unknown vehicle
+// and we don't waste an OpenAI call. Override via AI_FALLBACK_MIN_SIMILARITY.
+const MIN_SIMILARITY_PCT = Math.max(
+  0,
+  Math.min(100, Number(process.env.AI_FALLBACK_MIN_SIMILARITY) || 30),
+);
 const AI_CONFIDENCE_MIN = 70;
 const OPENAI_MODEL = "gpt-4o-mini";
 const OPENAI_TIMEOUT_MS = 25_000;
@@ -67,7 +86,8 @@ export interface AiFallbackCamera extends CameraRow {
 interface FailEntry {
   buffer: Buffer;
   mime: string;
-  plate: string | null;
+  plate: string | null;     // legacy: normalised plate from a "denied" detection
+  raw_text: string | null;  // best raw OCR text (any path) — used for pre-AI similarity gate
   at: number; // epoch ms
 }
 
@@ -314,6 +334,7 @@ async function askOpenAi(dataUrls: string[]): Promise<AiVerdict | null> {
 export function recordFailure(
   camera: AiFallbackCamera,
   plate: string | null,
+  raw_text?: string | null,
 ): void {
   if (!isEnabled()) return;
 
@@ -322,19 +343,44 @@ export function recordFailure(
     if (!cap) return; // camera offline / unreachable — nothing we can do
 
     const now = Date.now();
-    const cutoff = now - FAIL_RESET_MINUTES * 60_000;
+    const cutoff = now - FAIL_RESET_SECONDS * 1000;
     const s = state.get(camera.id) ?? { fails: [], inFlight: false };
 
     // Drop stale entries + don't pile up while AI is already running.
     if (s.inFlight) return;
     s.fails = s.fails.filter((f) => f.at >= cutoff);
-    s.fails.push({ buffer: cap.buffer, mime: cap.mime, plate, at: now });
+    s.fails.push({
+      buffer: cap.buffer,
+      mime: cap.mime,
+      plate,
+      raw_text: raw_text ?? plate, // fallback to plate when no separate raw OCR text
+      at: now,
+    });
     if (s.fails.length > FAIL_THRESHOLD) {
       s.fails = s.fails.slice(-FAIL_THRESHOLD);
     }
     state.set(camera.id, s);
 
     if (s.fails.length >= FAIL_THRESHOLD) {
+      // Pre-AI similarity gate: only trigger OpenAI if at least one of the
+      // collected raw reads is plausibly close to an expected plate. This
+      // prevents wasting tokens on random unknown vehicles passing by.
+      const gate = await passesSimilarityGate(camera, s.fails);
+      if (!gate.passed) {
+        console.log(
+          `[ai-fallback] camera=${camera.id} similarity gate failed ` +
+            `(best=${gate.bestPct}% < ${MIN_SIMILARITY_PCT}% for "${gate.bestRaw ?? ""}" vs "${gate.bestExpected ?? ""}") — skipping AI`,
+        );
+        // Drop the buffered fails so we don't immediately re-fire on the next
+        // failure for the same unknown vehicle.
+        s.fails = [];
+        state.set(camera.id, s);
+        return;
+      }
+      console.log(
+        `[ai-fallback] camera=${camera.id} similarity gate passed ` +
+          `(best=${gate.bestPct}% "${gate.bestRaw}" ≈ "${gate.bestExpected}") — invoking AI`,
+      );
       s.inFlight = true;
       const fails = [...s.fails];
       void runAiFallback(camera, fails)
@@ -353,6 +399,154 @@ export function recordFailure(
   })().catch((err) => {
     console.error(`[ai-fallback] camera=${camera.id} top-level error:`, err);
   });
+}
+
+// ── Pre-AI similarity gate ───────────────────────────────────────────────────
+// Compare the buffered raw OCR reads against the set of currently-expected
+// plates for this camera's villa(s): permanent-access vehicles + vehicles
+// tied to a reservation whose window contains "now". Returns the best match
+// so the caller can decide whether to invoke OpenAI.
+
+function normaliseForCompare(s: string): string {
+  return s.toUpperCase().replace(/[^A-Z0-9]/g, "");
+}
+
+function plateSimilarityPct(a: string, b: string): number {
+  // Symmetric Dice-style ratio on uppercase alnum strings. Cheap and stable
+  // on plate-length inputs. Equivalent semantics to anpr.similarityPct but
+  // duplicated here to avoid a cross-service import cycle.
+  const A = normaliseForCompare(a);
+  const B = normaliseForCompare(b);
+  if (A.length === 0 && B.length === 0) return 100;
+  if (A.length === 0 || B.length === 0) return 0;
+  // Longest-common-subsequence-ish: count chars matching at the same index
+  // (left-aligned) as a baseline, then bonus for length parity.
+  const len = Math.min(A.length, B.length);
+  let matches = 0;
+  for (let i = 0; i < len; i++) if (A[i] === B[i]) matches++;
+  // Also count "shifted" matches (one position off) to be tolerant of OCR
+  // dropping/adding a leading character.
+  for (let i = 0; i < len - 1; i++) {
+    if (A[i] === B[i + 1] || A[i + 1] === B[i]) matches += 0.5;
+  }
+  const total = Math.max(A.length, B.length);
+  return Math.round(((matches / total) * 100) * 10) / 10;
+}
+
+async function getExpectedPlatesForCamera(
+  camera: AiFallbackCamera,
+): Promise<string[]> {
+  // Resolve villa scope from the camera's entrance.
+  let entranceId = camera.entrance_id;
+  if (!entranceId) {
+    const rows = await db
+      .select({ entrance_id: camerasTable.entrance_id })
+      .from(camerasTable)
+      .where(eq(camerasTable.id, camera.id))
+      .limit(1);
+    entranceId = rows[0]?.entrance_id ?? null;
+  }
+  let villaIds: string[] = [];
+  if (entranceId) {
+    const rows = await db
+      .select({ villa_id: villaEntrancesTable.villa_id })
+      .from(villaEntrancesTable)
+      .where(eq(villaEntrancesTable.entrance_id, entranceId));
+    villaIds = rows.map((r) => r.villa_id);
+  }
+
+  const plates = new Set<string>();
+
+  // Permanent-access vehicles (staff/owner/maintenance) — global scope,
+  // always allowed regardless of camera/villa.
+  const permRows = await db
+    .select({ plate: vehiclesTable.license_plate })
+    .from(vehiclesTable)
+    .where(
+      and(
+        eq(vehiclesTable.access_type, "permanent"),
+        ne(vehiclesTable.status, "blacklisted"),
+      ),
+    );
+  for (const r of permRows) if (r.plate) plates.add(r.plate);
+
+  // Vehicles tied to a reservation whose window contains "now", scoped to
+  // the camera's villa(s).
+  if (villaIds.length > 0) {
+    const now = new Date();
+    const resRows = await db
+      .select({ plate: vehiclesTable.license_plate })
+      .from(reservationVehiclesTable)
+      .innerJoin(
+        reservationsTable,
+        eq(reservationVehiclesTable.reservation_id, reservationsTable.id),
+      )
+      .innerJoin(
+        vehiclesTable,
+        eq(reservationVehiclesTable.vehicle_id, vehiclesTable.id),
+      )
+      .where(
+        and(
+          inArray(reservationsTable.villa_id, villaIds),
+          ne(vehiclesTable.status, "blacklisted"),
+          or(
+            eq(reservationsTable.status, "active"),
+            and(
+              eq(reservationsTable.status, "upcoming"),
+              lte(reservationsTable.check_in, now),
+              gte(reservationsTable.check_out, now),
+            ),
+          ),
+        ),
+      );
+    for (const r of resRows) if (r.plate) plates.add(r.plate);
+  }
+
+  return [...plates];
+}
+
+interface SimilarityGateResult {
+  passed: boolean;
+  bestPct: number;
+  bestRaw: string | null;
+  bestExpected: string | null;
+}
+
+async function passesSimilarityGate(
+  camera: AiFallbackCamera,
+  fails: FailEntry[],
+): Promise<SimilarityGateResult> {
+  // No threshold configured → always pass (back-compat / opt-out).
+  if (MIN_SIMILARITY_PCT <= 0) {
+    return { passed: true, bestPct: 100, bestRaw: null, bestExpected: null };
+  }
+  const expected = await getExpectedPlatesForCamera(camera);
+  if (expected.length === 0) {
+    // Nothing to compare against — no point invoking AI for a villa with no
+    // active expectations. Skip and save tokens.
+    return { passed: false, bestPct: 0, bestRaw: null, bestExpected: null };
+  }
+  let bestPct = 0;
+  let bestRaw: string | null = null;
+  let bestExpected: string | null = null;
+  for (const f of fails) {
+    const raw = f.raw_text;
+    if (!raw) continue;
+    for (const exp of expected) {
+      const pct = plateSimilarityPct(raw, exp);
+      if (pct > bestPct) {
+        bestPct = pct;
+        bestRaw = raw;
+        bestExpected = exp;
+      }
+    }
+  }
+  return {
+    passed: bestPct >= MIN_SIMILARITY_PCT,
+    bestPct,
+    bestRaw,
+    bestExpected,
+  };
 }
 
 /** Allowed detection — reset the per-camera failure counter. */
@@ -374,7 +568,9 @@ export interface AiFallbackStatus {
   has_api_key: boolean;
   model: string;
   threshold: number;
-  reset_minutes: number;
+  reset_minutes: number;       // kept for backward-compat with existing UI
+  reset_seconds: number;
+  min_similarity_pct: number;
   cameras_tracked: number;
   in_flight: number;
   last_activity_at: number | null;
@@ -395,7 +591,9 @@ export function getStatus(): AiFallbackStatus {
     has_api_key: !!process.env.OPENAI_API_KEY,
     model: OPENAI_MODEL,
     threshold: FAIL_THRESHOLD,
-    reset_minutes: FAIL_RESET_MINUTES,
+    reset_minutes: Math.round((FAIL_RESET_SECONDS / 60) * 10) / 10,
+    reset_seconds: FAIL_RESET_SECONDS,
+    min_similarity_pct: MIN_SIMILARITY_PCT,
     cameras_tracked: state.size,
     in_flight: inFlight,
     last_activity_at: _lastActivityAt,

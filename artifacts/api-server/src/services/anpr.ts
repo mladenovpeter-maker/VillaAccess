@@ -521,6 +521,8 @@ export async function handleAnprNoMatch(input: {
   if (!camera.ocr_enabled) {
     return { action: "skipped_no_villa", reason: "Camera OCR disabled" };
   }
-  aiFallback.recordFailure(camera, input.raw_ocr_text ?? null);
+  // Pass raw_text as both plate (legacy field) and the explicit raw_text
+  // arg so the similarity gate can compare it against expected plates.
+  aiFallback.recordFailure(camera, null, input.raw_ocr_text ?? null);
   return { action: "no_match_recorded" };
 }
