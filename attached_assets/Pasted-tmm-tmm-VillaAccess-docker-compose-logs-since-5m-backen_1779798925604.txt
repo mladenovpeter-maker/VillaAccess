@@ -1,0 +1,102 @@
+tmm@tmm:~/VillaAccess$ docker compose logs --since 5m backend ai-worker 2>&1 | tail -100
+backend-1    |   qop: 'auth',
+backend-1    |   algorithm: undefined
+backend-1    | }
+backend-1    | [fetchCamera] digest {
+backend-1    |   method: 'GET',
+backend-1    |   path: '/ISAPI/Streaming/channels/101/picture',
+backend-1    |   status: 200
+backend-1    | }
+backend-1    | {"level":30,"time":1779798910488,"pid":1,"hostname":"0e3caf9cc5e9","req":{"id":767,"method":"GET","url":"/api/anpr/snapshot/1a7b13b7-6932-4300-9d18-4eef7fb52045"},"res":{"statusCode":200},"responseTime":139,"msg":"request completed"}
+backend-1    | [fetchCamera] basic {
+backend-1    |   method: 'GET',
+backend-1    |   path: '/ISAPI/Streaming/channels/101/picture',
+backend-1    |   status: 401
+backend-1    | }
+backend-1    | [fetchCamera] digest retry {
+backend-1    |   method: 'GET',
+backend-1    |   path: '/ISAPI/Streaming/channels/101/picture',
+backend-1    |   realm: 'IP Camera(GQ271)',
+backend-1    |   qop: 'auth',
+backend-1    |   algorithm: undefined
+backend-1    | }
+backend-1    | [fetchCamera] digest {
+backend-1    |   method: 'GET',
+backend-1    |   path: '/ISAPI/Streaming/channels/101/picture',
+backend-1    |   status: 200
+backend-1    | }
+backend-1    | {"level":30,"time":1779798911988,"pid":1,"hostname":"0e3caf9cc5e9","req":{"id":768,"method":"GET","url":"/api/anpr/snapshot/1a7b13b7-6932-4300-9d18-4eef7fb52045"},"res":{"statusCode":200},"responseTime":139,"msg":"request completed"}
+backend-1    | {"level":30,"time":1779798913212,"pid":1,"hostname":"0e3caf9cc5e9","req":{"id":769,"method":"GET","url":"/api/healthz"},"res":{"statusCode":200},"responseTime":1,"msg":"request completed"}
+backend-1    | [fetchCamera] basic {
+backend-1    |   method: 'GET',
+backend-1    |   path: '/ISAPI/Streaming/channels/101/picture',
+backend-1    |   status: 401
+backend-1    | }
+backend-1    | [fetchCamera] digest retry {
+backend-1    |   method: 'GET',
+backend-1    |   path: '/ISAPI/Streaming/channels/101/picture',
+backend-1    |   realm: 'IP Camera(GQ271)',
+backend-1    |   qop: 'auth',
+backend-1    |   algorithm: undefined
+backend-1    | }
+backend-1    | [fetchCamera] digest {
+backend-1    |   method: 'GET',
+backend-1    |   path: '/ISAPI/Streaming/channels/101/picture',
+backend-1    |   status: 200
+backend-1    | }
+backend-1    | {"level":30,"time":1779798913463,"pid":1,"hostname":"0e3caf9cc5e9","req":{"id":770,"method":"GET","url":"/api/anpr/snapshot/1a7b13b7-6932-4300-9d18-4eef7fb52045"},"res":{"statusCode":200},"responseTime":115,"msg":"request completed"}
+backend-1    | [fetchCamera] basic {
+backend-1    |   method: 'GET',
+backend-1    |   path: '/ISAPI/Streaming/channels/101/picture',
+backend-1    |   status: 401
+backend-1    | }
+backend-1    | [fetchCamera] digest retry {
+backend-1    |   method: 'GET',
+backend-1    |   path: '/ISAPI/Streaming/channels/101/picture',
+backend-1    |   realm: 'IP Camera(GQ271)',
+backend-1    |   qop: 'auth',
+backend-1    |   algorithm: undefined
+backend-1    | }
+backend-1    | [fetchCamera] digest {
+backend-1    |   method: 'GET',
+backend-1    |   path: '/ISAPI/Streaming/channels/101/picture',
+backend-1    |   status: 200
+backend-1    | }
+backend-1    | {"level":30,"time":1779798914969,"pid":1,"hostname":"0e3caf9cc5e9","req":{"id":771,"method":"GET","url":"/api/anpr/snapshot/1a7b13b7-6932-4300-9d18-4eef7fb52045"},"res":{"statusCode":200},"responseTime":119,"msg":"request completed"}
+backend-1    | [fetchCamera] basic {
+backend-1    |   method: 'GET',
+backend-1    |   path: '/ISAPI/Streaming/channels/101/picture',
+backend-1    |   status: 401
+backend-1    | }
+backend-1    | [fetchCamera] digest retry {
+backend-1    |   method: 'GET',
+backend-1    |   path: '/ISAPI/Streaming/channels/101/picture',
+backend-1    |   realm: 'IP Camera(GQ271)',
+backend-1    |   qop: 'auth',
+backend-1    |   algorithm: undefined
+backend-1    | }
+backend-1    | [fetchCamera] digest {
+backend-1    |   method: 'GET',
+backend-1    |   path: '/ISAPI/Streaming/channels/101/picture',
+backend-1    |   status: 200
+backend-1    | }
+backend-1    | {"level":30,"time":1779798916463,"pid":1,"hostname":"0e3caf9cc5e9","req":{"id":772,"method":"GET","url":"/api/anpr/snapshot/1a7b13b7-6932-4300-9d18-4eef7fb52045"},"res":{"statusCode":200},"responseTime":113,"msg":"request completed"}
+backend-1    | [fetchCamera] basic {
+backend-1    |   method: 'GET',
+backend-1    |   path: '/ISAPI/Streaming/channels/101/picture',
+backend-1    |   status: 401
+backend-1    | }
+backend-1    | [fetchCamera] digest retry {
+backend-1    |   method: 'GET',
+backend-1    |   path: '/ISAPI/Streaming/channels/101/picture',
+backend-1    |   realm: 'IP Camera(GQ271)',
+backend-1    |   qop: 'auth',
+backend-1    |   algorithm: undefined
+backend-1    | }
+backend-1    | [fetchCamera] digest {
+backend-1    |   method: 'GET',
+backend-1    |   path: '/ISAPI/Streaming/channels/101/picture',
+backend-1    |   status: 200
+backend-1    | }
+backend-1    | {"level":30,"time":1779798917979,"pid":1,"hostname":"0e3caf9cc5e9","req":{"id":773,"method":"GET","url":"/api/anpr/snapshot/1a7b13b7-6932-4300-9d18-4eef7fb52045"},"res":{"statusCode":200},"responseTime":128,"msg":"request completed"}
+tmm@tmm:~/VillaAccess$ 
