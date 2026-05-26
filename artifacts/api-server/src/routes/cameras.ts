@@ -2,7 +2,10 @@ import { Router } from "express";
 import { db } from "@workspace/db";
 import { camerasTable, entrancesTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
-import { requireAuth, requireWriteAccess } from "./auth";
+import { requireAuth, requireWriteAccess, requireRole } from "./auth";
+
+const adminOnly = requireRole("admin");
+const opOrAdmin = requireRole("admin", "operator");
 import { createAdapter } from "../lib/cameras/factory";
 import { eventBus } from "../lib/events";
 
@@ -69,7 +72,7 @@ router.get("/:id", requireAuth, async (req, res) => {
 
 // ─── POST /cameras ────────────────────────────────────────────────────────────
 
-router.post("/", requireAuth, requireWriteAccess(), async (req, res) => {
+router.post("/", requireAuth, adminOnly, async (req, res) => {
   const t0 = Date.now();
   console.log("[cameras.create] 1/6 route entered", { ip: req.body?.ip_address, name: req.body?.name });
   try {
@@ -158,7 +161,7 @@ router.post("/", requireAuth, requireWriteAccess(), async (req, res) => {
 
 // ─── PATCH /cameras/:id ───────────────────────────────────────────────────────
 
-router.patch("/:id", requireAuth, requireWriteAccess(), async (req, res) => {
+router.patch("/:id", requireAuth, adminOnly, async (req, res) => {
   const c = await loadCamera(req.params.id);
   if (!c) { res.status(404).json({ detail: "Camera not found" }); return; }
 
@@ -220,7 +223,7 @@ router.patch("/:id", requireAuth, requireWriteAccess(), async (req, res) => {
 
 // ─── DELETE /cameras/:id ──────────────────────────────────────────────────────
 
-router.delete("/:id", requireAuth, requireWriteAccess(), async (req, res) => {
+router.delete("/:id", requireAuth, adminOnly, async (req, res) => {
   const c = await loadCamera(req.params.id);
   if (!c) { res.status(404).json({ detail: "Camera not found" }); return; }
   await db.delete(camerasTable).where(eq(camerasTable.id, req.params.id));
@@ -291,7 +294,7 @@ router.get("/:id/status", requireAuth, async (req, res) => {
   res.json({ camera_id: c.id, camera_name: c.name, ...result });
 });
 
-router.post("/:id/gate", requireAuth, async (req: any, res) => {
+router.post("/:id/gate", requireAuth, opOrAdmin, async (req: any, res) => {
   const c = await loadCamera(req.params.id);
   if (!c) { res.status(404).json({ detail: "Camera not found" }); return; }
 

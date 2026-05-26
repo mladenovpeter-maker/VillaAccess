@@ -44,9 +44,14 @@ router.use("/vehicles",      requireAuth,  writeAccess,    vehiclesRouter);
 
 // Admin only
 router.use("/entrances",        requireAuth, adminOnly, entrancesRouter);
-router.use("/intercoms",        requireAuth, adminOnly, intercomsRouter);
-router.use("/cameras",          requireAuth, adminOnly, camerasRouter);
-router.use("/locks",            requireAuth, adminOnly, locksRouter);
+// Intercoms / cameras / locks: list+status readable to all authed users
+// (Quick Controls page needs them); write/test routes are admin-guarded
+// per-route inside each router, and the trigger actions
+// (POST /intercoms/:id/open, POST /cameras/:id/gate) are intentionally
+// open to operator + admin.
+router.use("/intercoms",        requireAuth, intercomsRouter);
+router.use("/cameras",          requireAuth, camerasRouter);
+router.use("/locks",            requireAuth, locksRouter);
 router.use("/diagnostics",      requireAuth, adminOnly, diagnosticsRouter);
 router.use("/settings",         requireAuth, adminOnly, settingsRouter);
 router.use("/export",           requireAuth, adminOnly, exportRouter);

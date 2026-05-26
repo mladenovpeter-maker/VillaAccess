@@ -22,7 +22,10 @@ import { Router } from "express";
 import { db } from "@workspace/db";
 import { smartLocksTable, villasTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
-import { requireAuth, requireWriteAccess } from "./auth";
+import { requireAuth, requireWriteAccess, requireRole } from "./auth";
+
+const adminOnly = requireRole("admin");
+void requireWriteAccess;
 import { createLockAdapter } from "../lib/locks/factory";
 import {
   isTuyaConfigured,
@@ -107,7 +110,7 @@ router.get("/:id", requireAuth, async (req, res) => {
 
 // ─── POST /locks (admin) ─────────────────────────────────────────────────────
 
-router.post("/", requireAuth, requireWriteAccess(), async (req, res) => {
+router.post("/", requireAuth, adminOnly, async (req, res) => {
   const { name, villa_id, protocol, tuya_device_id } = req.body ?? {};
   if (!name || typeof name !== "string") {
     res.status(400).json({ detail: "name is required" });
@@ -163,7 +166,7 @@ router.post("/", requireAuth, requireWriteAccess(), async (req, res) => {
 
 // ─── PATCH /locks/:id (admin) ────────────────────────────────────────────────
 
-router.patch("/:id", requireAuth, requireWriteAccess(), async (req, res) => {
+router.patch("/:id", requireAuth, adminOnly, async (req, res) => {
   const l = await loadLock(req.params.id);
   if (!l) {
     res.status(404).json({ detail: "Smart lock not found" });
@@ -211,7 +214,7 @@ router.patch("/:id", requireAuth, requireWriteAccess(), async (req, res) => {
 
 // ─── DELETE /locks/:id (admin) ───────────────────────────────────────────────
 
-router.delete("/:id", requireAuth, requireWriteAccess(), async (req, res) => {
+router.delete("/:id", requireAuth, adminOnly, async (req, res) => {
   const l = await loadLock(req.params.id);
   if (!l) {
     res.status(404).json({ detail: "Smart lock not found" });

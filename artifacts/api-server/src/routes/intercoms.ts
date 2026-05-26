@@ -2,7 +2,10 @@ import { Router } from "express";
 import { db } from "@workspace/db";
 import { intercomsTable, entrancesTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
-import { requireAuth } from "./auth";
+import { requireAuth, requireRole } from "./auth";
+
+const adminOnly = requireRole("admin");
+const opOrAdmin = requireRole("admin", "operator");
 import { z } from "zod";
 import { eventBus } from "../lib/events";
 
@@ -73,7 +76,7 @@ const createSchema = z.object({
   notes:            z.string().optional().nullable(),
 });
 
-router.post("/", requireAuth, async (req, res) => {
+router.post("/", requireAuth, adminOnly, async (req, res) => {
   const body = createSchema.safeParse(req.body);
   if (!body.success) { res.status(400).json({ detail: "Invalid request", errors: body.error.issues }); return; }
 
@@ -106,7 +109,7 @@ router.post("/", requireAuth, async (req, res) => {
 
 // ─── PATCH /intercoms/:id ─────────────────────────────────────────────────────
 
-router.patch("/:id", requireAuth, async (req, res) => {
+router.patch("/:id", requireAuth, adminOnly, async (req, res) => {
   const rows = await db.select().from(intercomsTable).where(eq(intercomsTable.id, req.params.id)).limit(1);
   if (!rows[0]) { res.status(404).json({ detail: "Intercom not found" }); return; }
 
@@ -128,7 +131,7 @@ router.patch("/:id", requireAuth, async (req, res) => {
 
 // ─── DELETE /intercoms/:id ────────────────────────────────────────────────────
 
-router.delete("/:id", requireAuth, async (req, res) => {
+router.delete("/:id", requireAuth, adminOnly, async (req, res) => {
   const rows = await db.select().from(intercomsTable).where(eq(intercomsTable.id, req.params.id)).limit(1);
   if (!rows[0]) { res.status(404).json({ detail: "Intercom not found" }); return; }
   await db.delete(intercomsTable).where(eq(intercomsTable.id, req.params.id));
@@ -137,7 +140,7 @@ router.delete("/:id", requireAuth, async (req, res) => {
 
 // ─── POST /intercoms/:id/open ─────────────────────────────────────────────────
 
-router.post("/:id/open", requireAuth, async (req: any, res) => {
+router.post("/:id/open", requireAuth, opOrAdmin, async (req: any, res) => {
   const rows = await db.select().from(intercomsTable).where(eq(intercomsTable.id, req.params.id)).limit(1);
   if (!rows[0]) { res.status(404).json({ detail: "Door controller not found" }); return; }
   const ic = rows[0];
@@ -209,7 +212,7 @@ router.post("/:id/open", requireAuth, async (req: any, res) => {
 
 // ─── POST /intercoms/:id/test-connectivity ────────────────────────────────────
 
-router.post("/:id/test-connectivity", requireAuth, async (req, res) => {
+router.post("/:id/test-connectivity", requireAuth, adminOnly, async (req, res) => {
   const rows = await db.select().from(intercomsTable).where(eq(intercomsTable.id, req.params.id)).limit(1);
   if (!rows[0]) { res.status(404).json({ detail: "Intercom not found" }); return; }
   const ic = rows[0];
@@ -252,7 +255,7 @@ router.post("/:id/test-connectivity", requireAuth, async (req, res) => {
 
 // ─── POST /intercoms/:id/test-pin-sync ───────────────────────────────────────
 
-router.post("/:id/test-pin-sync", requireAuth, async (req, res) => {
+router.post("/:id/test-pin-sync", requireAuth, adminOnly, async (req, res) => {
   const rows = await db.select().from(intercomsTable).where(eq(intercomsTable.id, req.params.id)).limit(1);
   if (!rows[0]) { res.status(404).json({ detail: "Intercom not found" }); return; }
   const ic = rows[0];
