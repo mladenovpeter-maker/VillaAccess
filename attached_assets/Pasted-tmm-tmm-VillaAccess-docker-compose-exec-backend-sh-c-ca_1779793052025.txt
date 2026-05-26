@@ -1,0 +1,46 @@
+tmm@tmm:~/VillaAccess$ docker compose exec backend sh -c 'cat > /tmp/p.cjs << "PROBE_EOF"
+const crypto = require("crypto");
+const ID = process.env.TUYA_ACCESS_ID, SEC = process.env.TUYA_ACCESS_SECRET;
+const HOST = "https://openapi.tuyaeu.com";
+const DEV = process.argv[2];
+const sign = (s, k) => crypto.createHmac("sha256", k).update(s).digest("hex").toUpperCase();
+const sha = b => crypto.createHash("sha256").update(b||"").digest("hex");
+async function token() {
+  const t = Date.now().toString();
+  const p = "/v1.0/token?grant_type=1";
+  const s = sign(`${ID}${t}GET\n${sha("")}\n\n${p}`, SEC);
+  const r = await fetch(HOST+p, { headers: { client_id: ID, sign: s, t, sign_method: "HMAC-SHA256" }});
+  return (await r.json()).result.access_token;
+}
+async function req(tok, method, p, body) {
+  const t = Date.now().toString();
+  const b = body ? JSON.stringify(body) : "";
+  const s = sign(`${ID}${tok}${t}${method}\n${sha(b)}\n\n${p}`, SEC);
+  const opts = { method, headers: { client_id: ID, access_token: tok, sign: s, t, sign_method: "HMAC-SHA256" }};
+  if (body) { opts.headers["Content-Type"] = "application/json"; opts.body = b; }
+  return (await fetch(HOST+p, opts)).json();
+}
+function encPin(pin, sk) {
+  const c = crypto.createCipheriv("aes-128-ecb", sk, null); c.setAutoPadding(true);
+  return Buffer.concat([c.update(pin, "utf8"), c.final()]).toString("hex");
+}
+function decTicket(hex) {
+  const key = Buffer.from(SEC.slice(0, 16), "utf8");
+  const d = crypto.createDecipheriv("aes-128-ecb", key, null); d.setAutoPadding(false);
+  return Buffer.concat([d.update(Buffer.from(hex, "hex")), d.final()]).subarray(0, 16);
+}
+(async () => {
+node /tmp/p.cjs bf2a36495645512355s2na' e.message));gify(r));or-lock/temp-password`, body);
+WARN[0000] /home/tmm/VillaAccess/docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion 
+PIN len=4: {"code":1109,"msg":"param is illegal ,please check it","success":false,"t":1779793030517,"tid":"a5094b3d58f111f18f256e9984e9d316"}
+PIN len=6: {"code":1109,"msg":"param is illegal ,please check it","success":false,"t":1779793030730,"tid":"a52ace5458f111f19fb6e238084b3b88"}
+PIN len=8: {"success":true,"t":1779793030909,"tid":"a54ab73058f111f19fb6e238084b3b88"}
+tmm@tmm:~/VillaAccess$ docker compose ps
+WARN[0000] /home/tmm/VillaAccess/docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion 
+NAME                        IMAGE                           COMMAND                  SERVICE       CREATED         STATUS                   PORTS
+villaaccess-ai-worker-1     villaaccess-ai-worker           "python -u worker.py"    ai-worker     19 hours ago    Up 19 hours              
+villaaccess-backend-1       villaaccess-backend             "docker-entrypoint.s…"   backend       7 minutes ago   Up 6 minutes (healthy)   8080/tcp
+villaaccess-cloudflared-1   cloudflare/cloudflared:latest   "cloudflared --no-au…"   cloudflared   18 hours ago    Up 18 hours              
+villaaccess-frontend-1      villaaccess-frontend            "/docker-entrypoint.…"   frontend      19 hours ago    Up 19 hours              0.0.0.0:3000->80/tcp, [::]:3000->80/tcp
+villaaccess-postgres-1      postgres:16-alpine              "docker-entrypoint.s…"   postgres      19 hours ago    Up 19 hours (healthy)    5432/tcp
+tmm@tmm:~/VillaAccess$ 
