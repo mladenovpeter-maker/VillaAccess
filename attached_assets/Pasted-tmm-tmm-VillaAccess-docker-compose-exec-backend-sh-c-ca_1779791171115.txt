@@ -1,0 +1,32 @@
+tmm@tmm:~/VillaAccess$ docker compose exec backend sh -c 'cat > /tmp/tuya-path-probe.cjs << "PROBE_EOF"
+const crypto = require("crypto");
+const ID = process.env.TUYA_ACCESS_ID, SEC = process.env.TUYA_ACCESS_SECRET;
+const HOST = "https://openapi.tuyaeu.com";
+const DEV = process.argv[2] || "bf56a0fe51239d19aeelmi";
+const sign = (s, k) => crypto.createHmac("sha256", k).update(s).digest("hex").toUpperCase();
+const sha = b => crypto.createHash("sha256").update(b||"").digest("hex");
+async function token() {
+  const t = Date.now().toString();
+  const p = "/v1.0/token?grant_type=1";
+  const s = sign(`${ID}${t}GET\n${sha("")}\n\n${p}`, SEC);
+  const r = await fetch(HOST+p, { headers: { client_id: ID, sign: s, t, sign_method: "HMAC-SHA256" }});
+  const j = await r.json();
+  if (!j.success) throw new Error(`Token ${j.code} ${j.msg}`);
+  return j.result.access_token;
+}
+async function get(tok, p) {
+  const t = Date.now().toString();
+  const s = sign(`${ID}${tok}${t}GET\n${sha("")}\n\n${p}`, SEC);
+  const r = await fetch(HOST+p, { headers: { client_id: ID, access_token: tok, sign: s, t, sign_method: "HMAC-SHA256" }});
+node /tmp/tuya-path-probe.cjs bf56a0fe51239d19aeelmi'`);n`);d-ticket`,
+WARN[0000] /home/tmm/VillaAccess/docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion 
+Probing password-ticket paths for bf56a0fe51239d19aeelmi
+
+  ❌ 1108   /v1.0/devices/bf56a0fe51239d19aeelmi/door-lock/password-ticket  uri path invalid
+  ❌ 1108   /v1.0/smart-lock/devices/bf56a0fe51239d19aeelmi/password-ticket  uri path invalid
+  ❌ 1108   /v1.0/smart-lock/devices/bf56a0fe51239d19aeelmi/password-tickets  uri path invalid
+  ❌ 1108   /v2.0/cloud/smart-lock/door-lock/devices/bf56a0fe51239d19aeelmi/password-ticket  uri path invalid
+  ❌ 1108   /v1.1/devices/bf56a0fe51239d19aeelmi/door-lock/password-ticket  uri path invalid
+  ✅ OK     /v1.0/devices/bf56a0fe51239d19aeelmi/door-lock/temp-passwords  
+  ❌ 1108   /v1.0/smart-lock/devices/bf56a0fe51239d19aeelmi/password/ticket  uri path invalid
+tmm@tmm:~/VillaAccess$ 
