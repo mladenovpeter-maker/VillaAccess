@@ -1,0 +1,35 @@
+tmm@tmm:~/VillaAccess$ docker logs --tail 30 villaaccess-ai-worker-1
+[13:43:45] [WARNING] snapshot 1a7b13b7-6932-4300-9d18-4eef7fb52045 → HTTP 502
+[14:08:51] [INFO] Loading YOLOv8 plate detector from /app/models/license_plate_detector.pt ...
+[14:08:52] [INFO] YOLOv8 detector ready
+[14:08:52] [INFO] Initialising Tesseract OCR (lang=eng, psm=8) ...
+[14:08:53] [INFO] Tesseract OCR ready (version=5.5.0)
+[14:08:53] [INFO] ANPR worker starting · api=http://backend:8080 · refresh=30s
+[14:08:53] [INFO] [Вход Юг] polling started (interval=1500ms, min_conf=70)
+[14:09:47] [INFO] [1a7b13b7-6932-4300-9d18-4eef7fb52045] YOLO box=(920,659,1660,863) shrunk=(1008,699,1572,823) det_conf=0.27 → 1 OCR candidate(s)
+[14:09:47] [INFO] [1a7b13b7-6932-4300-9d18-4eef7fb52045] OCR raw='C3BE7T' normalised='C3BE7T' conf=0.0 plausible=True
+[14:09:48] [INFO] [1a7b13b7-6932-4300-9d18-4eef7fb52045] YOLO box=(925,648,1649,878) shrunk=(1011,694,1563,832) det_conf=0.29 → 1 OCR candidate(s)
+[14:09:48] [INFO] [1a7b13b7-6932-4300-9d18-4eef7fb52045] OCR raw='5A3477M' normalised='5A3477M' conf=0.0 plausible=True
+[14:09:50] [INFO] [1a7b13b7-6932-4300-9d18-4eef7fb52045] YOLO box=(913,653,1647,882) shrunk=(1001,698,1559,837) det_conf=0.31 → 1 OCR candidate(s)
+[14:09:50] [INFO] [1a7b13b7-6932-4300-9d18-4eef7fb52045] OCR raw='CA3477M' normalised='CA3477M' conf=0.0 plausible=True
+[14:09:56] [INFO] [1a7b13b7-6932-4300-9d18-4eef7fb52045] YOLO box=(878,503,1568,732) shrunk=(960,548,1486,687) det_conf=0.31 → 1 OCR candidate(s)
+[14:09:56] [INFO] [1a7b13b7-6932-4300-9d18-4eef7fb52045] OCR raw='CA3477M' normalised='CA3477M' conf=0.0 plausible=True
+[14:12:36] [INFO] [1a7b13b7-6932-4300-9d18-4eef7fb52045] YOLO box=(311,894,373,965) shrunk=(318,908,366,951) det_conf=0.27 → 1 OCR candidate(s)
+[14:12:36] [INFO] [1a7b13b7-6932-4300-9d18-4eef7fb52045] OCR raw='7' normalised='7' conf=30.0 plausible=False
+[14:14:09] [INFO] Loading YOLOv8 plate detector from /app/models/license_plate_detector.pt ...
+[14:14:10] [INFO] YOLOv8 detector ready
+[14:14:10] [INFO] Initialising Tesseract OCR (lang=eng, psm=8) ...
+[14:14:10] [INFO] Tesseract OCR ready (version=5.5.0)
+[14:14:10] [INFO] ANPR worker starting · api=http://backend:8080 · refresh=30s
+[14:14:10] [INFO] [Вход Юг] polling started (interval=1500ms, min_conf=70)
+[14:15:24] [INFO] [1a7b13b7-6932-4300-9d18-4eef7fb52045] YOLO box=(274,895,389,969) shrunk=(287,909,376,955) det_conf=0.27 → 0 OCR candidate(s)
+[14:16:56] [INFO] Loading YOLOv8 plate detector from /app/models/license_plate_detector.pt ...
+[14:16:57] [INFO] YOLOv8 detector ready
+[14:16:57] [INFO] Initialising Tesseract OCR (lang=eng, psm=8) ...
+[14:16:57] [INFO] Tesseract OCR ready (version=5.5.0)
+[14:16:57] [INFO] ANPR worker starting · api=http://backend:8080 · refresh=30s
+[14:16:57] [INFO] [Вход Юг] polling started (interval=1500ms, min_conf=70)
+tmm@tmm:~/VillaAccess$ docker logs --since 20s villaaccess-ai-worker-1 | tail -30
+[14:19:02] [INFO] [1a7b13b7-6932-4300-9d18-4eef7fb52045] YOLO box=(1119,467,1775,713) shrunk=(1197,516,1697,664) det_conf=0.61 → 1 OCR candidate(s)
+[14:19:02] [INFO] [1a7b13b7-6932-4300-9d18-4eef7fb52045] OCR raw='CA3477M' normalised='CA3477M' conf=0.0 plausible=True
+tmm@tmm:~/VillaAccess$ 
