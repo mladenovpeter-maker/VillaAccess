@@ -1,0 +1,41 @@
+tmm@tmm:~/VillaAccess$ date
+docker ps | grep villaaccess
+docker logs --tail 30 villaaccess-ai-worker-1
+docker logs --tail 20 villaaccess-backend-1 2>&1 | grep -iE "error|fail|warn"
+Tue May 26 03:08:31 PM UTC 2026
+3c04a0d038b4   cloudflare/cloudflared:latest   "cloudflared --no-au…"   About an hour ago   Up About an hour                                                   villaaccess-cloudflared-1
+0e3caf9cc5e9   villaaccess-backend             "docker-entrypoint.s…"   3 hours ago         Up 19 minutes (healthy)   8080/tcp                                 villaaccess-backend-1
+ff5a02237ff9   villaaccess-ai-worker           "python -u worker.py"    3 hours ago         Up 23 minutes                                                      villaaccess-ai-worker-1
+e6abd32433dd   villaaccess-frontend            "/docker-entrypoint.…"   23 hours ago        Up 23 hours               0.0.0.0:3000->80/tcp, [::]:3000->80/tcp  villaaccess-frontend-1
+7492f8aaadc6   postgres:16-alpine              "docker-entrypoint.s…"   23 hours ago        Up 23 hours (healthy)     5432/tcp                                 villaaccess-postgres-1
+[15:01:38] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(1799,665,1867,706) shrunk=(1807,673,1859,698) det_conf=0.28 → 1 OCR candidate(s)
+[15:01:38] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] OCR raw='OE' normalised='OE' conf=21.0 plausible=False
+[15:01:38] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(1798,665,1867,706) shrunk=(1806,673,1859,698) det_conf=0.26 → 0 OCR candidate(s)
+[15:01:39] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(1796,664,1867,706) shrunk=(1804,672,1859,698) det_conf=0.27 → 1 OCR candidate(s)
+[15:01:39] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] OCR raw='OP' normalised='OP' conf=0.0 plausible=False
+[15:01:40] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(1792,664,1867,706) shrunk=(1801,672,1858,698) det_conf=0.32 → 1 OCR candidate(s)
+[15:01:40] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] OCR raw='P' normalised='P' conf=0.0 plausible=False
+[15:01:40] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(1797,665,1867,706) shrunk=(1805,673,1859,698) det_conf=0.27 → 1 OCR candidate(s)
+[15:01:40] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] OCR raw='P' normalised='P' conf=0.0 plausible=False
+[15:01:41] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(1789,665,1867,706) shrunk=(1798,673,1858,698) det_conf=0.30 → 1 OCR candidate(s)
+[15:01:41] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] OCR raw='P' normalised='P' conf=0.0 plausible=False
+[15:01:42] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(1791,665,1867,706) shrunk=(1800,673,1858,698) det_conf=0.33 → 0 OCR candidate(s)
+[15:01:43] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(1794,664,1867,706) shrunk=(1802,672,1859,698) det_conf=0.30 → 0 OCR candidate(s)
+[15:01:44] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(1794,665,1866,706) shrunk=(1802,673,1858,698) det_conf=0.25 → 0 OCR candidate(s)
+[15:01:45] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(1800,665,1867,706) shrunk=(1808,673,1859,698) det_conf=0.26 → 0 OCR candidate(s)
+[15:01:51] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(1795,664,1867,706) shrunk=(1803,672,1859,698) det_conf=0.27 → 0 OCR candidate(s)
+[15:02:04] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(717,459,1150,594) shrunk=(768,486,1099,567) det_conf=0.25 → 1 OCR candidate(s)
+[15:02:04] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] OCR raw='CA3477' normalised='CA3477' conf=0.0 plausible=True
+[15:02:06] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(699,462,1117,593) shrunk=(749,488,1067,567) det_conf=0.46 → 1 OCR candidate(s)
+[15:02:06] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] OCR raw='CA3477' normalised='CA3477' conf=0.0 plausible=True
+[15:02:36] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(836,657,893,691) shrunk=(842,663,887,685) det_conf=0.25 → 1 OCR candidate(s)
+[15:02:36] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] OCR raw='7' normalised='7' conf=0.0 plausible=False
+[15:02:38] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(749,657,818,691) shrunk=(757,663,810,685) det_conf=0.30 → 0 OCR candidate(s)
+[15:02:53] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(812,656,854,688) shrunk=(817,662,849,682) det_conf=0.25 → 0 OCR candidate(s)
+[15:02:59] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(811,657,857,690) shrunk=(816,663,852,684) det_conf=0.31 → 0 OCR candidate(s)
+[15:03:05] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(810,657,857,691) shrunk=(815,663,852,685) det_conf=0.26 → 0 OCR candidate(s)
+[15:05:40] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(801,649,845,680) shrunk=(806,655,840,674) det_conf=0.27 → 0 OCR candidate(s)
+[15:06:37] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(179,717,237,763) shrunk=(185,726,231,754) det_conf=0.27 → 1 OCR candidate(s)
+[15:06:37] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] OCR raw='P' normalised='P' conf=0.0 plausible=False
+[15:06:39] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(179,718,236,763) shrunk=(185,727,230,754) det_conf=0.26 → 0 OCR candidate(s)
+tmm@tmm:~/VillaAccess$ 
