@@ -1,0 +1,56 @@
+tmm@tmm:~/VillaAccess$ docker compose exec postgres psql -U villa_user villa_access -c "\d vehicles"
+WARN[0000] /home/tmm/VillaAccess/docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion 
+                                          Table "public.vehicles"
+      Column      |            Type             | Collation | Nullable |              Default               
+------------------+-----------------------------+-----------+----------+------------------------------------
+ id               | text                        |           | not null | 
+ license_plate    | text                        |           | not null | 
+ plate_region     | text                        |           |          | 
+ make             | text                        |           |          | 
+ model            | text                        |           |          | 
+ color            | text                        |           |          | 
+ vehicle_type     | vehicle_type                |           |          | 
+ owner_name       | text                        |           |          | 
+ ai_fingerprint   | jsonb                       |           |          | 
+ confidence_score | real                        |           |          | 
+ status           | vehicle_status              |           | not null | 'unknown'::vehicle_status
+ access_type      | vehicle_access_type         |           | not null | 'reservation'::vehicle_access_type
+ blacklist_reason | text                        |           |          | 
+ blacklisted_at   | timestamp without time zone |           |          | 
+ blacklisted_by   | text                        |           |          | 
+ first_seen       | timestamp without time zone |           |          | 
+ last_seen        | timestamp without time zone |           |          | 
+ total_visits     | integer                     |           | not null | 0
+ snapshot_url     | text                        |           |          | 
+ thumbnail_url    | text                        |           |          | 
+ notes            | text                        |           |          | 
+ created_at       | timestamp without time zone |           | not null | now()
+ updated_at       | timestamp without time zone |           | not null | now()
+ archived_at      | timestamp without time zone |           |          | 
+Indexes: 
+    "vehicles_pkey" PRIMARY KEY, btree (id)
+    "vehicles_archived_at_idx" btree (archived_at)
+    "vehicles_last_seen_idx" btree (last_seen)
+    "vehicles_license_plate_unique" UNIQUE CONSTRAINT, btree (license_plate)
+    "vehicles_plate_region_idx" btree (plate_region)
+    "vehicles_status_idx" btree (status)
+Referenced by:
+    TABLE "domain_events" CONSTRAINT "domain_events_vehicle_id_vehicles_id_fk" FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON DELETE SET NULL
+         
+tmm@tmm:~/VillaAccess$ 
+tmm@tmm:~/VillaAccess$ 
+tmm@tmm:~/VillaAccess$ 
+tmm@tmm:~/VillaAccess$ 
+tmm@tmm:~/VillaAccess$ 
+tmm@tmm:~/VillaAccess$ 
+tmm@tmm:~/VillaAccess$ 
+tmm@tmm:~/VillaAccess$ 
+tmm@tmm:~/VillaAccess$ docker compose exec postgres psql -U villa_user villa_access -c \
+"SELECT id, license_plate, length(license_plate) AS len FROM vehicles ORDER BY created_at DESC LIMIT 10;"
+WARN[0000] /home/tmm/VillaAccess/docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion 
+                  id                  | license_plate | len 
+--------------------------------------+---------------+-----
+ 0ca9d63d-93c0-4776-8161-49e2ff895f68 | CA3477MМ      |   8
+(1 row)
+
+tmm@tmm:~/VillaAccess$ 
