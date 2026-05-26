@@ -1,0 +1,72 @@
+tmm@tmm:~/VillaAccess$ git pull
+docker compose build backend ai-worker
+docker compose up -d backend ai-worker
+docker compose logs -f backend ai-worker | grep -iE 'no-match|ai-fallback|similarity|denied|allowed'
+error: Pulling is not possible because you have unmerged files.
+hint: Fix them up in the work tree, and then use 'git add/rm <file>'
+hint: as appropriate to mark resolution and make a commit.
+fatal: Exiting because of an unresolved conflict.
+WARN[0000] /home/tmm/VillaAccess/docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion 
+[+] Building 0.8s (28/28) FINISHED                                                                               
+ => [internal] load local bake definitions                                                                  0.0s
+ => => reading from stdin 1.41kB                                                                            0.0s
+ => [backend internal] load build definition from Dockerfile                                                0.0s
+ => => transferring dockerfile: 1.19kB                                                                      0.0s
+ => [ai-worker internal] load build definition from Dockerfile                                              0.0s
+ => => transferring dockerfile: 1.88kB                                                                      0.0s
+ => [backend internal] load metadata for docker.io/library/node:22-alpine                                   0.4s
+ => [ai-worker internal] load metadata for docker.io/library/python:3.11-slim                               0.4s
+ => [ai-worker internal] load .dockerignore                                                                 0.0s
+ => => transferring context: 251B                                                                           0.0s
+ => [backend builder 1/6] FROM docker.io/library/node:22-alpine@sha256:968df39aedcea65eeb078fb336ed7191baf  0.0s
+ => => resolve docker.io/library/node:22-alpine@sha256:968df39aedcea65eeb078fb336ed7191baf48f972b447971139  0.0s
+ => [backend internal] load build context                                                                   0.0s
+ => => transferring context: 31.37kB                                                                        0.0s
+ => [ai-worker 1/7] FROM docker.io/library/python:3.11-slim@sha256:a3ab0b966bc4e91546a033e22093cb840908979  0.0s
+ => => resolve docker.io/library/python:3.11-slim@sha256:a3ab0b966bc4e91546a033e22093cb840908979487a9fc0e6  0.0s
+ => [ai-worker internal] load build context                                                                 0.0s
+ => => transferring context: 164B                                                                           0.0s
+ => CACHED [ai-worker 2/7] WORKDIR /app                                                                     0.0s
+ => CACHED [ai-worker 3/7] RUN apt-get update && apt-get install -y --no-install-recommends     libglib2.0  0.0s
+ => CACHED [ai-worker 4/7] COPY docker/ai-worker/requirements.txt ./requirements.txt                        0.0s
+ => CACHED [ai-worker 5/7] RUN pip install --no-cache-dir -r requirements.txt                               0.0s
+ => CACHED [ai-worker 6/7] RUN mkdir -p /app/models &&     curl -fsSL "https://github.com/Muhammad-Zeerak-  0.0s
+ => CACHED [ai-worker 7/7] COPY docker/ai-worker/worker.py ./worker.py                                      0.0s
+ => [ai-worker] exporting to image                                                                          0.1s
+ => => exporting layers                                                                                     0.0s
+ => => exporting manifest sha256:6aa7845befdbd6cc2a9c8db0fbdb46b31b26ddcf64c8c52684d4be807d99f94f           0.0s
+ => => exporting config sha256:7c6684c58d13c366de41e3a416235a0ebd8e66a5782f617687a18fae7174e54b             0.0s
+ => => exporting attestation manifest sha256:cdf94125851fb7100dabf2df4fbd24c08aa43f636babbb9602972981d0444  0.0s
+ => => exporting manifest list sha256:d6319866d8dd2206011788aa320bb3abb734668b12bd2eefa8a435a1cd2edd5f      0.0s
+ => => naming to docker.io/library/villaaccess-ai-worker:latest                                             0.0s
+ => => unpacking to docker.io/library/villaaccess-ai-worker:latest                                          0.0s
+ => CACHED [backend runner 2/4] WORKDIR /app                                                                0.0s
+ => CACHED [backend builder 2/6] RUN npm install -g pnpm@10 --quiet                                         0.0s
+ => CACHED [backend builder 3/6] WORKDIR /workspace                                                         0.0s
+ => CACHED [backend builder 4/6] COPY . .                                                                   0.0s
+ => CACHED [backend builder 5/6] RUN pnpm install --frozen-lockfile                                         0.0s
+ => CACHED [backend builder 6/6] RUN pnpm --filter @workspace/api-server run build                          0.0s
+ => CACHED [backend runner 3/4] COPY --from=builder /workspace/artifacts/api-server/dist ./dist             0.0s
+ => CACHED [backend runner 4/4] RUN mkdir -p uploads                                                        0.0s
+ => [backend] exporting to image                                                                            0.1s
+ => => exporting layers                                                                                     0.0s
+ => => exporting manifest sha256:975cda6dc3a055f0fea0c577c040a41fb02fde162e861bbee1c8f370cf0f0c3d           0.0s
+ => => exporting config sha256:33e8c0fbf579cc2ddd05a7b4b0f2da85d15c0ee5603a1fb967bf09eb613da11c             0.0s
+ => => exporting attestation manifest sha256:5ed24273a772245c6ce4a8e40a79f3f7e31b83dfdeee1041dc79388ec8ab7  0.0s
+ => => exporting manifest list sha256:996bd3614d958d4675f920ab6847ffb4cecd6f9cbbc222682a8fa18b7974ad74      0.0s
+ => => naming to docker.io/library/villaaccess-backend:latest                                               0.0s
+ => => unpacking to docker.io/library/villaaccess-backend:latest                                            0.0s
+ => [ai-worker] resolving provenance for metadata file                                                      0.0s
+ => [backend] resolving provenance for metadata file                                                        0.0s
+[+] build 2/3
+ ⠙ Image villaaccess-migrate   Building                                                                      0.8s
+ ✔ Image villaaccess-backend   Built                                                                         0.8s
+ ✔ Image villaaccess-ai-worker Built                                                                         0.8s
+WARN[0000] /home/tmm/VillaAccess/docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion 
+[+] up 4/4
+ ✔ Container villaaccess-postgres-1  Healthy                                                                10.9s
+ ✔ Container villaaccess-backend-1   Healthy                                                                17.1s
+ ✔ Container villaaccess-ai-worker-1 Started                                                                 7.0s
+ ✔ Container villaaccess-migrate-1   Exited                                                                  0.6s
+WARN[0000] /home/tmm/VillaAccess/docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion 
+
