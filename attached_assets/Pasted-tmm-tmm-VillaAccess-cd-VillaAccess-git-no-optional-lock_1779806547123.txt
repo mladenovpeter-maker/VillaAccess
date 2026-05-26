@@ -1,0 +1,42 @@
+tmm@tmm:~/VillaAccess$ cd ~/VillaAccess && git --no-optional-locks log --oneline --since="3 hours ago" 2>/dev/null
+git --no-optional-locks diff HEAD~5 -- docker/ai-worker/worker.py artifacts/api-server/src/services/anpr.ts artifacts/api-server/src/services/ai-fallback.ts 2>/dev/null | head -30
+a57f1ff (HEAD -> main, origin/main, origin/HEAD) feat(ai-fallback): fuzzy-match AI verdict plate against expected plates
+8769671 Improve license plate recognition accuracy and efficiency
+e0b9549 Rebuild application after resolving git conflicts and disk space issues
+b83bb23 Update logs to show AI fallback and similarity gate outcomes
+7577c64 Free up disk space and clean up Docker system
+4f397a2 Provide instructions to resolve git conflicts and rebuild services
+921177d Resolve conflicts and update application to include latest changes
+a02356a fix(ai-fallback): code review fixes — proper similarity, atomic trigger, validator-aligned grace
+ec02196 feat(ai-fallback): fast window (30s) + similarity gate before OpenAI call
+diff --git a/artifacts/api-server/src/services/ai-fallback.ts b/artifacts/api-server/src/services/ai-fallback.ts
+index 722c916..ca8e21c 100644
+--- a/artifacts/api-server/src/services/ai-fallback.ts
++++ b/artifacts/api-server/src/services/ai-fallback.ts
+@@ -70,6 +70,15 @@ const MIN_SIMILARITY_PCT = Math.max(
+   Math.min(100, Number(process.env.AI_FALLBACK_MIN_SIMILARITY) || 30),
+ );
+ const AI_CONFIDENCE_MIN = 70;
++// Post-verdict fuzzy match: OpenAI occasionally drops/adds 1 char (e.g.
++// "CA347MM" vs real "CA3477MM"). If exact lookup fails, try fuzzy match
++// against the same expected-plates list used by the similarity gate.
++// Default 75% requires high confidence — only forgives 1 char on ~7-char
++// plates. Disable by setting AI_FALLBACK_FUZZY_MIN=0.
++const AI_PLATE_FUZZY_MIN = Math.max(
++  0,
++  Math.min(100, Number(process.env.AI_FALLBACK_FUZZY_MIN) || 75),
++);
+ const OPENAI_MODEL = "gpt-4o-mini";
+ const OPENAI_TIMEOUT_MS = 25_000;
+ const MAX_SNAPSHOT_BYTES = 8 * 1024 * 1024; // 8 MB per JPEG safety cap
+@@ -704,6 +713,39 @@ async function runAiFallback(
+       .limit(1);
+     vehicle_id = existing[0]?.id ?? null;
+ 
++    // Fuzzy fallback: OpenAI can drop/add 1 char. If exact lookup failed,
++    // compare verdict.plate against the same expected-plates list used by
++    // the similarity gate, and adopt the best match if it clears the
++    // high-confidence fuzzy threshold. This is scoped to the camera's
++    // villas, so it cannot match an unrelated plate.
++    if (!vehicle_id && AI_PLATE_FUZZY_MIN > 0) {
+tmm@tmm:~/VillaAccess$ 
