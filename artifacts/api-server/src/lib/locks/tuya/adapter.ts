@@ -311,20 +311,26 @@ export class TuyaLockAdapter implements LockAdapter {
     const encryptedPin = encryptPin(input.pin, sessionKey);
 
     // Step 4 — create the temp password on the device.
-    // Tuya rejects effective_time <= server's "now" with code 1109 (param is
-    // illegal). When the reservation's valid_from is already in the past
-    // (guest checked in earlier, PIN regenerated mid-stay), bump it forward
-    // by a small safety margin so the API accepts the request.
-    const TUYA_MIN_FUTURE_MS = 60 * 1000;
+    // Tuya constraints discovered empirically for product bxq2o60gxhh2ben6
+    // (type=0 temp password):
+    //   1. effective_time must be strictly in the future (now+0 → 1109)
+    //   2. (invalid_time - effective_time) must be >= ~24h
+    //      (6h / 12h → 1109; 24h+ → ok)
+    // When a reservation's window violates either, bump it minimally so
+    // the API accepts the request. The PIN is still revoked by lock-sync
+    // when the reservation ends, so over-extending invalid_time is safe.
+    const TUYA_MIN_FUTURE_MS    = 60 * 1000;
+    const TUYA_MIN_DURATION_MS  = 24 * 60 * 60 * 1000;
     const earliest = Date.now() + TUYA_MIN_FUTURE_MS;
     const effective = Math.max(toEpochSeconds(input.valid_from), earliest);
+    const invalid   = Math.max(toEpochSeconds(input.valid_to), effective + TUYA_MIN_DURATION_MS);
 
     const body = {
       password:        encryptedPin,
       password_type:   "ticket",
       ticket_id:       ticket.ticket_id,
       effective_time:  effective,
-      invalid_time:    toEpochSeconds(input.valid_to),
+      invalid_time:    invalid,
       name:            input.name.slice(0, 32), // Tuya caps name length
       type:            0,                       // temporary (single-period)
       phone:           "",
