@@ -1,0 +1,28 @@
+tmm@tmm:~/VillaAccess$ docker compose logs --since 30m backend | grep -iE "denied|ai-fallback|recordFailure|capture"
+WARN[0000] /home/tmm/VillaAccess/docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion 
+backend-1  | [ai-fallback] camera=1a7b13b7-6932-4300-9d18-4eef7fb52045 bad snapshot data URL
+backend-1  | [ai-fallback] camera=1a7b13b7-6932-4300-9d18-4eef7fb52045 bad snapshot data URL
+backend-1  | [ai-fallback] camera=1a7b13b7-6932-4300-9d18-4eef7fb52045 bad snapshot data URL
+backend-1  | [ai-fallback] camera=1a7b13b7-6932-4300-9d18-4eef7fb52045 bad snapshot data URL
+backend-1  | [ai-fallback] camera=1a7b13b7-6932-4300-9d18-4eef7fb52045 bad snapshot data URL
+backend-1  | [ai-fallback] camera=1a7b13b7-6932-4300-9d18-4eef7fb52045 bad snapshot data URL
+backend-1  | [ai-fallback] camera=1a7b13b7-6932-4300-9d18-4eef7fb52045 bad snapshot data URL
+tmm@tmm:~/VillaAccess$ docker compose logs --since 30m ai-worker | grep -iE "detection|→ denied|POST"
+WARN[0000] /home/tmm/VillaAccess/docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion 
+ai-worker-1  | [08:23:00] [INFO] detection camera=1a7b13b7-6932-4300-9d18-4eef7fb52045 plate=CA3477 → denied (No reservation found for this vehicle)
+ai-worker-1  | [08:23:01] [INFO] detection camera=1a7b13b7-6932-4300-9d18-4eef7fb52045 plate=A3477 → denied (No reservation found for this vehicle)
+ai-worker-1  | [08:23:10] [INFO] detection camera=1a7b13b7-6932-4300-9d18-4eef7fb52045 plate=CA3477M → denied (No reservation found for this vehicle)
+ai-worker-1  | [08:26:12] [INFO] detection camera=1a7b13b7-6932-4300-9d18-4eef7fb52045 plate=CA3477M → denied (No reservation found for this vehicle)
+ai-worker-1  | [08:26:34] [INFO] detection camera=1a7b13b7-6932-4300-9d18-4eef7fb52045 plate=CA34 → skipped_low_quality (Below plausibility threshold (length/alphanumeric/confidence))
+ai-worker-1  | [08:37:37] [INFO] detection camera=1a7b13b7-6932-4300-9d18-4eef7fb52045 plate=A347 → skipped_low_quality (Below plausibility threshold (length/alphanumeric/confidence))
+ai-worker-1  | [08:37:40] [INFO] detection camera=1a7b13b7-6932-4300-9d18-4eef7fb52045 plate=CA347 → denied (No reservation found for this vehicle)
+ai-worker-1  | [08:37:43] [INFO] detection camera=1a7b13b7-6932-4300-9d18-4eef7fb52045 plate=CA34 → skipped_low_quality (Below plausibility threshold (length/alphanumeric/confidence))
+ai-worker-1  | [08:37:55] [INFO] detection camera=1a7b13b7-6932-4300-9d18-4eef7fb52045 plate=CA347 → skipped_cooldown ()
+ai-worker-1  | [08:39:21] [INFO] detection camera=1a7b13b7-6932-4300-9d18-4eef7fb52045 plate=CA3477 → allowed_relay_ok (Permanent access vehicle)
+ai-worker-1  | [08:39:24] [INFO] detection camera=1a7b13b7-6932-4300-9d18-4eef7fb52045 plate=A3477 → denied (No reservation found for this vehicle)
+ai-worker-1  | [08:39:29] [INFO] detection camera=1a7b13b7-6932-4300-9d18-4eef7fb52045 plate=CA3477 → allowed_relay_ok (Permanent access vehicle)
+ai-worker-1  | [08:39:32] [INFO] detection camera=1a7b13b7-6932-4300-9d18-4eef7fb52045 plate=CA347 → denied (No reservation found for this vehicle)
+tmm@tmm:~/VillaAccess$ docker compose logs --since 30m backend | grep "1a7b13b7" | grep -c denied
+WARN[0000] /home/tmm/VillaAccess/docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion 
+0
+tmm@tmm:~/VillaAccess$ 
