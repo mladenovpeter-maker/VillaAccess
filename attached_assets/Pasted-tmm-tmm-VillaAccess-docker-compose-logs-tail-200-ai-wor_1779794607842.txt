@@ -1,0 +1,43 @@
+tmm@tmm:~/VillaAccess$ docker compose logs --tail=200 ai-worker 2>&1 | tail -30
+echo "---"
+docker compose logs --tail=100 backend | grep -iE 'anpr|detect|denied|allowed|plate' | tail -20
+ai-worker-1  | [11:23:03] [INFO] [1a7b13b7-6932-4300-9d18-4eef7fb52045] OCR raw='00.1;234' normalised='001234' conf=6.6 plausible=False
+ai-worker-1  | [11:23:03] [INFO] [1a7b13b7-6932-4300-9d18-4eef7fb52045] OCR raw="'1;" normalised='1' conf=2.8 plausible=False
+ai-worker-1  | [11:23:04] [INFO] [1a7b13b7-6932-4300-9d18-4eef7fb52045] vehicle_color=yellow
+ai-worker-1  | [11:23:04] [INFO] [1a7b13b7-6932-4300-9d18-4eef7fb52045] YOLO box=(994,249,1614,493) det_conf=0.59 → 5 OCR candidate(s)
+ai-worker-1  | [11:23:04] [INFO] [1a7b13b7-6932-4300-9d18-4eef7fb52045] OCR raw='CA' normalised='CA' conf=95.1 plausible=False
+ai-worker-1  | [11:23:04] [INFO] [1a7b13b7-6932-4300-9d18-4eef7fb52045] OCR raw='77 MI' normalised='77M' conf=78.2 plausible=False
+ai-worker-1  | [11:23:04] [INFO] [1a7b13b7-6932-4300-9d18-4eef7fb52045] OCR raw='Ajmn_ )ual' normalised='AMA' conf=1.4 plausible=False
+ai-worker-1  | [11:23:04] [INFO] [1a7b13b7-6932-4300-9d18-4eef7fb52045] OCR raw='Iiju #+;fmueefei}' normalised='MEEE' conf=3.2 plausible=False
+ai-worker-1  | [11:23:04] [INFO] [1a7b13b7-6932-4300-9d18-4eef7fb52045] OCR raw='4ca?*0' normalised='4CA0' conf=6.9 plausible=True
+ai-worker-1  | [11:23:05] [INFO] [1a7b13b7-6932-4300-9d18-4eef7fb52045] vehicle_color=white
+ai-worker-1  | [11:23:05] [INFO] [1a7b13b7-6932-4300-9d18-4eef7fb52045] YOLO box=(1029,251,1241,424) det_conf=0.59 → 1 OCR candidate(s)
+ai-worker-1  | [11:23:05] [INFO] [1a7b13b7-6932-4300-9d18-4eef7fb52045] OCR raw='CA' normalised='CA' conf=79.1 plausible=False
+ai-worker-1  | [11:23:07] [INFO] [1a7b13b7-6932-4300-9d18-4eef7fb52045] vehicle_color=yellow
+ai-worker-1  | [11:23:07] [INFO] [1a7b13b7-6932-4300-9d18-4eef7fb52045] YOLO box=(1022,234,1658,445) det_conf=0.54 → 2 OCR candidate(s)
+ai-worker-1  | [11:23:07] [INFO] [1a7b13b7-6932-4300-9d18-4eef7fb52045] OCR raw='CA' normalised='CA' conf=88.8 plausible=False
+ai-worker-1  | [11:23:07] [INFO] [1a7b13b7-6932-4300-9d18-4eef7fb52045] OCR raw="'77 MI" normalised='77M' conf=76.7 plausible=False
+ai-worker-1  | [11:23:07] [INFO] [1a7b13b7-6932-4300-9d18-4eef7fb52045] vehicle_color=gray
+ai-worker-1  | [11:23:07] [INFO] [1a7b13b7-6932-4300-9d18-4eef7fb52045] YOLO box=(1036,256,1255,433) det_conf=0.47 → 2 OCR candidate(s)
+ai-worker-1  | [11:23:07] [INFO] [1a7b13b7-6932-4300-9d18-4eef7fb52045] OCR raw='3' normalised='3' conf=49.9 plausible=False
+ai-worker-1  | [11:23:07] [INFO] [1a7b13b7-6932-4300-9d18-4eef7fb52045] OCR raw='CA' normalised='CA' conf=92.5 plausible=False
+ai-worker-1  | [11:23:08] [INFO] [1a7b13b7-6932-4300-9d18-4eef7fb52045] vehicle_color=yellow
+ai-worker-1  | [11:23:09] [INFO] [1a7b13b7-6932-4300-9d18-4eef7fb52045] YOLO box=(1029,219,1664,415) det_conf=0.63 → 2 OCR candidate(s)
+ai-worker-1  | [11:23:09] [INFO] [1a7b13b7-6932-4300-9d18-4eef7fb52045] OCR raw='CA' normalised='CA' conf=84.2 plausible=False
+ai-worker-1  | [11:23:09] [INFO] [1a7b13b7-6932-4300-9d18-4eef7fb52045] OCR raw='77 MI' normalised='77M' conf=55.1 plausible=False
+ai-worker-1  | [11:23:10] [INFO] [1a7b13b7-6932-4300-9d18-4eef7fb52045] vehicle_color=yellow
+ai-worker-1  | [11:23:10] [INFO] [1a7b13b7-6932-4300-9d18-4eef7fb52045] YOLO box=(1037,216,1679,438) det_conf=0.66 → 4 OCR candidate(s)
+ai-worker-1  | [11:23:10] [INFO] [1a7b13b7-6932-4300-9d18-4eef7fb52045] OCR raw='CA' normalised='CA' conf=82.6 plausible=False
+ai-worker-1  | [11:23:10] [INFO] [1a7b13b7-6932-4300-9d18-4eef7fb52045] OCR raw='77 MI' normalised='77M' conf=23.9 plausible=False
+ai-worker-1  | [11:23:10] [INFO] [1a7b13b7-6932-4300-9d18-4eef7fb52045] OCR raw='#v"xWtCcC' normalised='XTCCC' conf=0.1 plausible=False
+ai-worker-1  | [11:23:10] [INFO] [1a7b13b7-6932-4300-9d18-4eef7fb52045] OCR raw='I>' normalised='' conf=0.2 plausible=False
+---
+WARN[0000] /home/tmm/VillaAccess/docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion 
+backend-1  | {"level":30,"time":1779794594511,"pid":1,"hostname":"b67e5f800731","req":{"id":181,"method":"GET","url":"/api/anpr/snapshot/1a7b13b7-6932-4300-9d18-4eef7fb52045"},"res":{"statusCode":200},"responseTime":114,"msg":"request completed"}
+backend-1  | {"level":30,"time":1779794595134,"pid":1,"hostname":"b67e5f800731","req":{"id":182,"method":"GET","url":"/api/anpr/targets"},"res":{"statusCode":200},"responseTime":4,"msg":"request completed"}
+backend-1  | {"level":30,"time":1779794596049,"pid":1,"hostname":"b67e5f800731","req":{"id":183,"method":"GET","url":"/api/anpr/snapshot/1a7b13b7-6932-4300-9d18-4eef7fb52045"},"res":{"statusCode":200},"responseTime":152,"msg":"request completed"}
+backend-1  | {"level":30,"time":1779794597509,"pid":1,"hostname":"b67e5f800731","req":{"id":185,"method":"GET","url":"/api/anpr/snapshot/1a7b13b7-6932-4300-9d18-4eef7fb52045"},"res":{"statusCode":200},"responseTime":111,"msg":"request completed"}
+backend-1  | {"level":30,"time":1779794599052,"pid":1,"hostname":"b67e5f800731","req":{"id":186,"method":"GET","url":"/api/anpr/snapshot/1a7b13b7-6932-4300-9d18-4eef7fb52045"},"res":{"statusCode":200},"responseTime":154,"msg":"request completed"}
+backend-1  | {"level":30,"time":1779794600512,"pid":1,"hostname":"b67e5f800731","req":{"id":187,"method":"GET","url":"/api/anpr/snapshot/1a7b13b7-6932-4300-9d18-4eef7fb52045"},"res":{"statusCode":200},"responseTime":113,"msg":"request completed"}
+backend-1  | {"level":30,"time":1779794602028,"pid":1,"hostname":"b67e5f800731","req":{"id":188,"method":"GET","url":"/api/anpr/snapshot/1a7b13b7-6932-4300-9d18-4eef7fb52045"},"res":{"statusCode":200},"responseTime":129,"msg":"request completed"}
+tmm@tmm:~/VillaAccess$ 
