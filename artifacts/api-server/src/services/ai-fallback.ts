@@ -168,13 +168,27 @@ async function captureFromCamera(
       console.warn(`[ai-fallback] camera=${camera.id} snapshot grab failed`);
       return null;
     }
-    const m = result.snapshot_base64.match(/^data:([^;]+);base64,(.+)$/);
-    if (!m) {
+    // Be lenient with the data URL: some cameras (notably certain Hikvision
+    // firmwares) return Content-Type with extra params like
+    // "image/jpeg; charset=binary", producing data URLs of the shape
+    // "data:image/jpeg; charset=binary;base64,XXXX" which the old strict
+    // regex /^data:([^;]+);base64,(.+)$/ rejected. We now split on the
+    // literal ";base64," sentinel and clean both halves separately.
+    const dataUrl = result.snapshot_base64;
+    const sep = ";base64,";
+    const sepIdx = dataUrl.indexOf(sep);
+    if (!dataUrl.startsWith("data:") || sepIdx === -1) {
       console.warn(`[ai-fallback] camera=${camera.id} bad snapshot data URL`);
       return null;
     }
-    const mime = m[1] || "image/jpeg";
-    const buffer = Buffer.from(m[2], "base64");
+    // Everything between "data:" and ";base64," is the MIME header; take
+    // only the leading "type/subtype" portion (strip any params after first ";").
+    const mimeHeader = dataUrl.slice(5, sepIdx);
+    const mime = (mimeHeader.split(";")[0] || "image/jpeg").trim() || "image/jpeg";
+    // base64 payloads may contain whitespace/newlines — strip them so
+    // Buffer.from doesn't silently truncate.
+    const base64Payload = dataUrl.slice(sepIdx + sep.length).replace(/\s+/g, "");
+    const buffer = Buffer.from(base64Payload, "base64");
     if (buffer.length === 0 || buffer.length > MAX_SNAPSHOT_BYTES) {
       console.warn(`[ai-fallback] camera=${camera.id} snapshot size out of range: ${buffer.length}`);
       return null;
