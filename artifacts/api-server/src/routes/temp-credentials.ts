@@ -47,7 +47,10 @@ router.get("/:id", requireAuth, async (req, res) => {
 // POST /temp-credentials
 const createSchema = z.object({
   reservation_id: z.string().min(1),
-  pin_code: z.string().min(4).max(8).optional(),
+  pin_code: z
+    .string()
+    .regex(/^\d{4}$/, "PIN must be exactly 4 digits")
+    .optional(),
   label: z.string().optional(),
   notes: z.string().optional(),
   valid_from: z.string(),
