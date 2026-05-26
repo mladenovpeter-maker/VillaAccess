@@ -44,7 +44,7 @@ import {
   reservationVehiclesTable,
   camerasTable,
 } from "@workspace/db";
-import { eq, and, inArray, or, lte, gte, ne } from "drizzle-orm";
+import { eq, and, inArray, lte, gte, ne } from "drizzle-orm";
 import { validateVehicleAccessMulti } from "../lib/validation/reservation-validator";
 import { createAdapter, type CameraRow } from "../lib/cameras/factory";
 import { eventBus } from "../lib/events";
@@ -362,28 +362,32 @@ export function recordFailure(
     state.set(camera.id, s);
 
     if (s.fails.length >= FAIL_THRESHOLD) {
-      // Pre-AI similarity gate: only trigger OpenAI if at least one of the
-      // collected raw reads is plausibly close to an expected plate. This
-      // prevents wasting tokens on random unknown vehicles passing by.
-      const gate = await passesSimilarityGate(camera, s.fails);
-      if (!gate.passed) {
-        console.log(
-          `[ai-fallback] camera=${camera.id} similarity gate failed ` +
-            `(best=${gate.bestPct}% < ${MIN_SIMILARITY_PCT}% for "${gate.bestRaw ?? ""}" vs "${gate.bestExpected ?? ""}") — skipping AI`,
-        );
-        // Drop the buffered fails so we don't immediately re-fire on the next
-        // failure for the same unknown vehicle.
-        s.fails = [];
-        state.set(camera.id, s);
-        return;
-      }
-      console.log(
-        `[ai-fallback] camera=${camera.id} similarity gate passed ` +
-          `(best=${gate.bestPct}% "${gate.bestRaw}" ≈ "${gate.bestExpected}") — invoking AI`,
-      );
+      // Claim the trigger slot BEFORE any await so a second concurrent fail
+      // for the same camera cannot also invoke AI. The slot is released in
+      // .finally() below (whether the gate passes or AI runs).
       s.inFlight = true;
+      state.set(camera.id, s);
       const fails = [...s.fails];
-      void runAiFallback(camera, fails)
+
+      void (async () => {
+        // Pre-AI similarity gate: only invoke OpenAI when at least one
+        // buffered raw read is plausibly close to an expected plate. This
+        // prevents wasting tokens on random unknown vehicles passing by.
+        const gate = await passesSimilarityGate(camera, fails);
+        if (!gate.passed) {
+          console.log(
+            `[ai-fallback] camera=${camera.id} similarity gate failed ` +
+              `(best=${gate.bestPct}% < ${MIN_SIMILARITY_PCT}% for ` +
+              `"${gate.bestRaw ?? ""}" vs "${gate.bestExpected ?? ""}") — skipping AI`,
+          );
+          return;
+        }
+        console.log(
+          `[ai-fallback] camera=${camera.id} similarity gate passed ` +
+            `(best=${gate.bestPct}% "${gate.bestRaw}" ≈ "${gate.bestExpected}") — invoking AI`,
+        );
+        await runAiFallback(camera, fails);
+      })()
         .catch((err) => {
           console.error(`[ai-fallback] camera=${camera.id} unhandled error:`, err);
         })
@@ -391,7 +395,7 @@ export function recordFailure(
           const cur = state.get(camera.id);
           if (cur) {
             cur.inFlight = false;
-            cur.fails = []; // reset after AI runs (whatever the outcome)
+            cur.fails = []; // reset whether gate passed/failed/AI ran
             state.set(camera.id, cur);
           }
         });
@@ -412,25 +416,51 @@ function normaliseForCompare(s: string): string {
 }
 
 function plateSimilarityPct(a: string, b: string): number {
-  // Symmetric Dice-style ratio on uppercase alnum strings. Cheap and stable
-  // on plate-length inputs. Equivalent semantics to anpr.similarityPct but
-  // duplicated here to avoid a cross-service import cycle.
+  // Python SequenceMatcher.ratio() equivalent on uppercase alnum strings.
+  // Same semantics as `similarityPct` in anpr.ts; duplicated here only to
+  // avoid a cross-service import cycle. Always returns a value in [0, 100].
   const A = normaliseForCompare(a);
   const B = normaliseForCompare(b);
-  if (A.length === 0 && B.length === 0) return 100;
+  const total = A.length + B.length;
+  if (total === 0) return 100;
   if (A.length === 0 || B.length === 0) return 0;
-  // Longest-common-subsequence-ish: count chars matching at the same index
-  // (left-aligned) as a baseline, then bonus for length parity.
-  const len = Math.min(A.length, B.length);
-  let matches = 0;
-  for (let i = 0; i < len; i++) if (A[i] === B[i]) matches++;
-  // Also count "shifted" matches (one position off) to be tolerant of OCR
-  // dropping/adding a leading character.
-  for (let i = 0; i < len - 1; i++) {
-    if (A[i] === B[i + 1] || A[i + 1] === B[i]) matches += 0.5;
-  }
-  const total = Math.max(A.length, B.length);
-  return Math.round(((matches / total) * 100) * 10) / 10;
+  // Greedy longest-common-substring count (depth-bounded recursion is fine
+  // for plate-length inputs ≤ ~12 chars).
+  const lcsBlocks = (
+    s1: string, lo1: number, hi1: number,
+    s2: string, lo2: number, hi2: number,
+  ): number => {
+    let bestI = lo1;
+    let bestJ = lo2;
+    let bestK = 0;
+    const j2len = new Map<number, number>();
+    for (let i = lo1; i < hi1; i++) {
+      const newJ2len = new Map<number, number>();
+      for (let j = lo2; j < hi2; j++) {
+        if (s1[i] === s2[j]) {
+          const k = (j2len.get(j - 1) ?? 0) + 1;
+          newJ2len.set(j, k);
+          if (k > bestK) {
+            bestI = i - k + 1;
+            bestJ = j - k + 1;
+            bestK = k;
+          }
+        }
+      }
+      j2len.clear();
+      for (const [k, v] of newJ2len) j2len.set(k, v);
+    }
+    if (bestK === 0) return 0;
+    return (
+      bestK +
+      lcsBlocks(s1, lo1, bestI, s2, lo2, bestJ) +
+      lcsBlocks(s1, bestI + bestK, hi1, s2, bestJ + bestK, hi2)
+    );
+  };
+  const m = lcsBlocks(A, 0, A.length, B, 0, B.length);
+  const pct = (2 * m) / total * 100;
+  // Clamp to [0, 100] (cannot exceed in theory; defensive against rounding).
+  return Math.max(0, Math.min(100, Math.round(pct * 10) / 10));
 }
 
 async function getExpectedPlatesForCamera(
@@ -470,10 +500,16 @@ async function getExpectedPlatesForCamera(
     );
   for (const r of permRows) if (r.plate) plates.add(r.plate);
 
-  // Vehicles tied to a reservation whose window contains "now", scoped to
-  // the camera's villa(s).
+  // Vehicles tied to a reservation whose access window contains "now",
+  // scoped to the camera's villa(s). Window is [check_in − 1h, check_out +
+  // 1h] to match the validator's grace period (CHECKIN_GRACE_MS /
+  // CHECKOUT_GRACE_MS in reservation-validator.ts). Status must be active
+  // OR upcoming (upcoming reservations enter their grace before the start
+  // status flip; cancelled/completed are excluded).
   if (villaIds.length > 0) {
-    const now = new Date();
+    const GRACE_MS = 60 * 60 * 1000; // 1h, mirrors validator
+    const checkInBoundary = new Date(Date.now() + GRACE_MS);   // check_in <= now + 1h
+    const checkOutBoundary = new Date(Date.now() - GRACE_MS);  // check_out >= now - 1h
     const resRows = await db
       .select({ plate: vehiclesTable.license_plate })
       .from(reservationVehiclesTable)
@@ -489,14 +525,9 @@ async function getExpectedPlatesForCamera(
         and(
           inArray(reservationsTable.villa_id, villaIds),
           ne(vehiclesTable.status, "blacklisted"),
-          or(
-            eq(reservationsTable.status, "active"),
-            and(
-              eq(reservationsTable.status, "upcoming"),
-              lte(reservationsTable.check_in, now),
-              gte(reservationsTable.check_out, now),
-            ),
-          ),
+          inArray(reservationsTable.status, ["active", "upcoming"]),
+          lte(reservationsTable.check_in, checkInBoundary),
+          gte(reservationsTable.check_out, checkOutBoundary),
         ),
       );
     for (const r of resRows) if (r.plate) plates.add(r.plate);
