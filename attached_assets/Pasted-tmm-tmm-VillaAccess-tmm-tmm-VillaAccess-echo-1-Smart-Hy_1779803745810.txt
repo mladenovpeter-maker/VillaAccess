@@ -1,0 +1,78 @@
+tmm@tmm:~/VillaAccess$ 
+tmm@tmm:~/VillaAccess$ echo "=== 1. Smart Hybrid Light endpoint ==="
+curl -s -o /tmp/r.xml -w "HTTP %{http_code}\n" -u admin:TMM757161 --digest \
+  "http://172.16.32.128/ISAPI/Image/channels/1/SmartHybridLight"
+head -c 500 /tmp/r.xml; echo ""
+echo "=== 2. WhiteLight schedule ==="
+curl -s -o /tmp/r.xml -w "HTTP %{http_code}\n" -u admin:TMM757161 --digest \
+  "http://172.16.32.128/ISAPI/Image/channels/1/whiteLightSchedule"
+head -c 500 /tmp/r.xml; echo ""
+echo "=== 3. ColorVu config ==="
+curl -s -o /tmp/r.xml -w "HTTP %{http_code}\n" -u admin:TMM757161 --digest \
+  "http://172.16.32.128/ISAPI/Image/channels/1/ColorVu"
+head -c 500 /tmp/r.xml; echo ""
+echo "=== 4. Force manual whitelight чрез mixedLight ==="
+curl -s -u admin:TMM757161 --digest -X PUT \
+  "http://172.16.32.128/ISAPI/Image/channels/1/supplementLight" \
+  -H "Content-Type: application/xml" \
+  -d '<SupplementLight><supplementLightMode>colorVuWhiteLight</supplementLightMode><mixedLightBrightnessRegulatMode>manual</mixedLightBrightnessRegulatMode><highWhiteLightBrightness>100</highWhiteLightBrightness><lowWhiteLightBrightness>100</lowWhiteLightBrightness></SupplementLight>'
+echo ""
+sleep 1
+echo "=== 5. Force night IrcutFilter ==="
+curl -s -u admin:TMM757161 --digest -X PUT \
+/ircutFilter"min:TMM757161 --digest "http://172.16.32.128/ISAPI/Image/channels/1
+=== 1. Smart Hybrid Light endpoint ===
+HTTP 404
+<!DOCTYPE html>
+<html><head><title>Document Error: Not Found</title></head>
+<body><h2>Access Error: 404 -- Not Found</h2>
+<p>Can't find process for service:/ISAPI/Image/channels/1/SmartHybridLight</p>
+</body>
+</html>
+
+=== 2. WhiteLight schedule ===
+HTTP 404
+<!DOCTYPE html>
+<html><head><title>Document Error: Not Found</title></head>
+<body><h2>Access Error: 404 -- Not Found</h2>
+<p>Can't find process for service:/ISAPI/Image/channels/1/whiteLightSchedule</p>
+</body>
+</html>
+
+=== 3. ColorVu config ===
+HTTP 404
+<!DOCTYPE html>
+<html><head><title>Document Error: Not Found</title></head>
+<body><h2>Access Error: 404 -- Not Found</h2>
+<p>Can't find process for service:/ISAPI/Image/channels/1/ColorVu</p>
+</body>
+</html>
+
+=== 4. Force manual whitelight чрез mixedLight ===
+<?xml version="1.0" encoding="UTF-8"?><ResponseStatus version="2.0" xmlns="http://www.hikvision.com/ver20/XMLSchema">
+<requestURL></requestURL>
+<statusCode>1</statusCode>
+<statusString>OK</statusString>
+<subStatusCode>ok</subStatusCode>
+</ResponseStatus>
+
+=== 5. Force night IrcutFilter ===
+<?xml version="1.0" encoding="UTF-8"?><ResponseStatus version="2.0" xmlns="http://www.hikvision.com/ver20/XMLSchema">
+<requestURL></requestURL>
+<statusCode>1</statusCode>
+<statusString>OK</statusString>
+<subStatusCode>ok</subStatusCode>
+</ResponseStatus>
+
+=== 6. FINAL STATE ===
+<?xml version="1.0" encoding="UTF-8"?>
+<IrcutFilter version="2.0" xmlns="http://www.hikvision.com/ver20/XMLSchema">
+<IrcutFilterType>night</IrcutFilterType>
+<nightToDayFilterLevel>4</nightToDayFilterLevel>
+<nightToDayFilterTime>5</nightToDayFilterTime>
+<EventTrigger>
+<eventType>IO</eventType>
+<IrcutFilterAction>day</IrcutFilterAction>
+</EventTrigger>
+</IrcutFilter>
+tmm@tmm:~/VillaAccess$ 
