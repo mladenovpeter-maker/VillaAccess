@@ -16,7 +16,7 @@
  * ── Temp-password flow (Phase 2) ─────────────────────────────────────────────
  * Tuya door locks require the PIN to be transmitted ENCRYPTED. The flow is:
  *
- *   1. GET  /v1.0/devices/{deviceId}/door-lock/password-ticket
+ *   1. POST /v1.0/devices/{deviceId}/door-lock/password-ticket
  *           → { ticket_id, ticket_key }
  *           ticket_key is hex-encoded AES-128-ECB ciphertext of a random
  *           per-ticket AES key, encrypted with the project's AccessSecret
@@ -293,8 +293,10 @@ export class TuyaLockAdapter implements LockAdapter {
 
   async createTempPassword(input: CreateTempPasswordInput): Promise<CreateTempPasswordResult> {
     // Step 1 — fetch a one-shot encryption ticket for this device.
+    // Note: Tuya requires POST (not GET) on this endpoint as of 2025; GET returns
+    // "uri path invalid" (code 1108).
     const ticket = await tuyaRequest<TuyaPasswordTicket>({
-      method: "GET",
+      method: "POST",
       path: `/v1.0/devices/${encodeURIComponent(this.deviceId)}/door-lock/password-ticket`,
     });
     if (!ticket?.ticket_id || !ticket?.ticket_key) {
