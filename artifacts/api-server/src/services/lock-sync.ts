@@ -104,16 +104,15 @@ export async function syncPinToLocks(
   const lock = await getLockForReservation(reservation.villa_id);
   if (!lock) return notApplicable();
 
-  // Format guard: PINs are unified to exactly 4 digits across intercom
-  // and Tuya lock. Tuya accepts 4-digit PINs in our deployment, so any
-  // non-conforming (legacy 6-digit or alphanumeric) credential is
-  // hard-skipped with an explicit result instead of being pushed and
-  // rejected by Tuya with an opaque error — the dashboard / operator
-  // then sees the exact reason.
+  // Format guard: PINs are unified to exactly 8 digits across intercom
+  // and Tuya lock. Tuya temp-password endpoint requires 8 digits for this
+  // lock model (bxq2o60gxhh2ben6); shorter PINs are rejected with code
+  // 1109 (param is illegal). Any non-conforming (legacy 4/6-digit or
+  // alphanumeric) credential is hard-skipped with an explicit result.
   // Remediation: POST /reservations/:id/regenerate-pin auto-issues
-  // a 4-digit PIN that will then sync cleanly to both intercom + Tuya.
-  if (!/^\d{4}$/.test(reservation.pin_code)) {
-    const msg = `non-conforming PIN format (${reservation.pin_code.length} chars) — regenerate to 4 digits to enable smart-lock sync`;
+  // an 8-digit PIN that will then sync cleanly to both intercom + Tuya.
+  if (!/^\d{8}$/.test(reservation.pin_code)) {
+    const msg = `non-conforming PIN format (${reservation.pin_code.length} chars) — regenerate to 8 digits to enable smart-lock sync`;
     console.warn(`[lock-sync] reservation=${reservation.id} skipped: ${msg}`);
     return {
       total: 1,
