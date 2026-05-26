@@ -1,0 +1,83 @@
+tmm@tmm:~/VillaAccess$ docker compose logs --tail=80 backend
+WARN[0000] /home/tmm/VillaAccess/docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion 
+backend-1  |   qop: 'auth',
+backend-1  |   algorithm: undefined,
+backend-1  |   nonceLen: 44
+backend-1  | }
+backend-1  | [acs] request {
+backend-1  |   method: 'PUT',
+backend-1  |   path: '/ISAPI/AccessControl/UserInfo/SetUp?format=json',
+backend-1  |   auth: 'digest',
+backend-1  |   contentType: 'application/json',
+backend-1  |   contentLength: 282
+backend-1  | }
+backend-1  | [acs] response {
+backend-1  |   method: 'PUT',
+backend-1  |   path: '/ISAPI/AccessControl/UserInfo/Delete?format=json',
+backend-1  |   status: 200
+backend-1  | }
+backend-1  | [acs.revokePin] ← HTTP 200
+backend-1  | [acs.revokePin] ← upstream body: {
+backend-1  | 	"statusCode":	1,
+backend-1  | 	"statusString":	"OK",
+backend-1  | 	"subStatusCode":	"ok"
+backend-1  | }
+backend-1  | [acs.revokePin] OK
+backend-1  | [acs] response {
+backend-1  |   method: 'PUT',
+backend-1  |   path: '/ISAPI/AccessControl/UserInfo/SetUp?format=json',
+backend-1  |   status: 200
+backend-1  | }
+backend-1  | [acs.pushPin] ← HTTP 200
+backend-1  | [acs.pushPin] ← upstream body: {
+backend-1  | 	"statusCode":	1,
+backend-1  | 	"statusString":	"OK",
+backend-1  | 	"subStatusCode":	"ok"
+backend-1  | }
+backend-1  | [acs.pushPin] OK
+backend-1  | [lock-sync] ──────────────────────────────────────────────────
+backend-1  | [lock-sync] reservation=967b42bd-3236-4045-951a-2e25c448ae51  guest="аефжвеж"
+backend-1  | [lock-sync] lock=Вила 2 (3ce48590-5cdd-4655-8aa7-719913123175)  protocol=tuya
+backend-1  | [lock-sync] pin=******(len=4)  2026-05-26T13:00:00.000Z → 2026-05-27T12:00:00.000Z
+backend-1  | [lock-sync] ✗ failed: Tuya API error 1109 on /v1.0/devices/bf2a36495645512355s2na/door-lock/temp-password: param is illegal ,please check it (HTTP 200)
+backend-1  | {"level":30,"time":1779792266364,"pid":1,"hostname":"8ca17212a867","req":{"id":368,"method":"POST","url":"/api/reservations/967b42bd-3236-4045-951a-2e25c448ae51/regenerate-pin"},"res":{"statusCode":200},"responseTime":556,"msg":"request completed"}
+backend-1  | {"level":30,"time":1779792266397,"pid":1,"hostname":"8ca17212a867","req":{"id":369,"method":"GET","url":"/api/reservations"},"res":{"statusCode":200},"responseTime":19,"msg":"request completed"}
+backend-1  | {"level":30,"time":1779792266401,"pid":1,"hostname":"8ca17212a867","req":{"id":370,"method":"GET","url":"/api/reservations/967b42bd-3236-4045-951a-2e25c448ae51"},"res":{"statusCode":200},"responseTime":16,"msg":"request completed"}
+backend-1  | [fetchCamera] basic {
+backend-1  |   method: 'GET',
+backend-1  |   path: '/ISAPI/Streaming/channels/101/picture',
+backend-1  |   status: 401
+backend-1  | }
+backend-1  | [fetchCamera] digest retry {
+backend-1  |   method: 'GET',
+backend-1  |   path: '/ISAPI/Streaming/channels/101/picture',
+backend-1  |   realm: 'IP Camera(GQ271)',
+backend-1  |   qop: 'auth',
+backend-1  |   algorithm: undefined
+backend-1  | }
+backend-1  | {"level":30,"time":1779792266724,"pid":1,"hostname":"8ca17212a867","req":{"id":372,"method":"GET","url":"/api/healthz"},"res":{"statusCode":200},"responseTime":1,"msg":"request completed"}
+backend-1  | [fetchCamera] digest {
+backend-1  |   method: 'GET',
+backend-1  |   path: '/ISAPI/Streaming/channels/101/picture',
+backend-1  |   status: 200
+backend-1  | }
+backend-1  | {"level":30,"time":1779792266822,"pid":1,"hostname":"8ca17212a867","req":{"id":371,"method":"GET","url":"/api/anpr/snapshot/1a7b13b7-6932-4300-9d18-4eef7fb52045"},"res":{"statusCode":200},"responseTime":142,"msg":"request completed"}
+backend-1  | [fetchCamera] basic {
+backend-1  |   method: 'GET',
+backend-1  |   path: '/ISAPI/Streaming/channels/101/picture',
+backend-1  |   status: 401
+backend-1  | }
+backend-1  | [fetchCamera] digest retry {
+backend-1  |   method: 'GET',
+backend-1  |   path: '/ISAPI/Streaming/channels/101/picture',
+backend-1  |   realm: 'IP Camera(GQ271)',
+backend-1  |   qop: 'auth',
+backend-1  |   algorithm: undefined
+backend-1  | }
+backend-1  | [fetchCamera] digest {
+backend-1  |   method: 'GET',
+backend-1  |   path: '/ISAPI/Streaming/channels/101/picture',
+backend-1  |   status: 200
+backend-1  | }
+backend-1  | {"level":30,"time":1779792268276,"pid":1,"hostname":"8ca17212a867","req":{"id":373,"method":"GET","url":"/api/anpr/snapshot/1a7b13b7-6932-4300-9d18-4eef7fb52045"},"res":{"statusCode":200},"responseTime":95,"msg":"request completed"}
+tmm@tmm:~/VillaAccess$ 
