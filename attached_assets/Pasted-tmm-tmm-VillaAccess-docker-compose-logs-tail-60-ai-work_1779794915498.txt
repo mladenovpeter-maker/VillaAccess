@@ -1,0 +1,43 @@
+tmm@tmm:~/VillaAccess$ docker compose logs --tail=60 ai-worker 2>&1 | grep -iE 'plausible=True|sent to|allowed|denied' | tail -20
+echo "---"
+docker compose logs --since=5m ai-worker 2>&1 | tail -30
+ai-worker-1  | [11:27:47] [INFO] [1a7b13b7-6932-4300-9d18-4eef7fb52045] OCR raw='Ajmno |fmizawg' normalised='AM0MA' conf=13.1 plausible=True
+ai-worker-1  | [11:27:47] [INFO] [1a7b13b7-6932-4300-9d18-4eef7fb52045] OCR raw='CA 3477' normalised='CA3477' conf=99.7 plausible=True
+ai-worker-1  | [11:27:50] [INFO] detection camera=1a7b13b7-6932-4300-9d18-4eef7fb52045 plate=CA3477 → allowed_relay_ok (Permanent access vehicle)
+ai-worker-1  | [11:27:52] [INFO] [1a7b13b7-6932-4300-9d18-4eef7fb52045] OCR raw='CA 3477' normalised='CA3477' conf=66.2 plausible=True
+ai-worker-1  | [11:27:53] [INFO] [1a7b13b7-6932-4300-9d18-4eef7fb52045] OCR raw='CA3477MI' normalised='CA3477M' conf=37.5 plausible=True
+ai-worker-1  | [11:27:53] [INFO] [1a7b13b7-6932-4300-9d18-4eef7fb52045] OCR raw='Oi"cilmitaiiiim' normalised='0CMTAM' conf=10.6 plausible=True
+ai-worker-1  | [11:27:55] [INFO] [1a7b13b7-6932-4300-9d18-4eef7fb52045] OCR raw='4ATM' normalised='4ATM' conf=43.9 plausible=True
+ai-worker-1  | [11:27:56] [INFO] [1a7b13b7-6932-4300-9d18-4eef7fb52045] OCR raw='GA 3477' normalised='A3477' conf=65.1 plausible=True
+---
+ai-worker-1  | [11:27:52] [INFO] [1a7b13b7-6932-4300-9d18-4eef7fb52045] YOLO box=(1144,441,1878,718) det_conf=0.79 → 4 OCR candidate(s)
+ai-worker-1  | [11:27:52] [INFO] [1a7b13b7-6932-4300-9d18-4eef7fb52045] OCR raw='MA' normalised='MA' conf=43.2 plausible=False
+ai-worker-1  | [11:27:52] [INFO] [1a7b13b7-6932-4300-9d18-4eef7fb52045] OCR raw='Gntcmnci;' normalised='TCMC' conf=1.5 plausible=False
+ai-worker-1  | [11:27:52] [INFO] [1a7b13b7-6932-4300-9d18-4eef7fb52045] OCR raw='CA 3477' normalised='CA3477' conf=66.2 plausible=True
+ai-worker-1  | [11:27:52] [INFO] [1a7b13b7-6932-4300-9d18-4eef7fb52045] OCR raw='(1ilo WLti' normalised='10T' conf=1.0 plausible=False
+ai-worker-1  | [11:27:52] [INFO] [1a7b13b7-6932-4300-9d18-4eef7fb52045] vehicle_color=gray
+ai-worker-1  | [11:27:53] [INFO] [1a7b13b7-6932-4300-9d18-4eef7fb52045] YOLO box=(1117,429,1857,712) det_conf=0.78 → 4 OCR candidate(s)
+ai-worker-1  | [11:27:53] [INFO] [1a7b13b7-6932-4300-9d18-4eef7fb52045] OCR raw='CA3477MI' normalised='CA3477M' conf=37.5 plausible=True
+ai-worker-1  | [11:27:53] [INFO] [1a7b13b7-6932-4300-9d18-4eef7fb52045] OCR raw="'fimci:" normalised='MC' conf=15.1 plausible=False
+ai-worker-1  | [11:27:53] [INFO] [1a7b13b7-6932-4300-9d18-4eef7fb52045] OCR raw='Oi"cilmitaiiiim' normalised='0CMTAM' conf=10.6 plausible=True
+ai-worker-1  | [11:27:53] [INFO] [1a7b13b7-6932-4300-9d18-4eef7fb52045] OCR raw='Uiusin' normalised='' conf=5.6 plausible=False
+ai-worker-1  | [11:27:54] [INFO] [1a7b13b7-6932-4300-9d18-4eef7fb52045] vehicle_color=white
+ai-worker-1  | [11:27:55] [INFO] [1a7b13b7-6932-4300-9d18-4eef7fb52045] YOLO box=(1039,453,1864,781) det_conf=0.78 → 6 OCR candidate(s)
+ai-worker-1  | [11:27:55] [INFO] [1a7b13b7-6932-4300-9d18-4eef7fb52045] OCR raw="'11" normalised='11' conf=61.7 plausible=False
+ai-worker-1  | [11:27:55] [INFO] [1a7b13b7-6932-4300-9d18-4eef7fb52045] OCR raw='4 3477' normalised='43477' conf=80.0 plausible=False
+ai-worker-1  | [11:27:55] [INFO] [1a7b13b7-6932-4300-9d18-4eef7fb52045] OCR raw='(nitzi ne' normalised='TE' conf=9.7 plausible=False
+ai-worker-1  | [11:27:55] [INFO] [1a7b13b7-6932-4300-9d18-4eef7fb52045] OCR raw='(fis' normalised='' conf=15.4 plausible=False
+ai-worker-1  | [11:27:55] [INFO] [1a7b13b7-6932-4300-9d18-4eef7fb52045] OCR raw='4ATM' normalised='4ATM' conf=43.9 plausible=True
+ai-worker-1  | [11:27:55] [INFO] [1a7b13b7-6932-4300-9d18-4eef7fb52045] OCR raw="'iiAIltil" normalised='AT' conf=16.6 plausible=False
+ai-worker-1  | [11:27:55] [INFO] [1a7b13b7-6932-4300-9d18-4eef7fb52045] vehicle_color=white
+ai-worker-1  | [11:27:56] [INFO] [1a7b13b7-6932-4300-9d18-4eef7fb52045] YOLO box=(1027,391,1811,698) det_conf=0.78 → 9 OCR candidate(s)
+ai-worker-1  | [11:27:56] [INFO] [1a7b13b7-6932-4300-9d18-4eef7fb52045] OCR raw='M' normalised='M' conf=99.5 plausible=False
+ai-worker-1  | [11:27:56] [INFO] [1a7b13b7-6932-4300-9d18-4eef7fb52045] OCR raw='M' normalised='M' conf=48.2 plausible=False
+ai-worker-1  | [11:27:56] [INFO] [1a7b13b7-6932-4300-9d18-4eef7fb52045] OCR raw='Mit.ainiv' normalised='MTA' conf=19.7 plausible=False
+ai-worker-1  | [11:27:56] [INFO] [1a7b13b7-6932-4300-9d18-4eef7fb52045] OCR raw='GA 3477' normalised='A3477' conf=65.1 plausible=True
+ai-worker-1  | [11:27:56] [INFO] [1a7b13b7-6932-4300-9d18-4eef7fb52045] OCR raw='"WL' normalised='' conf=6.2 plausible=False
+ai-worker-1  | [11:27:56] [INFO] [1a7b13b7-6932-4300-9d18-4eef7fb52045] OCR raw='11no,' normalised='110' conf=6.1 plausible=False
+ai-worker-1  | [11:27:56] [INFO] [1a7b13b7-6932-4300-9d18-4eef7fb52045] OCR raw='(ihimi' normalised='HM' conf=1.7 plausible=False
+ai-worker-1  | [11:27:56] [INFO] [1a7b13b7-6932-4300-9d18-4eef7fb52045] OCR raw='mcm' normalised='MCM' conf=9.6 plausible=False
+ai-worker-1  | [11:27:56] [INFO] [1a7b13b7-6932-4300-9d18-4eef7fb52045] OCR raw='ML=' normalised='M' conf=14.2 plausible=False
+tmm@tmm:~/VillaAccess$ 
