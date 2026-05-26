@@ -437,20 +437,24 @@ def camera_loop(state: CameraState) -> None:
                 sent_detection = False
                 if hit is not None:
                     plate, conf, raw = hit
-                    if conf >= state.ocr_min_confidence:
-                        now = time.time()
-                        if state.last_plate == plate and (now - state.last_plate_at) < state.cooldown_seconds:
-                            sent_detection = True  # treat as handled, don't fire no-match
-                        else:
-                            state.last_plate = plate
-                            state.last_plate_at = now
-                            post_detection({
-                                "camera_id": state.id,
-                                "plate": plate,
-                                "confidence": round(conf, 2),
-                                "raw_ocr_text": raw,
-                            })
-                            sent_detection = True
+                    # NOTE: confidence gate intentionally removed — Tesseract
+                    # often reports conf=0.0 even for clean reads. Plausibility
+                    # (length / alphanumeric / has letter+digit) is already
+                    # enforced inside ocr_plate(); backend does the final
+                    # fuzzy match against expected plates.
+                    now = time.time()
+                    if state.last_plate == plate and (now - state.last_plate_at) < state.cooldown_seconds:
+                        sent_detection = True  # treat as handled, don't fire no-match
+                    else:
+                        state.last_plate = plate
+                        state.last_plate_at = now
+                        post_detection({
+                            "camera_id": state.id,
+                            "plate": plate,
+                            "confidence": round(conf, 2),
+                            "raw_ocr_text": raw,
+                        })
+                        sent_detection = True
                 # YOLO saw a vehicle/plate but OCR couldn't extract a usable
                 # plate (heavy obstruction, dirt, glare). Notify backend so
                 # the AI fallback counter for this camera can build up.

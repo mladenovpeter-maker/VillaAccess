@@ -177,7 +177,12 @@ function isPlausiblePlate(
   if (plate.length < 5 || plate.length > 10) return false;
   if (!/^[A-Z0-9]+$/.test(plate)) return false;
   if (!/[A-Z]/.test(plate) || !/[0-9]/.test(plate)) return false;
-  if (!Number.isFinite(confidence) || confidence < minConfidence) return false;
+  // NOTE: confidence gate intentionally removed — Tesseract often reports
+  // conf=0.0 even for correct reads. Structural plausibility (length /
+  // alphanumeric / has letter+digit) above is enough; the real safety net is
+  // the fuzzy-match similarity threshold + shared-digit gate downstream.
+  void confidence;
+  void minConfidence;
   return true;
 }
 
