@@ -1,0 +1,42 @@
+tmm@tmm:~/VillaAccess$ docker compose exec backend sh -c 'cat > /tmp/tuya-body-probe.cjs << "PROBE_EOF"
+const crypto = require("crypto");
+const ID = process.env.TUYA_ACCESS_ID, SEC = process.env.TUYA_ACCESS_SECRET;
+const HOST = "https://openapi.tuyaeu.com";
+const DEV = process.argv[2] || "bf56a0fe51239d19aeelmi";
+const sign = (s, k) => crypto.createHmac("sha256", k).update(s).digest("hex").toUpperCase();
+const sha = b => crypto.createHash("sha256").update(b||"").digest("hex");
+async function token() {
+  const t = Date.now().toString();
+  const p = "/v1.0/token?grant_type=1";
+  const s = sign(`${ID}${t}GET\n${sha("")}\n\n${p}`, SEC);
+  const r = await fetch(HOST+p, { headers: { client_id: ID, sign: s, t, sign_method: "HMAC-SHA256" }});
+  return (await r.json()).result.access_token;
+}
+async function req(tok, method, p, body) {
+  const t = Date.now().toString();
+  const b = body ? JSON.stringify(body) : "";
+  const s = sign(`${ID}${tok}${t}${method}\n${sha(b)}\n\n${p}`, SEC);
+  const opts = { method, headers: { client_id: ID, access_token: tok, sign: s, t, sign_method: "HMAC-SHA256" }};
+  if (body) { opts.headers["Content-Type"] = "application/json"; opts.body = b; }
+  const r = await fetch(HOST+p, opts);
+  return r.json();
+}
+function encryptPin(pin, sessionKey) {
+  const c = crypto.createCipheriv("aes-128-ecb", sessionKey, null);
+  c.setAutoPadding(true);
+  return Buffer.concat([c.update(pin, "utf8"), c.final()]).toString("hex");
+}
+function decryptTicketKey(hexCt, secret) {
+  const key = Buffer.from(secret.slice(0, 16), "utf8");
+  const d = crypto.createDecipheriv("aes-128-ecb", key, null);
+  d.setAutoPadding(false);
+node /tmp/tuya-body-probe.cjs bf56a0fe51239d19aeelmi'{DEV}/door-lock/temp-password`, v3));, invalid_time: end*100
+WARN[0000] /home/tmm/VillaAccess/docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion 
+Ticket: {
+  expire_time: 360,
+  ticket_id: 'pg1Tikct',
+  ticket_key: '8B79A7074C156F64B52F6430A4DD1449FA0D5D89130104D70B7D8DF424190687'
+}
+Session key len: 32
+FATAL: Invalid key length
+tmm@tmm:~/VillaAccess$ 
