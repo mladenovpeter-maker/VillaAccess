@@ -219,14 +219,14 @@ function encryptPin(pin: string, sessionKey: Buffer): string {
   return ct.toString("hex");
 }
 
-/** Best-effort local time-zone offset string, e.g. "+02:00". */
+/** Local IANA time-zone name, e.g. "Europe/Sofia". Tuya rejects offset format
+ * ("+02:00") with code 1109 "param is illegal"; only IANA names are accepted. */
 function localTimeZoneOffset(): string {
-  const off = -new Date().getTimezoneOffset();
-  const sign = off >= 0 ? "+" : "-";
-  const abs = Math.abs(off);
-  const hh = String(Math.floor(abs / 60)).padStart(2, "0");
-  const mm = String(abs % 60).padStart(2, "0");
-  return `${sign}${hh}:${mm}`;
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || "Europe/Sofia";
+  } catch {
+    return "Europe/Sofia";
+  }
 }
 
 function toEpochSeconds(d: Date): number {
