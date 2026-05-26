@@ -178,7 +178,7 @@ router.post("/temp-credentials", requireAuth, async (req, res) => {
   const body = schema.safeParse(req.body);
   if (!body.success) { res.status(400).json({ detail: "Invalid request" }); return; }
 
-  const pinCode = Math.floor(100000 + Math.random() * 900000).toString();
+  const pinCode = Math.floor(1000 + Math.random() * 9000).toString();
   const validFrom = new Date();
   const validUntil = new Date(validFrom.getTime() + (body.data.duration_hours ?? 24) * 60 * 60 * 1000);
 

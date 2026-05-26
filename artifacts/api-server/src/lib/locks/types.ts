@@ -41,7 +41,7 @@ export interface ListOpenRecordsOptions {
 }
 
 export interface CreateTempPasswordInput {
-  /** PIN as a numeric string. Tuya door locks accept 6 digits. */
+  /** PIN as a numeric string. Tuya door locks accept 4 digits. */
   pin: string;
   /** Human-readable label shown in the Smart Life app. */
   name: string;

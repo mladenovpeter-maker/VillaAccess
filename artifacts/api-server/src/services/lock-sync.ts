@@ -104,15 +104,16 @@ export async function syncPinToLocks(
   const lock = await getLockForReservation(reservation.villa_id);
   if (!lock) return notApplicable();
 
-  // Legacy guard: pre-Phase2 reservations may still carry 4-digit PINs.
-  // Tuya door locks accept 6-digit PINs in our deployment, so rather
-  // than silently push a non-conforming credential — or fall through
-  // and have Tuya reject it with an opaque error — we hard-skip with
-  // an explicit result so the dashboard/operator sees the reason.
+  // Format guard: PINs are unified to exactly 4 digits across intercom
+  // and Tuya lock. Tuya accepts 4-digit PINs in our deployment, so any
+  // non-conforming (legacy 6-digit or alphanumeric) credential is
+  // hard-skipped with an explicit result instead of being pushed and
+  // rejected by Tuya with an opaque error — the dashboard / operator
+  // then sees the exact reason.
   // Remediation: POST /reservations/:id/regenerate-pin auto-issues
-  // a 6-digit PIN that will then sync cleanly to both intercom + Tuya.
-  if (!/^\d{6}$/.test(reservation.pin_code)) {
-    const msg = `legacy PIN format (${reservation.pin_code.length} chars) — regenerate to 6 digits to enable smart-lock sync`;
+  // a 4-digit PIN that will then sync cleanly to both intercom + Tuya.
+  if (!/^\d{4}$/.test(reservation.pin_code)) {
+    const msg = `non-conforming PIN format (${reservation.pin_code.length} chars) — regenerate to 4 digits to enable smart-lock sync`;
     console.warn(`[lock-sync] reservation=${reservation.id} skipped: ${msg}`);
     return {
       total: 1,

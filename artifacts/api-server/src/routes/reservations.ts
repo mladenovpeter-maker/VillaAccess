@@ -19,17 +19,17 @@ const router = Router();
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 /**
- * Phase 2: PINs are now exactly 6 digits across intercoms + Tuya locks.
+ * PINs are exactly 4 digits across intercoms + Tuya locks.
  *
  * We accept absent / null / empty pin_code (auto-generated downstream)
- * but if a value IS supplied it must be exactly 6 numeric digits — no
+ * but if a value IS supplied it must be exactly 4 numeric digits — no
  * leading zeros are stripped, no letters allowed. Enforced via Zod
  * refine() on both POST and PUT so a manual pin override cannot
- * silently push a 4-digit (legacy) or alphanumeric PIN to devices.
+ * silently push a non-conforming or alphanumeric PIN to devices.
  */
-const PIN_FORMAT_MSG = "PIN must be exactly 6 digits";
+const PIN_FORMAT_MSG = "PIN must be exactly 4 digits";
 const pinCodeSchema = z.string().max(20).nullable().optional().refine(
-  (v) => !v || /^\d{6}$/.test(v.trim()),
+  (v) => !v || /^\d{4}$/.test(v.trim()),
   { message: PIN_FORMAT_MSG },
 );
 
@@ -201,10 +201,10 @@ router.post("/", requireAuth, async (req: any, res) => {
     return;
   }
 
-  // Phase 2: PIN unified to 6 digits across intercom + Tuya lock.
+  // PIN unified to 4 digits across intercom + Tuya lock.
   const pinCode = (body.data.pin_code && body.data.pin_code.trim())
     ? body.data.pin_code.trim()
-    : Math.floor(100000 + Math.random() * 900000).toString();
+    : Math.floor(1000 + Math.random() * 9000).toString();
 
   const ACCESS_GRACE_MS = 60 * 60 * 1000;
   const [reservation] = await db.insert(reservationsTable).values({
@@ -547,8 +547,8 @@ router.post("/:id/regenerate-pin", requireAuth, async (req: any, res) => {
   void revokePinFromIntercoms(r, req.user?.id);
   void revokePinFromLocks(r, req.user?.id);
 
-  // Phase 2: PIN unified to 6 digits across intercom + Tuya lock.
-  const newPin = Math.floor(100000 + Math.random() * 900000).toString();
+  // PIN unified to 4 digits across intercom + Tuya lock.
+  const newPin = Math.floor(1000 + Math.random() * 9000).toString();
   const [updated] = await db.update(reservationsTable)
     .set({ pin_code: newPin, pin_sync_status: "pending", pin_last_synced_at: null, updated_at: new Date() })
     .where(eq(reservationsTable.id, req.params.id))
