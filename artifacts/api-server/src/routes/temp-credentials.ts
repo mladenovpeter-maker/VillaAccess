@@ -49,7 +49,7 @@ const createSchema = z.object({
   reservation_id: z.string().min(1),
   pin_code: z
     .string()
-    .regex(/^\d{8}$/, "PIN must be exactly 8 digits")
+    .regex(/^\d{4}$/, "PIN must be exactly 4 digits")
     .optional(),
   label: z.string().optional(),
   notes: z.string().optional(),
@@ -58,7 +58,7 @@ const createSchema = z.object({
 });
 
 function generatePin(): string {
-  return String(Math.floor(10000000 + Math.random() * 90000000));
+  return String(Math.floor(1000 + Math.random() * 9000));
 }
 
 router.post("/", requireAuth, async (req, res) => {
