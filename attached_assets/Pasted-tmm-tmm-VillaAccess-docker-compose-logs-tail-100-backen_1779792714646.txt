@@ -1,0 +1,53 @@
+tmm@tmm:~/VillaAccess$ docker compose logs --tail=100 backend | tail -50
+WARN[0000] /home/tmm/VillaAccess/docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion 
+backend-1  |   path: '/ISAPI/AccessControl/UserInfo/Delete?format=json',
+backend-1  |   status: 200
+backend-1  | }
+backend-1  | [acs.revokePin] ← HTTP 200
+backend-1  | [acs.revokePin] ← upstream body: {
+backend-1  | 	"statusCode":	1,
+backend-1  | 	"statusString":	"OK",
+backend-1  | 	"subStatusCode":	"ok"
+backend-1  | }
+backend-1  | [acs.revokePin] OK
+backend-1  | [fetchCamera] basic {
+backend-1  |   method: 'GET',
+backend-1  |   path: '/ISAPI/Streaming/channels/101/picture',
+backend-1  |   status: 401
+backend-1  | }
+backend-1  | [fetchCamera] digest retry {
+backend-1  |   method: 'GET',
+backend-1  |   path: '/ISAPI/Streaming/channels/101/picture',
+backend-1  |   realm: 'IP Camera(GQ271)',
+backend-1  |   qop: 'auth',
+backend-1  |   algorithm: undefined
+backend-1  | }
+backend-1  | [fetchCamera] digest {
+backend-1  |   method: 'GET',
+backend-1  |   path: '/ISAPI/Streaming/channels/101/picture',
+backend-1  |   status: 200
+backend-1  | }
+backend-1  | [lock-sync] ✗ failed: Tuya API error 1109 on /v1.0/devices/bf2a36495645512355s2na/door-lock/temp-password: param is illegal ,please check it (HTTP 200)
+backend-1  | {"level":30,"time":1779792707896,"pid":1,"hostname":"057a66515f92","req":{"id":68,"method":"POST","url":"/api/reservations/967b42bd-3236-4045-951a-2e25c448ae51/regenerate-pin"},"res":{"statusCode":200},"responseTime":430,"msg":"request completed"}
+backend-1  | {"level":30,"time":1779792707897,"pid":1,"hostname":"057a66515f92","req":{"id":69,"method":"GET","url":"/api/anpr/snapshot/1a7b13b7-6932-4300-9d18-4eef7fb52045"},"res":{"statusCode":200},"responseTime":107,"msg":"request completed"}
+backend-1  | {"level":30,"time":1779792708042,"pid":1,"hostname":"057a66515f92","req":{"id":71,"method":"GET","url":"/api/reservations/967b42bd-3236-4045-951a-2e25c448ae51"},"res":{"statusCode":200},"responseTime":24,"msg":"request completed"}
+backend-1  | {"level":30,"time":1779792708045,"pid":1,"hostname":"057a66515f92","req":{"id":70,"method":"GET","url":"/api/reservations"},"res":{"statusCode":200},"responseTime":29,"msg":"request completed"}
+backend-1  | [fetchCamera] basic {
+backend-1  |   method: 'GET',
+backend-1  |   path: '/ISAPI/Streaming/channels/101/picture',
+backend-1  |   status: 401
+backend-1  | }
+backend-1  | [fetchCamera] digest retry {
+backend-1  |   method: 'GET',
+backend-1  |   path: '/ISAPI/Streaming/channels/101/picture',
+backend-1  |   realm: 'IP Camera(GQ271)',
+backend-1  |   qop: 'auth',
+backend-1  |   algorithm: undefined
+backend-1  | }
+backend-1  | [fetchCamera] digest {
+backend-1  |   method: 'GET',
+backend-1  |   path: '/ISAPI/Streaming/channels/101/picture',
+backend-1  |   status: 200
+backend-1  | }
+backend-1  | {"level":30,"time":1779792709419,"pid":1,"hostname":"057a66515f92","req":{"id":72,"method":"GET","url":"/api/anpr/snapshot/1a7b13b7-6932-4300-9d18-4eef7fb52045"},"res":{"statusCode":200},"responseTime":128,"msg":"request completed"}
+tmm@tmm:~/VillaAccess$ 
