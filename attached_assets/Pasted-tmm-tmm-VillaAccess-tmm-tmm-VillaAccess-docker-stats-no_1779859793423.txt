@@ -1,0 +1,51 @@
+tmm@tmm:~/VillaAccess$ 
+tmm@tmm:~/VillaAccess$ docker stats --no-stream
+ps aux --sort=-%cpu | head -15
+top -bn1 | head -25
+CONTAINER ID   NAME                        CPU %     MEM USAGE / LIMIT    MEM %     NET I/O           BLOCK I/O         PIDS
+d178df999e65   villaaccess-ai-worker-1     94.78%    540.9MiB / 15.4GiB   3.43%     14.3GB / 94.1MB   11.6MB / 496MB    21
+31a43e3a6985   villaaccess-backend-1       14.47%    126.4MiB / 15.4GiB   0.80%     19.2GB / 15.1GB   164kB / 80.6MB    11
+3c04a0d038b4   villaaccess-cloudflared-1   0.08%     17.09MiB / 15.4GiB   0.11%     0B / 0B           262kB / 0B        12
+e6abd32433dd   villaaccess-frontend-1      0.00%     8.145MiB / 15.4GiB   0.05%     7.73MB / 7.07MB   1.92MB / 12.3kB   9
+7492f8aaadc6   villaaccess-postgres-1      2.69%     29.62MiB / 15.4GiB   0.19%     102MB / 176MB     19.7MB / 90.1MB   7
+USER         PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND
+root     2267749 99.9  0.0  16740  7192 ?        R    May26 959:19 sudo dpkg -i cloudflared.deb
+root     2309638 81.0  5.4 4684624 875876 ?      Ssl  May26 693:56 python -u worker.py
+root     2680851 10.2  0.0      0     0 ?        I    04:57   3:15 [kworker/u16:5-events_unbound]
+root     2658320  9.6  0.0      0     0 ?        R    04:18   6:52 [kworker/u16:1-events_unbound]
+root     2620806  9.4  0.0      0     0 ?        I    03:23  11:52 [kworker/u16:3-events_unbound]
+root     2690039  7.9  0.0      0     0 ?        I    05:22   0:36 [kworker/u16:2-events_unbound]
+root     2688239  5.1  0.0      0     0 ?        I    05:17   0:38 [kworker/u16:0-events_unbound]
+root     2309510  3.7  1.1 11325636 179564 ?     Ssl  May26  31:56 node --enable-source-maps ./dist/index.mjs
+root        1011  1.3  1.2 3719280 204136 ?      Ssl  May22  93:01 /usr/bin/dockerd -H fd:// --containerd=/run/containerd/containerd.sock
+root         933  0.6  0.3 2462940 57580 ?       Ssl  May22  46:01 /usr/bin/containerd
+65532    2272169  0.1  0.2 1296160 39812 ?       Ssl  May26   0:57 cloudflared --no-autoupdate tunnel --no-autoupdate run --token eyJhIjoiNTgzMzE2N2M1ZDgzYzQzYTQxZjA3ZWYzNmZkMzI2MzgiLCJ0IjoiZTA3MzdjNDctY2YxNS00MTY4LWI1ZDEtOThlNDlkYzM5NTdmIiwicyI6Ik1UazBOVE01TkRndFlXUmlZaTAwWkdZeUxUazFNR1V0TWpnM1lUWmpabUUxWVdWaSJ9
+root     1793898  0.0  0.0 1235352 12512 ?       Sl   May25   1:43 /usr/bin/containerd-shim-runc-v2 -namespace moby -id 7492f8aaadc609a5ef7233a02b2058e7c57d8a146b9a333c508046fbfdbd59b7 -address /run/containerd/containerd.sock
+root     2309486  0.0  0.0 1235608 12324 ?       Sl   May26   0:29 /usr/bin/containerd-shim-runc-v2 -namespace moby -id 31a43e3a6985a068d86c95dcb6bfadf44dbd3db6744d86cc24ef2ad5cfc3d11f -address /run/containerd/containerd.sock
+70       2690392  0.0  0.1 177788 16564 ?        Ss   05:23   0:00 postgres: villa_user villa_access 172.18.0.3(50804) idle
+top - 05:29:49 up 4 days, 20:37,  2 users,  load average: 3.07, 2.81, 2.57
+Tasks: 211 total,   3 running, 207 sleeping,   0 stopped,   1 zombie
+%Cpu(s): 38.8 us, 16.2 sy,  0.0 ni, 45.0 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st 
+MiB Mem :  15768.3 total,   1486.9 free,   1706.0 used,  12930.6 buff/cache     
+MiB Swap:   4096.0 total,   4063.2 free,     32.8 used.  14062.4 avail Mem 
+
+    PID USER      PR  NI    VIRT    RES    SHR S  %CPU  %MEM     TIME+ COMMAND
+2267749 root      20   0   16740   7192   5968 R  90.9   0.0     15,59 sudo
+2690039 root      20   0       0      0      0 R  18.2   0.0   0:36.18 kworker+
+      1 root      20   0   22764  12820   9468 S   9.1   0.1   0:24.35 systemd
+2658320 root      20   0       0      0      0 I   9.1   0.0   6:52.69 kworker+
+      2 root      20   0       0      0      0 S   0.0   0.0   0:00.11 kthreadd
+      3 root      20   0       0      0      0 S   0.0   0.0   0:00.00 pool_wo+
+      4 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker+
+      5 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker+
+      6 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker+
+      7 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker+
+      9 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker+
+     12 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker+
+     13 root      20   0       0      0      0 I   0.0   0.0   0:00.00 rcu_tas+
+     14 root      20   0       0      0      0 I   0.0   0.0   0:00.00 rcu_tas+
+     15 root      20   0       0      0      0 I   0.0   0.0   0:00.00 rcu_tas+
+     16 root      20   0       0      0      0 S   0.0   0.0   0:03.24 ksoftir+
+     17 root      20   0       0      0      0 I   0.0   0.0   0:55.36 rcu_pre+
+     18 root      rt   0       0      0      0 S   0.0   0.0   0:01.73 migrati+
+tmm@tmm:~/VillaAccess$ 
