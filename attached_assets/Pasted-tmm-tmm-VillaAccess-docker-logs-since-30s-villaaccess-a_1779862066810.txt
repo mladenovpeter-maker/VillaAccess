@@ -1,0 +1,17 @@
+tmm@tmm:~/VillaAccess$ docker logs --since 30s villaaccess-ai-worker-1 2>&1 | grep -E "raw=|YOLO box=" | tail -15
+[06:07:35] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] OCR raw='CA3E01M' normalised='CA3E01M' conf=0.0 plausible=True
+[06:07:36] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(1025,493,1827,739) shrunk=(1121,542,1731,690) det_conf=0.26 → 1 OCR candidate(s)
+[06:07:36] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] OCR raw='CA3477M' normalised='CA3477M' conf=0.0 plausible=True
+[06:07:37] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(1026,491,1827,739) shrunk=(1122,540,1731,690) det_conf=0.27 → 1 OCR candidate(s)
+[06:07:37] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] OCR raw='CA3477' normalised='CA3477' conf=0.0 plausible=True
+[06:07:38] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(1019,491,1827,739) shrunk=(1115,540,1731,690) det_conf=0.30 → 1 OCR candidate(s)
+[06:07:38] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] OCR raw='CA3477' normalised='CA3477' conf=0.0 plausible=True
+[06:07:38] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(1024,491,1827,739) shrunk=(1120,540,1731,690) det_conf=0.29 → 1 OCR candidate(s)
+[06:07:38] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] OCR raw='CA3477M' normalised='CA3477M' conf=0.0 plausible=True
+[06:07:38] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(1024,493,1827,739) shrunk=(1120,542,1731,690) det_conf=0.28 → 1 OCR candidate(s)
+[06:07:38] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] OCR raw='CA3477' normalised='CA3477' conf=0.0 plausible=True
+[06:07:39] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(1044,493,1828,739) shrunk=(1138,542,1734,690) det_conf=0.32 → 1 OCR candidate(s)
+[06:07:39] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] OCR raw='AE' normalised='AE' conf=0.0 plausible=False
+[06:07:39] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(1041,493,1825,740) shrunk=(1135,542,1731,691) det_conf=0.26 → 1 OCR candidate(s)
+[06:07:39] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] OCR raw='CAO7' normalised='CAO7' conf=0.0 plausible=True
+tmm@tmm:~/VillaAccess$ 
