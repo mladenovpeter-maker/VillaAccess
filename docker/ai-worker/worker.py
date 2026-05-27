@@ -48,6 +48,10 @@ YOLO_PLATE_WEIGHTS = os.environ.get(
     "YOLO_PLATE_WEIGHTS", "/app/models/license_plate_detector.pt"
 )
 YOLO_CONF = float(os.environ.get("YOLO_CONF", "0.25"))
+# Reject YOLO boxes whose width/height ratio is below this threshold. Real
+# license plates are always wider than tall (typically 4:1 or 5:1); vertical
+# or near-square boxes are false positives (signs, edges, reflections).
+ANPR_MIN_BOX_ASPECT = float(os.environ.get("ANPR_MIN_BOX_ASPECT", "1.8"))
 # Shrink the YOLO bounding box inward before OCR so Tesseract only sees the
 # actual plate characters, not the surrounding bumper/frame text. Values are
 # fractions of the YOLO box width / height removed from EACH side.
@@ -373,6 +377,16 @@ def ocr_plate(
                 rx1, ry1, rx2, ry2 = [int(v) for v in box.xyxy[0].tolist()]
                 det_conf = float(box.conf[0].item()) if hasattr(box, "conf") else -1.0
             except Exception:
+                continue
+            # Reject vertical / near-square boxes — real plates are wide.
+            bw_raw = max(1, rx2 - rx1)
+            bh_raw = max(1, ry2 - ry1)
+            aspect = bw_raw / bh_raw
+            if aspect < ANPR_MIN_BOX_ASPECT:
+                log.info(
+                    "[%s] YOLO box=(%d,%d,%d,%d) det_conf=%.2f REJECTED aspect=%.2f<%.2f",
+                    camera_id, rx1, ry1, rx2, ry2, det_conf, aspect, ANPR_MIN_BOX_ASPECT,
+                )
                 continue
             # Shrink the YOLO box inward so Tesseract only sees the plate
             # characters (not bumper/frame text on either side or country
