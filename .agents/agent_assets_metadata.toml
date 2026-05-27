@@ -12,3 +12,9 @@ id = "KyF2kHBI9LiPKS4Vw2WN_"
 uri = "file://exports/VillaAccess_Brochure_BG.pdf"
 type = "pdf"
 title = "Villa Access Control — Рекламна брошура (BG)"
+
+[[outputs]]
+id = "fLUePJDii6ufGF3UVEwj5"
+uri = "file://.local/downloads/worker.py.txt"
+type = "text"
+title = "worker.py (новият файл)"
