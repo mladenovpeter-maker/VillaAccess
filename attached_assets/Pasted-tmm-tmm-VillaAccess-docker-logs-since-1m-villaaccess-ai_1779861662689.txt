@@ -1,0 +1,36 @@
+tmm@tmm:~/VillaAccess$ docker logs --since 1m villaaccess-ai-worker-1 2>&1 | grep -E "YOLO box=|REJECTED|raw=" | tail -30
+[06:00:29] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(615,887,708,984) shrunk=(626,906,697,965) det_conf=0.37 → 1 OCR candidate(s)
+[06:00:29] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] OCR raw='A' normalised='A' conf=74.0 plausible=False
+[06:00:30] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(615,887,708,983) shrunk=(626,906,697,964) det_conf=0.30 → 1 OCR candidate(s)
+[06:00:30] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] OCR raw='A' normalised='A' conf=79.0 plausible=False
+[06:00:31] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(613,885,709,992) shrunk=(624,906,698,971) det_conf=0.45 → 1 OCR candidate(s)
+[06:00:31] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] OCR raw='A' normalised='A' conf=53.0 plausible=False
+[06:00:32] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(616,885,709,998) shrunk=(627,907,698,976) det_conf=0.35 → 0 OCR candidate(s)
+[06:00:32] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(615,884,710,999) shrunk=(626,907,699,976) det_conf=0.40 → 1 OCR candidate(s)
+[06:00:32] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] OCR raw='AA' normalised='AA' conf=15.0 plausible=False
+[06:00:34] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(616,885,710,997) shrunk=(627,907,699,975) det_conf=0.32 → 1 OCR candidate(s)
+[06:00:34] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] OCR raw='AA' normalised='AA' conf=73.0 plausible=False
+[06:00:36] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(614,887,709,990) shrunk=(625,907,698,970) det_conf=0.32 → 1 OCR candidate(s)
+[06:00:36] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] OCR raw='AA' normalised='AA' conf=37.0 plausible=False
+[06:00:36] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(615,885,710,1000) shrunk=(626,908,699,977) det_conf=0.25 → 1 OCR candidate(s)
+[06:00:36] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] OCR raw='AA' normalised='AA' conf=62.0 plausible=False
+[06:00:38] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(613,884,710,1001) shrunk=(624,907,699,978) det_conf=0.28 → 0 OCR candidate(s)
+[06:00:38] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(614,884,710,1001) shrunk=(625,907,699,978) det_conf=0.26 → 1 OCR candidate(s)
+[06:00:38] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] OCR raw='AA' normalised='AA' conf=46.0 plausible=False
+[06:00:40] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(614,884,711,1001) shrunk=(625,907,700,978) det_conf=0.33 → 1 OCR candidate(s)
+[06:00:40] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] OCR raw='B' normalised='B' conf=0.0 plausible=False
+[06:00:41] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(615,885,710,996) shrunk=(626,907,699,974) det_conf=0.38 → 1 OCR candidate(s)
+[06:00:41] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] OCR raw='AA' normalised='AA' conf=58.0 plausible=False
+[06:00:42] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(614,887,708,992) shrunk=(625,908,697,971) det_conf=0.30 → 1 OCR candidate(s)
+[06:00:42] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] OCR raw='AA' normalised='AA' conf=51.0 plausible=False
+[06:00:42] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(614,884,710,1000) shrunk=(625,907,699,977) det_conf=0.31 → 1 OCR candidate(s)
+[06:00:42] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] OCR raw='A' normalised='A' conf=64.0 plausible=False
+[06:00:43] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(615,885,710,998) shrunk=(626,907,699,976) det_conf=0.36 → 1 OCR candidate(s)
+[06:00:43] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] OCR raw='AXA' normalised='AXA' conf=62.0 plausible=False
+[06:00:43] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(614,885,710,1000) shrunk=(625,908,699,977) det_conf=0.26 → 1 OCR candidate(s)
+[06:00:43] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] OCR raw='A' normalised='A' conf=56.0 plausible=False
+tmm@tmm:~/VillaAccess$ docker cp villaaccess-ai-worker-1:/tmp/crop.jpg /tmp/crop_$(date +%s).jpg && ls -la /tmp/crop_*.jpg | tail -1
+Successfully copied 3.64kB (transferred 5.63kB) to /tmp/crop_1779861654.jpg
+-rw-r--r-- 1 tmm tmm 2189 May 27 05:41 /tmp/crop_now.jpg
+tmm@tmm:~/VillaAccess$ docker logs --since 1m villaaccess-ai-worker-1 2>&1 | grep -iE "snapshot|fetch|error|warn" | tail -10
+tmm@tmm:~/VillaAccess$ 
