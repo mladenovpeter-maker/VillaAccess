@@ -1,0 +1,18 @@
+tmm@tmm:~/VillaAccess$ docker logs --since 30s villaaccess-ai-worker-1 2>&1 | grep -E "raw=|YOLO box=" | tail -15
+tmm@tmm:~/VillaAccess$ docker logs --since 30s villaaccess-ai-worker-1 2>&1 | grep -E "raw=|YOLO box=" | tail -15
+[06:06:25] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] OCR raw='CA3' normalised='CA3' conf=0.0 plausible=False
+[06:06:25] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(1057,484,1895,739) shrunk=(1157,535,1795,688) det_conf=0.34 → 1 OCR candidate(s)
+[06:06:25] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] OCR raw='CA3477M' normalised='CA3477M' conf=0.0 plausible=True
+[06:06:25] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(1070,480,1879,728) shrunk=(1167,529,1782,679) det_conf=0.35 → 1 OCR candidate(s)
+[06:06:25] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] OCR raw='CA347T' normalised='CA347T' conf=0.0 plausible=True
+[06:06:26] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(1050,488,1880,738) shrunk=(1149,538,1781,688) det_conf=0.32 → 1 OCR candidate(s)
+[06:06:26] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] OCR raw='CA3477M' normalised='CA3477M' conf=0.0 plausible=True
+[06:06:26] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(1059,489,1879,738) shrunk=(1157,538,1781,689) det_conf=0.33 → 1 OCR candidate(s)
+[06:06:26] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] OCR raw='CA3477' normalised='CA3477' conf=0.0 plausible=True
+[06:06:27] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(1059,489,1881,737) shrunk=(1157,538,1783,688) det_conf=0.33 → 1 OCR candidate(s)
+[06:06:27] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] OCR raw='CA34E77' normalised='CA34E77' conf=0.0 plausible=True
+[06:06:27] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(1066,488,1880,737) shrunk=(1163,537,1783,688) det_conf=0.30 → 1 OCR candidate(s)
+[06:06:27] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] OCR raw='CA8477' normalised='CA8477' conf=0.0 plausible=True
+[06:06:28] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(1063,489,1878,737) shrunk=(1160,538,1781,688) det_conf=0.28 → 1 OCR candidate(s)
+[06:06:28] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] OCR raw='CA3477M' normalised='CA3477M' conf=0.0 plausible=True
+tmm@tmm:~/VillaAccess$ 
