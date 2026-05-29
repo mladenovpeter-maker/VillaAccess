@@ -1,0 +1,102 @@
+tmm@tmm:~/VillaAccess$ git pull
+remote: Enumerating objects: 191, done.
+remote: Counting objects: 100% (191/191), done.
+remote: Compressing objects: 100% (51/51), done.
+remote: Total 174 (delta 128), reused 169 (delta 123), pack-reused 0 (from 0)
+Receiving objects: 100% (174/174), 4.93 MiB | 8.33 MiB/s, done.
+Resolving deltas: 100% (128/128), completed with 14 local objects.
+From https://github.com/mladenovpeter-maker/VillaAccess
+   a57f1ff..c19e5c7  main       -> origin/main
+Updating a57f1ff..c19e5c7
+Fast-forward
+ .agents/agent_assets_metadata.toml                 |   6 +
+ artifacts/api-server/src/routes/cameras.ts         |  13 +-
+ artifacts/api-server/src/routes/index.ts           |  11 +-
+ artifacts/api-server/src/routes/intercoms.ts       |  17 +-
+ artifacts/api-server/src/routes/locks.ts           |  11 +-
+ artifacts/api-server/src/services/anpr.ts          |   7 +-
+ attached_assets/IMG_1800_1779812503853.png         | Bin 0 -> 224482 bytes
+ ...laAccess-git-no-optional-lock_1779806547123.txt |  42 +++
+ ...laAccess-git-pull-docker-comp_1779863503804.txt |  41 +++
+ ...-u-admin-TMM757161-digest-htt_1779800437486.txt | 331 +++++++++++++++++++++
+ ...ocker-ps-grep-villaaccess-doc_1779808118185.txt |  41 +++
+ ...-compose-logs-f-tail-50-backe_1779798193403.txt |  13 +
+ ...-compose-logs-f-tail-50-backe_1779798832507.txt |  20 ++
+ ...-compose-logs-since-1m-backen_1779799046108.txt |  82 +++++
+ ...-compose-logs-since-5m-backen_1779798925604.txt | 102 +++++++
+ ...-logs-since-1m-villaaccess-ai_1779861662689.txt |  36 +++
+ ...-logs-since-2m-villaaccess-ba_1779805420690.txt |  32 ++
+ ...-logs-since-2m-villaaccess-ba_1779862174444.txt |  32 ++
+ ...-logs-since-30s-villaaccess-a_1779861988878.txt |  18 ++
+ ...-logs-since-30s-villaaccess-a_1779862066810.txt |  17 ++
+ ...-logs-since-30s-villaaccess-a_1779862309007.txt |  20 ++
+ ...-logs-tail-30-villaaccess-ai-_1779805156518.txt |  35 +++
+ ...-logs-villaaccess-ai-worker-1_1779804469363.txt | 103 +++++++
+ ...l-in-ISAPI-Smart-Whitelight-I_1779800495810.txt |  66 ++++
+ ...m-VillaAccess-docker-stats-no_1779859793423.txt |  51 ++++
+ ...m-VillaAccess-echo-1-Smart-Hy_1779803745810.txt |  78 +++++
+ ...ccess-cloudflared-1-wget-qO-t_1779802296338.txt |  57 ++++
+ ...ccess-cloudflared-1-tail-15-2_1779802445020.txt |  17 ++
+ ...isk-docker-stats-no-stream-to_1779859505121.txt |  44 +++
+ ...105-echo-WORKER-docker-logs-s_1780061700275.txt |  23 ++
+ ...enshot_2026-05-26_at_16.14.34_1779801297673.png | Bin 0 -> 399010 bytes
+ ...enshot_2026-05-26_at_16.16.50_1779801446900.png | Bin 0 -> 471866 bytes
+ ...enshot_2026-05-26_at_16.16.56_1779801446900.png | Bin 0 -> 455063 bytes
+ ...enshot_2026-05-26_at_16.18.15_1779801514242.png | Bin 0 -> 477123 bytes
+ ...enshot_2026-05-26_at_16.20.00_1779801612410.png | Bin 0 -> 441146 bytes
+ ...enshot_2026-05-26_at_16.23.31_1779801820399.png | Bin 0 -> 482221 bytes
+ ...enshot_2026-05-26_at_16.24.28_1779801878131.png | Bin 0 -> 488989 bytes
+ ...enshot_2026-05-26_at_16.25.22_1779801930530.png | Bin 0 -> 481811 bytes
+ ...enshot_2026-05-26_at_16.34.13_1779802461890.png | Bin 0 -> 82628 bytes
+ ...enshot_2026-05-26_at_17.56.02_1779807381918.png | Bin 0 -> 585626 bytes
+ ...enshot_2026-05-27_at_08.42.31_1779860584833.png | Bin 0 -> 543291 bytes
+ ...enshot_2026-05-27_at_09.36.44_1779863825778.png | Bin 0 -> 333141 bytes
+ attached_assets/crop_1779807296896.jpg             | Bin 0 -> 1501 bytes
+ attached_assets/crop_now_1779807773595.jpg         | Bin 0 -> 14688 bytes
+ attached_assets/full_now_1779807782648.jpg         | Bin 0 -> 234149 bytes
+ attached_assets/processed_1779807296896.jpg        | Bin 0 -> 2529 bytes
+ attached_assets/processed_now_1779860535545.jpg    | Bin 0 -> 5512 bytes
+ docker/ai-worker/worker.py                         |  46 ++-
+ 48 files changed, 1378 insertions(+), 34 deletions(-)
+ create mode 100644 attached_assets/IMG_1800_1779812503853.png
+ create mode 100644 attached_assets/Pasted-tmm-tmm-VillaAccess-cd-VillaAccess-git-no-optional-lock_1779806547123.txt
+ create mode 100644 attached_assets/Pasted-tmm-tmm-VillaAccess-cd-VillaAccess-git-pull-docker-comp_1779863503804.txt
+ create mode 100644 attached_assets/Pasted-tmm-tmm-VillaAccess-curl-s-u-admin-TMM757161-digest-htt_1779800437486.txt
+ create mode 100644 attached_assets/Pasted-tmm-tmm-VillaAccess-date-docker-ps-grep-villaaccess-doc_1779808118185.txt
+ create mode 100644 attached_assets/Pasted-tmm-tmm-VillaAccess-docker-compose-logs-f-tail-50-backe_1779798193403.txt
+ create mode 100644 attached_assets/Pasted-tmm-tmm-VillaAccess-docker-compose-logs-f-tail-50-backe_1779798832507.txt
+ create mode 100644 attached_assets/Pasted-tmm-tmm-VillaAccess-docker-compose-logs-since-1m-backen_1779799046108.txt
+ create mode 100644 attached_assets/Pasted-tmm-tmm-VillaAccess-docker-compose-logs-since-5m-backen_1779798925604.txt
+ create mode 100644 attached_assets/Pasted-tmm-tmm-VillaAccess-docker-logs-since-1m-villaaccess-ai_1779861662689.txt
+ create mode 100644 attached_assets/Pasted-tmm-tmm-VillaAccess-docker-logs-since-2m-villaaccess-ba_1779805420690.txt
+ create mode 100644 attached_assets/Pasted-tmm-tmm-VillaAccess-docker-logs-since-2m-villaaccess-ba_1779862174444.txt
+ create mode 100644 attached_assets/Pasted-tmm-tmm-VillaAccess-docker-logs-since-30s-villaaccess-a_1779861988878.txt
+ create mode 100644 attached_assets/Pasted-tmm-tmm-VillaAccess-docker-logs-since-30s-villaaccess-a_1779862066810.txt
+ create mode 100644 attached_assets/Pasted-tmm-tmm-VillaAccess-docker-logs-since-30s-villaaccess-a_1779862309007.txt
+ create mode 100644 attached_assets/Pasted-tmm-tmm-VillaAccess-docker-logs-tail-30-villaaccess-ai-_1779805156518.txt
+ create mode 100644 attached_assets/Pasted-tmm-tmm-VillaAccess-docker-logs-villaaccess-ai-worker-1_1779804469363.txt
+ create mode 100644 attached_assets/Pasted-tmm-tmm-VillaAccess-for-url-in-ISAPI-Smart-Whitelight-I_1779800495810.txt
+ create mode 100644 attached_assets/Pasted-tmm-tmm-VillaAccess-tmm-tmm-VillaAccess-docker-stats-no_1779859793423.txt
+ create mode 100644 attached_assets/Pasted-tmm-tmm-VillaAccess-tmm-tmm-VillaAccess-echo-1-Smart-Hy_1779803745810.txt
+ create mode 100644 attached_assets/Pasted-tmm-tmm-docker-exec-villaaccess-cloudflared-1-wget-qO-t_1779802296338.txt
+ create mode 100644 attached_assets/Pasted-tmm-tmm-docker-logs-villaaccess-cloudflared-1-tail-15-2_1779802445020.txt
+ create mode 100644 attached_assets/Pasted-tmm-tmm-snapshot-CPU-RAM-disk-docker-stats-no-stream-to_1779859505121.txt
+ create mode 100644 attached_assets/Pasted-tmm-tmm-ssh-tmm-172-16-32-105-echo-WORKER-docker-logs-s_1780061700275.txt
+ create mode 100644 attached_assets/Screenshot_2026-05-26_at_16.14.34_1779801297673.png
+ create mode 100644 attached_assets/Screenshot_2026-05-26_at_16.16.50_1779801446900.png
+ create mode 100644 attached_assets/Screenshot_2026-05-26_at_16.16.56_1779801446900.png
+ create mode 100644 attached_assets/Screenshot_2026-05-26_at_16.18.15_1779801514242.png
+ create mode 100644 attached_assets/Screenshot_2026-05-26_at_16.20.00_1779801612410.png
+ create mode 100644 attached_assets/Screenshot_2026-05-26_at_16.23.31_1779801820399.png
+ create mode 100644 attached_assets/Screenshot_2026-05-26_at_16.24.28_1779801878131.png
+ create mode 100644 attached_assets/Screenshot_2026-05-26_at_16.25.22_1779801930530.png
+ create mode 100644 attached_assets/Screenshot_2026-05-26_at_16.34.13_1779802461890.png
+ create mode 100644 attached_assets/Screenshot_2026-05-26_at_17.56.02_1779807381918.png
+ create mode 100644 attached_assets/Screenshot_2026-05-27_at_08.42.31_1779860584833.png
+ create mode 100644 attached_assets/Screenshot_2026-05-27_at_09.36.44_1779863825778.png
+ create mode 100644 attached_assets/crop_1779807296896.jpg
+ create mode 100644 attached_assets/crop_now_1779807773595.jpg
+ create mode 100644 attached_assets/full_now_1779807782648.jpg
+ create mode 100644 attached_assets/processed_1779807296896.jpg
+ create mode 100644 attached_assets/processed_now_1779860535545.jpg
+tmm@tmm:~/VillaAccess$ 

@@ -1,0 +1,409 @@
+tmm@tmm:~/VillaAccess$ ssh tmm@192.168.100.176 'cd ~/VillaAccess && git pull && docker compose up -d --build'
+
+tmm@192.168.100.176's password: 
+Already up to date.
+time="2026-05-29T17:02:54Z" level=warning msg="/home/tmm/VillaAccess/docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+ Image villaaccess-ai-worker Building 
+ Image villaaccess-migrate Building 
+ Image villaaccess-backend Building 
+ Image villaaccess-frontend Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 1.86kB done
+#1 DONE 0.0s
+
+#2 [ai-worker internal] load build definition from Dockerfile
+#2 transferring dockerfile: 1.88kB done
+#2 DONE 0.0s
+
+#3 [migrate internal] load build definition from Dockerfile
+#3 transferring dockerfile: 1.19kB done
+#3 DONE 0.0s
+
+#4 [frontend internal] load build definition from Dockerfile
+#4 transferring dockerfile: 1.00kB done
+#4 DONE 0.0s
+
+#5 [migrate internal] load metadata for docker.io/library/node:22-alpine
+#5 DONE 0.8s
+
+#6 [ai-worker internal] load metadata for docker.io/library/python:3.11-slim
+#6 DONE 0.8s
+
+#7 [backend internal] load .dockerignore
+#7 transferring context: 251B done
+#7 DONE 0.0s
+
+#8 [ai-worker internal] load build context
+#8 transferring context: 22.06kB done
+#8 DONE 0.0s
+
+#9 [backend builder 1/6] FROM docker.io/library/node:22-alpine@sha256:968df39aedcea65eeb078fb336ed7191baf48f972b4479711397108be0966920
+#9 resolve docker.io/library/node:22-alpine@sha256:968df39aedcea65eeb078fb336ed7191baf48f972b4479711397108be0966920 0.0s done
+#9 DONE 0.0s
+
+#10 [ai-worker 1/7] FROM docker.io/library/python:3.11-slim@sha256:a3ab0b966bc4e91546a033e22093cb840908979487a9fc0e6e38295747e49ac0
+#10 resolve docker.io/library/python:3.11-slim@sha256:a3ab0b966bc4e91546a033e22093cb840908979487a9fc0e6e38295747e49ac0 0.0s done
+#10 DONE 0.0s
+
+#11 [backend internal] load build context
+#11 transferring context: 114.86kB 0.0s done
+#11 transferring context: 114.86kB 0.0s done
+#11 DONE 0.0s
+
+#12 [ai-worker 4/7] COPY docker/ai-worker/requirements.txt ./requirements.txt
+#12 CACHED
+
+#13 [ai-worker 5/7] RUN pip install --no-cache-dir -r requirements.txt
+#13 CACHED
+
+#14 [ai-worker 2/7] WORKDIR /app
+#14 CACHED
+
+#15 [ai-worker 3/7] RUN apt-get update && apt-get install -y --no-install-recommends     libglib2.0-0     libsm6     libxext6     libxrender-dev     libgomp1     libgl1     curl     ca-certificates     tesseract-ocr     tesseract-ocr-eng     && rm -rf /var/lib/apt/lists/*
+#15 CACHED
+
+#16 [backend builder 2/6] RUN npm install -g pnpm@10 --quiet
+#16 CACHED
+
+#17 [ai-worker 6/7] RUN mkdir -p /app/models &&     curl -fsSL "https://github.com/Muhammad-Zeerak-Khan/Automatic-License-Plate-Recognition-using-YOLOv8/raw/main/license_plate_detector.pt" -o /app/models/license_plate_detector.pt &&     test -s /app/models/license_plate_detector.pt
+#17 CACHED
+
+#18 [migrate builder 3/6] WORKDIR /workspace
+#18 CACHED
+
+#19 [ai-worker 7/7] COPY docker/ai-worker/worker.py ./worker.py
+#19 DONE 0.0s
+
+#20 [ai-worker] exporting to image
+#20 exporting layers 0.0s done
+#20 exporting manifest sha256:7444a703ed02bb5fd1552dc319176bd8b3429b9d328b46984f305cae2ea4a9a9 done
+#20 exporting config sha256:3d6beb7a64555dd7a8aa3fec689e80c40ce3acf1b5c3b7d2debe46f91bb2d65e done
+#20 exporting attestation manifest sha256:c92777ff19ee2ee2ba52aa129396d7409a468ba80a0a164e92748829b8871c6e
+#20 exporting attestation manifest sha256:c92777ff19ee2ee2ba52aa129396d7409a468ba80a0a164e92748829b8871c6e 0.0s done
+#20 exporting manifest list sha256:983cc3c450a5f4f5c3c6105187d0943ad7a6d5e184e28c535f72e54011b15837 done
+#20 naming to docker.io/library/villaaccess-ai-worker:latest done
+#20 unpacking to docker.io/library/villaaccess-ai-worker:latest 0.0s done
+#20 DONE 0.1s
+
+#21 [migrate builder 4/6] COPY . .
+#21 DONE 0.1s
+
+#22 [ai-worker] resolving provenance for metadata file
+#22 DONE 0.0s
+
+#23 [migrate builder 5/6] RUN pnpm install --frozen-lockfile
+#23 ...
+
+#24 [frontend internal] load metadata for docker.io/library/nginx:alpine
+#24 DONE 1.4s
+
+#7 [frontend internal] load .dockerignore
+#7 transferring context: 251B done
+#7 DONE 0.0s
+
+#11 [frontend internal] load build context
+#11 transferring context: 114.86kB 0.0s done
+#11 DONE 0.0s
+
+#25 [frontend internal] load metadata for docker.io/library/node:22-bookworm-slim
+#25 DONE 1.4s
+
+#26 [frontend runner 1/3] FROM docker.io/library/nginx:alpine@sha256:8b1e78743a03dbb2c95171cc58639fef29abc8816598e27fb910ed2e621e589a
+#26 resolve docker.io/library/nginx:alpine@sha256:8b1e78743a03dbb2c95171cc58639fef29abc8816598e27fb910ed2e621e589a 0.0s done
+#26 DONE 0.1s
+
+#27 [frontend builder 1/6] FROM docker.io/library/node:22-bookworm-slim@sha256:7af03b14a13c8cdd38e45058fd957bf00a72bbe17feac43b1c15a689c029c732
+#27 resolve docker.io/library/node:22-bookworm-slim@sha256:7af03b14a13c8cdd38e45058fd957bf00a72bbe17feac43b1c15a689c029c732 0.0s done
+#27 sha256:79b3835561d335125b55d15b510f00002f0a8fc544a15f74b9f13059a1c701c7 447B / 447B 0.1s done
+#27 sha256:fd31133e23d87bcc829a1d3614f1c82c8ece76a04efa592d3a8a0dc694159ba6 0B / 1.71MB 0.2s
+#27 sha256:3d75e56d73fdaadbfdf0dd14218e00d88560d320f8e8e72508e6b4b67d63aa17 0B / 49.93MB 0.2s
+#27 sha256:5d2860e0a8119005f3887b3814e7bcd48e2f27a91d53c64ec458f3aba0090ee4 0B / 3.31kB 0.2s
+#27 sha256:068fedd6b0f109b8186d00d49327b6fc6747c428fd3c9a8739424ff5f38d7531 0B / 28.23MB 0.2s
+#27 sha256:fd31133e23d87bcc829a1d3614f1c82c8ece76a04efa592d3a8a0dc694159ba6 1.71MB / 1.71MB 0.3s done
+#27 sha256:5d2860e0a8119005f3887b3814e7bcd48e2f27a91d53c64ec458f3aba0090ee4 3.31kB / 3.31kB 0.3s done
+#27 sha256:3d75e56d73fdaadbfdf0dd14218e00d88560d320f8e8e72508e6b4b67d63aa17 3.15MB / 49.93MB 0.8s
+#27 sha256:068fedd6b0f109b8186d00d49327b6fc6747c428fd3c9a8739424ff5f38d7531 2.10MB / 28.23MB 1.2s
+#27 sha256:3d75e56d73fdaadbfdf0dd14218e00d88560d320f8e8e72508e6b4b67d63aa17 6.29MB / 49.93MB 1.4s
+#27 sha256:068fedd6b0f109b8186d00d49327b6fc6747c428fd3c9a8739424ff5f38d7531 4.19MB / 28.23MB 2.0s
+#27 sha256:3d75e56d73fdaadbfdf0dd14218e00d88560d320f8e8e72508e6b4b67d63aa17 9.44MB / 49.93MB 2.1s
+#27 sha256:068fedd6b0f109b8186d00d49327b6fc6747c428fd3c9a8739424ff5f38d7531 6.29MB / 28.23MB 2.4s
+#27 sha256:3d75e56d73fdaadbfdf0dd14218e00d88560d320f8e8e72508e6b4b67d63aa17 12.58MB / 49.93MB 2.7s
+#27 sha256:068fedd6b0f109b8186d00d49327b6fc6747c428fd3c9a8739424ff5f38d7531 8.39MB / 28.23MB 2.9s
+#27 sha256:3d75e56d73fdaadbfdf0dd14218e00d88560d320f8e8e72508e6b4b67d63aa17 15.73MB / 49.93MB 4.1s
+#27 sha256:068fedd6b0f109b8186d00d49327b6fc6747c428fd3c9a8739424ff5f38d7531 10.49MB / 28.23MB 4.2s
+#27 sha256:068fedd6b0f109b8186d00d49327b6fc6747c428fd3c9a8739424ff5f38d7531 12.58MB / 28.23MB 7.4s
+#27 sha256:3d75e56d73fdaadbfdf0dd14218e00d88560d320f8e8e72508e6b4b67d63aa17 18.87MB / 49.93MB 8.0s
+#27 sha256:068fedd6b0f109b8186d00d49327b6fc6747c428fd3c9a8739424ff5f38d7531 14.68MB / 28.23MB 10.5s
+#27 sha256:3d75e56d73fdaadbfdf0dd14218e00d88560d320f8e8e72508e6b4b67d63aa17 22.02MB / 49.93MB 11.3s
+#27 sha256:068fedd6b0f109b8186d00d49327b6fc6747c428fd3c9a8739424ff5f38d7531 16.78MB / 28.23MB 11.3s
+#27 sha256:068fedd6b0f109b8186d00d49327b6fc6747c428fd3c9a8739424ff5f38d7531 18.87MB / 28.23MB 11.9s
+#27 sha256:068fedd6b0f109b8186d00d49327b6fc6747c428fd3c9a8739424ff5f38d7531 20.97MB / 28.23MB 12.3s
+#27 ...
+
+#23 [migrate builder 5/6] RUN pnpm install --frozen-lockfile
+#23 2.939 Scope: all 9 workspace projects
+#23 3.002 Lockfile is up to date, resolution step is skipped
+#23 3.051 Progress: resolved 1, reused 0, downloaded 0, added 0
+#23 3.123 Packages: +534
+#23 3.123 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#23 4.052 Progress: resolved 534, reused 0, downloaded 153, added 153
+#23 5.052 Progress: resolved 534, reused 0, downloaded 256, added 256
+#23 6.052 Progress: resolved 534, reused 0, downloaded 325, added 325
+#23 7.052 Progress: resolved 534, reused 0, downloaded 400, added 400
+#23 8.052 Progress: resolved 534, reused 0, downloaded 438, added 438
+#23 9.053 Progress: resolved 534, reused 0, downloaded 517, added 517
+#23 10.05 Progress: resolved 534, reused 0, downloaded 526, added 526
+#23 11.05 Progress: resolved 534, reused 0, downloaded 531, added 530
+#23 12.05 Progress: resolved 534, reused 0, downloaded 533, added 533
+#23 ...
+
+#27 [frontend builder 1/6] FROM docker.io/library/node:22-bookworm-slim@sha256:7af03b14a13c8cdd38e45058fd957bf00a72bbe17feac43b1c15a689c029c732
+#27 sha256:068fedd6b0f109b8186d00d49327b6fc6747c428fd3c9a8739424ff5f38d7531 23.07MB / 28.23MB 12.6s
+#27 sha256:3d75e56d73fdaadbfdf0dd14218e00d88560d320f8e8e72508e6b4b67d63aa17 25.17MB / 49.93MB 12.9s
+#27 sha256:068fedd6b0f109b8186d00d49327b6fc6747c428fd3c9a8739424ff5f38d7531 25.17MB / 28.23MB 13.1s
+#27 sha256:3d75e56d73fdaadbfdf0dd14218e00d88560d320f8e8e72508e6b4b67d63aa17 28.31MB / 49.93MB 13.5s
+#27 sha256:068fedd6b0f109b8186d00d49327b6fc6747c428fd3c9a8739424ff5f38d7531 27.26MB / 28.23MB 13.7s
+#27 sha256:3d75e56d73fdaadbfdf0dd14218e00d88560d320f8e8e72508e6b4b67d63aa17 31.46MB / 49.93MB 14.1s
+#27 sha256:068fedd6b0f109b8186d00d49327b6fc6747c428fd3c9a8739424ff5f38d7531 28.23MB / 28.23MB 14.1s done
+#27 extracting sha256:068fedd6b0f109b8186d00d49327b6fc6747c428fd3c9a8739424ff5f38d7531
+#27 sha256:3d75e56d73fdaadbfdf0dd14218e00d88560d320f8e8e72508e6b4b67d63aa17 34.60MB / 49.93MB 14.6s
+#27 sha256:3d75e56d73fdaadbfdf0dd14218e00d88560d320f8e8e72508e6b4b67d63aa17 38.80MB / 49.93MB 15.0s
+#27 extracting sha256:068fedd6b0f109b8186d00d49327b6fc6747c428fd3c9a8739424ff5f38d7531 0.7s done
+#27 extracting sha256:5d2860e0a8119005f3887b3814e7bcd48e2f27a91d53c64ec458f3aba0090ee4 0.0s done
+#27 sha256:3d75e56d73fdaadbfdf0dd14218e00d88560d320f8e8e72508e6b4b67d63aa17 42.99MB / 49.93MB 15.5s
+#27 sha256:3d75e56d73fdaadbfdf0dd14218e00d88560d320f8e8e72508e6b4b67d63aa17 46.14MB / 49.93MB 15.8s
+#27 sha256:3d75e56d73fdaadbfdf0dd14218e00d88560d320f8e8e72508e6b4b67d63aa17 49.93MB / 49.93MB 16.0s done
+#27 ...
+
+#23 [backend builder 5/6] RUN pnpm install --frozen-lockfile
+#23 15.51 Progress: resolved 534, reused 0, downloaded 534, added 533
+#23 15.52 Progress: resolved 534, reused 0, downloaded 534, added 534, done
+#23 15.69 .../esbuild@0.27.3/node_modules/esbuild postinstall$ node install.js
+#23 15.69 .../esbuild@0.27.7/node_modules/esbuild postinstall$ node install.js
+#23 15.69 .../esbuild@0.18.20/node_modules/esbuild postinstall$ node install.js
+#23 15.69 .../esbuild@0.25.12/node_modules/esbuild postinstall$ node install.js
+#23 15.75 .../esbuild@0.27.3/node_modules/esbuild postinstall: Done
+#23 15.76 .../esbuild@0.27.7/node_modules/esbuild postinstall: Done
+#23 15.76 .../esbuild@0.25.12/node_modules/esbuild postinstall: Done
+#23 15.77 .../esbuild@0.18.20/node_modules/esbuild postinstall: Done
+#23 16.03 
+#23 16.03 devDependencies:
+#23 16.03 + prettier 3.8.3
+#23 16.03 + typescript 5.9.3
+#23 16.03 
+#23 16.06 . preinstall$ sh -c 'rm -f package-lock.json yarn.lock; case "$npm_config_user_agent" in pnpm/*) ;; *) echo "Use pnpm instead" >&2; exit 1 ;; esac'
+#23 16.06 . preinstall: Done
+#23 16.20 Done in 13.6s using pnpm v10.26.1
+#23 DONE 16.5s
+
+#27 [frontend builder 1/6] FROM docker.io/library/node:22-bookworm-slim@sha256:7af03b14a13c8cdd38e45058fd957bf00a72bbe17feac43b1c15a689c029c732
+#27 extracting sha256:3d75e56d73fdaadbfdf0dd14218e00d88560d320f8e8e72508e6b4b67d63aa17
+#27 extracting sha256:3d75e56d73fdaadbfdf0dd14218e00d88560d320f8e8e72508e6b4b67d63aa17 0.9s done
+#27 DONE 17.0s
+
+#28 [backend builder 6/6] RUN pnpm --filter @workspace/api-server run build
+#28 ...
+
+#27 [frontend builder 1/6] FROM docker.io/library/node:22-bookworm-slim@sha256:7af03b14a13c8cdd38e45058fd957bf00a72bbe17feac43b1c15a689c029c732
+#27 extracting sha256:fd31133e23d87bcc829a1d3614f1c82c8ece76a04efa592d3a8a0dc694159ba6 0.0s done
+#27 extracting sha256:79b3835561d335125b55d15b510f00002f0a8fc544a15f74b9f13059a1c701c7 done
+#27 DONE 17.1s
+
+#28 [backend builder 6/6] RUN pnpm --filter @workspace/api-server run build
+#28 1.250 
+#28 1.250 > @workspace/api-server@0.0.0 build /workspace/artifacts/api-server
+#28 1.250 > node ./build.mjs
+#28 1.250 
+#28 1.720 
+#28 1.720   dist/index.mjs                       3.6mb ⚠️
+#28 1.720   dist/pino-worker.mjs               153.4kb
+#28 1.720   dist/pino-file.mjs                 142.0kb
+#28 1.720   dist/pino-pretty.mjs               114.6kb
+#28 1.720   dist/thread-stream-worker.mjs        7.3kb
+#28 1.720   dist/index.mjs.map                   7.6mb
+#28 1.720   dist/pino-worker.mjs.map           256.9kb
+#28 1.720   dist/pino-file.mjs.map             229.0kb
+#28 1.720   dist/pino-pretty.mjs.map           204.0kb
+#28 1.720   dist/thread-stream-worker.mjs.map   12.0kb
+#28 1.720 
+#28 1.720 ⚡ Done in 383ms
+#28 DONE 1.8s
+
+#29 [backend runner 2/4] WORKDIR /app
+#29 CACHED
+
+#30 [backend runner 3/4] COPY --from=builder /workspace/artifacts/api-server/dist ./dist
+#30 DONE 0.0s
+
+#31 [backend runner 4/4] RUN mkdir -p uploads
+#31 DONE 0.1s
+
+#32 [migrate] exporting to image
+#32 exporting layers
+#32 ...
+
+#33 [frontend builder 2/6] RUN npm install -g pnpm@10 --quiet
+#33 1.355 
+#33 1.355 added 1 package in 1s
+#33 1.355 
+#33 1.355 1 package is looking for funding
+#33 1.355   run `npm fund` for details
+#33 1.356 npm notice
+#33 1.356 npm notice New major version of npm available! 10.9.8 -> 11.16.0
+#33 1.356 npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.16.0
+#33 1.356 npm notice To update run: npm install -g npm@11.16.0
+#33 1.356 npm notice
+#33 DONE 1.4s
+
+#34 [frontend builder 3/6] WORKDIR /workspace
+#34 DONE 0.0s
+
+#35 [frontend builder 4/6] COPY . .
+#35 DONE 0.1s
+
+#36 [frontend builder 5/6] RUN pnpm install --frozen-lockfile
+#36 ...
+
+#37 [backend] exporting to image
+#37 exporting layers 0.5s done
+#37 exporting manifest sha256:0264f414ba74741496eec82ad1504c1521d52ac088091bafef5a493e5cb9ce07 done
+#37 exporting config sha256:4fbca176fb64430c72fb11bf135ed49629f9843d82528eb1156b0fae7cb1b8ab done
+#37 exporting attestation manifest sha256:748584b6e9bacc86cd321aa34ecc82eb2ae1b7ee1eb655324fb7f9193cf35b51 0.0s done
+#37 exporting manifest list sha256:37f343daea11841c3c1de93da0020efff7227fcdabdeb9eab5a7d4fcf7e69c7b done
+#37 naming to docker.io/library/villaaccess-backend:latest done
+#37 unpacking to docker.io/library/villaaccess-backend:latest 0.1s done
+#37 DONE 0.6s
+
+#38 [backend] resolving provenance for metadata file
+#38 DONE 0.0s
+
+#36 [frontend builder 5/6] RUN pnpm install --frozen-lockfile
+#36 2.205 Scope: all 9 workspace projects
+#36 2.269 Lockfile is up to date, resolution step is skipped
+#36 2.311 Progress: resolved 1, reused 0, downloaded 0, added 0
+#36 2.382 Packages: +534
+#36 2.382 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#36 3.311 Progress: resolved 534, reused 0, downloaded 172, added 172
+#36 4.311 Progress: resolved 534, reused 0, downloaded 294, added 294
+#36 5.311 Progress: resolved 534, reused 0, downloaded 352, added 352
+#36 6.311 Progress: resolved 534, reused 0, downloaded 440, added 440
+#36 7.314 Progress: resolved 534, reused 0, downloaded 523, added 522
+#36 8.316 Progress: resolved 534, reused 0, downloaded 525, added 525
+#36 9.316 Progress: resolved 534, reused 0, downloaded 531, added 530
+#36 10.32 Progress: resolved 534, reused 0, downloaded 533, added 533
+#36 10.99 Progress: resolved 534, reused 0, downloaded 534, added 534, done
+#36 11.19 .../esbuild@0.27.7/node_modules/esbuild postinstall$ node install.js
+#36 11.19 .../esbuild@0.18.20/node_modules/esbuild postinstall$ node install.js
+#36 11.19 .../esbuild@0.27.3/node_modules/esbuild postinstall$ node install.js
+#36 11.20 .../esbuild@0.25.12/node_modules/esbuild postinstall$ node install.js
+#36 11.25 .../esbuild@0.27.7/node_modules/esbuild postinstall: Done
+#36 11.27 .../esbuild@0.18.20/node_modules/esbuild postinstall: Done
+#36 11.28 .../esbuild@0.27.3/node_modules/esbuild postinstall: Done
+#36 11.30 .../esbuild@0.25.12/node_modules/esbuild postinstall: Done
+#36 11.60 
+#36 11.60 devDependencies:
+#36 11.60 + prettier 3.8.3
+#36 11.60 + typescript 5.9.3
+#36 11.60 
+#36 11.64 . preinstall$ sh -c 'rm -f package-lock.json yarn.lock; case "$npm_config_user_agent" in pnpm/*) ;; *) echo "Use pnpm instead" >&2; exit 1 ;; esac'
+#36 11.66 . preinstall: Done
+#36 11.78 Done in 9.8s using pnpm v10.26.1
+#36 DONE 12.1s
+
+#32 [migrate] exporting to image
+#32 ...
+
+#39 [frontend builder 6/6] RUN pnpm --filter @workspace/dashboard run build
+#39 0.963 
+#39 0.963 > @workspace/dashboard@0.0.0 build /workspace/artifacts/dashboard
+#39 0.963 > vite build --config vite.config.ts
+#39 0.963 
+#39 1.275 vite v7.3.3 building client environment for production...
+#39 1.353 transforming...
+#39 2.323 src/components/ui/tooltip.tsx (2:0): Error when using sourcemap for reporting an error: Can't resolve original location of error.
+#39 2.513 src/components/ui/sheet.tsx (2:0): Error when using sourcemap for reporting an error: Can't resolve original location of error.
+#39 2.514 src/components/ui/select.tsx (2:0): Error when using sourcemap for reporting an error: Can't resolve original location of error.
+#39 2.784 src/components/ui/label.tsx (2:0): Error when using sourcemap for reporting an error: Can't resolve original location of error.
+#39 4.306 ✓ 1887 modules transformed.
+#39 4.674 [plugin vite:reporter] 
+#39 4.674 (!) /workspace/artifacts/dashboard/src/lib/api.ts is dynamically imported by /workspace/artifacts/dashboard/src/pages/logs.tsx but also statically imported by /workspace/artifacts/dashboard/src/lib/auth-context.tsx, /workspace/artifacts/dashboard/src/pages/access.tsx, /workspace/artifacts/dashboard/src/pages/cameras.tsx, /workspace/artifacts/dashboard/src/pages/controls.tsx, /workspace/artifacts/dashboard/src/pages/dashboard.tsx, /workspace/artifacts/dashboard/src/pages/diagnostics.tsx, /workspace/artifacts/dashboard/src/pages/entrances.tsx, /workspace/artifacts/dashboard/src/pages/events.tsx, /workspace/artifacts/dashboard/src/pages/export.tsx, /workspace/artifacts/dashboard/src/pages/health.tsx, /workspace/artifacts/dashboard/src/pages/intercoms.tsx, /workspace/artifacts/dashboard/src/pages/locks.tsx, /workspace/artifacts/dashboard/src/pages/logs.tsx, /workspace/artifacts/dashboard/src/pages/mock.tsx, /workspace/artifacts/dashboard/src/pages/reservations.tsx, /workspace/artifacts/dashboard/src/pages/settings.tsx, /workspace/artifacts/dashboard/src/pages/temp-credentials.tsx, /workspace/artifacts/dashboard/src/pages/timeline.tsx, /workspace/artifacts/dashboard/src/pages/users.tsx, /workspace/artifacts/dashboard/src/pages/vehicles.tsx, /workspace/artifacts/dashboard/src/pages/villas.tsx, dynamic import will not move module into another chunk.
+#39 4.674 
+#39 4.675 rendering chunks...
+#39 4.693 computing gzip size...
+#39 4.711 dist/public/index.html                   1.43 kB │ gzip:   0.55 kB
+#39 4.711 dist/public/assets/index-Bdn0ZWch.css  140.01 kB │ gzip:  21.26 kB
+#39 4.711 dist/public/assets/index-CNphn_Xr.js   744.22 kB │ gzip: 212.30 kB
+#39 4.711 
+#39 4.711 (!) Some chunks are larger than 500 kB after minification. Consider:
+#39 4.711 - Using dynamic import() to code-split the application
+#39 4.711 - Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+#39 4.711 - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+#39 4.712 ✓ built in 3.39s
+#39 DONE 4.9s
+
+#32 [migrate] exporting to image
+#32 exporting layers 16.4s done
+#32 exporting manifest sha256:a069fbc5f7b930dcb7312f878e24c5742ca2def6cabee846ba914f985680613c done
+#32 exporting config sha256:1a151d5ae8f968dab43f929e3de721dda66163a1a52acc686523fe57472f5c84 done
+#32 exporting attestation manifest sha256:ce95ac7dc70de2261fd09f4f8fc220f9588dfeeac73c9ccee7749b4a79971853 0.0s done
+#32 exporting manifest list sha256:571128d14a7d5f7e751e434d38e1615856c92670238f02b3bd168b6d0613a050 done
+#32 naming to docker.io/library/villaaccess-migrate:latest done
+#32 unpacking to docker.io/library/villaaccess-migrate:latest
+#32 ...
+
+#40 [frontend runner 2/3] COPY --from=builder /workspace/artifacts/dashboard/dist/public /usr/share/nginx/html
+#40 DONE 0.0s
+
+#41 [frontend runner 3/3] COPY docker/frontend/nginx.conf /etc/nginx/conf.d/default.conf
+#41 DONE 0.0s
+
+#42 [frontend] exporting to image
+#42 exporting layers 0.1s done
+#42 exporting manifest sha256:ce082ea1a9fcb83c54d08827ae86771e0618580a1387cca9acafc2b19a775f7d done
+#42 exporting config sha256:3f128a27137e3ef918ee96c37e8f5a6af0c8dd53cf0530f1650b82490b69f3d0 done
+#42 exporting attestation manifest sha256:a4451de60fe614c3124a38cb5760694109fe0a0878f4b8a8350c9e7faf6cf8e9 0.0s done
+#42 exporting manifest list sha256:04f1f3bd83327702c91d6e941bf938e620bf8efd881cd26cd0993866662e080c done
+#42 naming to docker.io/library/villaaccess-frontend:latest done
+#42 unpacking to docker.io/library/villaaccess-frontend:latest 0.0s done
+#42 DONE 0.2s
+
+#43 [frontend] resolving provenance for metadata file
+#43 DONE 0.0s
+
+#32 [migrate] exporting to image
+#32 unpacking to docker.io/library/villaaccess-migrate:latest 8.7s done
+#32 DONE 25.1s
+
+#44 [migrate] resolving provenance for metadata file
+#44 DONE 0.0s
+ Image villaaccess-migrate Built 
+ Image villaaccess-backend Built 
+ Image villaaccess-ai-worker Built 
+ Image villaaccess-frontend Built 
+ Container villaaccess-postgres-1 Running 
+ Container villaaccess-migrate-1 Recreate 
+ Container villaaccess-migrate-1 Recreated 
+ Container villaaccess-backend-1 Recreate 
+ Container villaaccess-backend-1 Recreated 
+ Container villaaccess-frontend-1 Recreate 
+ Container villaaccess-ai-worker-1 Recreate 
+ Container villaaccess-frontend-1 Recreated 
+ Container villaaccess-cloudflared-1 Running 
+ Container villaaccess-ai-worker-1 Recreated 
+ Container villaaccess-postgres-1 Waiting 
+ Container villaaccess-postgres-1 Healthy 
+ Container villaaccess-migrate-1 Starting 
+ Container villaaccess-migrate-1 Started 
+ Container villaaccess-migrate-1 Waiting 
+ Container villaaccess-migrate-1 Exited 
+ Container villaaccess-backend-1 Starting 
+ Container villaaccess-backend-1 Started 
+ Container villaaccess-backend-1 Waiting 
+ Container villaaccess-backend-1 Waiting 
+ Container villaaccess-backend-1 Healthy 
+ Container villaaccess-backend-1 Healthy 
+ Container villaaccess-ai-worker-1 Starting 
+ Container villaaccess-frontend-1 Starting 
+ Container villaaccess-frontend-1 Started 
+ Container villaaccess-ai-worker-1 Started 
+tmm@tmm:~/VillaAccess$ 
