@@ -1,0 +1,18 @@
+tmm@tmm:~/VillaAccess$ ssh tmm@192.168.100.176 'docker logs --since 15s villaaccess-ai-worker-1 2>&1 | grep -E "raw=|detection camera" | tail -15'
+tmm@192.168.100.176's password: 
+[16:58:16] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] OCR raw='CB2020X' normalised='CB2020X' conf=0.0 plausible=True
+[16:58:17] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] OCR raw='CB2020X' normalised='CB2020X' conf=0.0 plausible=True
+[16:58:18] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] OCR raw='CB2020X' normalised='CB2020X' conf=0.0 plausible=True
+[16:58:18] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] OCR raw='CB2020X' normalised='CB2020X' conf=0.0 plausible=True
+[16:58:18] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] OCR raw='B2020X' normalised='B2020X' conf=0.0 plausible=True
+[16:58:18] [INFO] detection camera=a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d plate=B2020X → skipped_low_quality (Below plausibility threshold (length/alphanumeric/confidence))
+[16:58:19] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] OCR raw='B2020X' normalised='B2020X' conf=0.0 plausible=True
+[16:58:19] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] OCR raw='CB2020X' normalised='CB2020X' conf=0.0 plausible=True
+[16:58:19] [INFO] detection camera=a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d plate=CB2020X → skipped_low_quality (Below plausibility threshold (length/alphanumeric/confidence))
+[16:58:20] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] OCR raw='CB2020X' normalised='CB2020X' conf=0.0 plausible=True
+[16:58:20] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] OCR raw='CB2020X' normalised='CB2020X' conf=0.0 plausible=True
+[16:58:21] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] OCR raw='CB2020X' normalised='CB2020X' conf=0.0 plausible=True
+[16:58:22] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] OCR raw='CB2020X' normalised='CB2020X' conf=0.0 plausible=True
+[16:58:22] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] OCR raw='CB2020X' normalised='CB2020X' conf=0.0 plausible=True
+[16:58:22] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] OCR raw='CB2020X' normalised='CB2020X' conf=0.0 plausible=True
+tmm@tmm:~/VillaAccess$ 
