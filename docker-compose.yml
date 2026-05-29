@@ -158,6 +158,7 @@ services:
       ANPR_WORKER_TOKEN:             ${ANPR_WORKER_TOKEN}
       ANPR_LANGUAGES:                ${ANPR_LANGUAGES:-en}
       ANPR_REFRESH_TARGETS_SECONDS:  ${ANPR_REFRESH_TARGETS_SECONDS:-30}
+      ANPR_MIN_BOX_ASPECT:           ${ANPR_MIN_BOX_ASPECT:-1.5}
     depends_on:
       backend:
         condition: service_healthy
