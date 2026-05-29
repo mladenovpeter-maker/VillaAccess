@@ -1,0 +1,151 @@
+tmm@tmm:~/VillaAccess$ ssh tmm@192.168.100.176 'cd ~/VillaAccess && git pull && docker compose up -d --build backend'
+From https://github.com/mladenovpeter-maker/VillaAccess
+   65765fd..a3e69fe  main       -> origin/main
+Updating 65765fd..a3e69fe
+Fast-forward
+ artifacts/api-server/src/services/anpr.ts | 9 +++++++++
+ 1 file changed, 9 insertions(+)
+time="2026-05-29T18:50:42Z" level=warning msg="/home/tmm/VillaAccess/docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+ Image villaaccess-migrate Building 
+ Image villaaccess-backend Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 982B done
+#1 DONE 0.0s
+
+#2 [migrate internal] load build definition from Dockerfile
+#2 transferring dockerfile: 1.19kB done
+#2 DONE 0.0s
+
+#3 [migrate internal] load metadata for docker.io/library/node:22-alpine
+#3 DONE 0.5s
+
+#4 [migrate internal] load .dockerignore
+#4 transferring context: 251B done
+#4 DONE 0.0s
+
+#5 [migrate builder 1/6] FROM docker.io/library/node:22-alpine@sha256:968df39aedcea65eeb078fb336ed7191baf48f972b4479711397108be0966920
+#5 resolve docker.io/library/node:22-alpine@sha256:968df39aedcea65eeb078fb336ed7191baf48f972b4479711397108be0966920 0.0s done
+#5 DONE 0.0s
+
+#6 [backend internal] load build context
+#6 transferring context: 52.28kB 0.0s done
+#6 DONE 0.0s
+
+#7 [migrate builder 2/6] RUN npm install -g pnpm@10 --quiet
+#7 CACHED
+
+#8 [migrate builder 3/6] WORKDIR /workspace
+#8 CACHED
+
+#9 [backend builder 4/6] COPY . .
+#9 DONE 0.0s
+
+#10 [migrate builder 5/6] RUN pnpm install --frozen-lockfile
+#10 2.481 Scope: all 9 workspace projects
+#10 2.561 Lockfile is up to date, resolution step is skipped
+#10 2.604 Progress: resolved 1, reused 0, downloaded 0, added 0
+#10 2.668 Packages: +534
+#10 2.668 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#10 3.606 Progress: resolved 534, reused 0, downloaded 172, added 172
+#10 4.606 Progress: resolved 534, reused 0, downloaded 288, added 288
+#10 5.605 Progress: resolved 534, reused 0, downloaded 356, added 356
+#10 6.606 Progress: resolved 534, reused 0, downloaded 425, added 425
+#10 7.606 Progress: resolved 534, reused 0, downloaded 503, added 503
+#10 8.606 Progress: resolved 534, reused 0, downloaded 527, added 527
+#10 9.606 Progress: resolved 534, reused 0, downloaded 531, added 531
+#10 10.61 Progress: resolved 534, reused 0, downloaded 533, added 533
+#10 11.37 Progress: resolved 534, reused 0, downloaded 534, added 534, done
+#10 11.56 .../esbuild@0.18.20/node_modules/esbuild postinstall$ node install.js
+#10 11.57 .../esbuild@0.27.3/node_modules/esbuild postinstall$ node install.js
+#10 11.57 .../esbuild@0.25.12/node_modules/esbuild postinstall$ node install.js
+#10 11.57 .../esbuild@0.27.7/node_modules/esbuild postinstall$ node install.js
+#10 11.68 .../esbuild@0.18.20/node_modules/esbuild postinstall: Done
+#10 11.68 .../esbuild@0.27.3/node_modules/esbuild postinstall: Done
+#10 11.71 .../esbuild@0.27.7/node_modules/esbuild postinstall: Done
+#10 11.72 .../esbuild@0.25.12/node_modules/esbuild postinstall: Done
+#10 11.96 
+#10 11.96 devDependencies:
+#10 11.96 + prettier 3.8.3
+#10 11.96 + typescript 5.9.3
+#10 11.96 
+#10 11.99 . preinstall$ sh -c 'rm -f package-lock.json yarn.lock; case "$npm_config_user_agent" in pnpm/*) ;; *) echo "Use pnpm instead" >&2; exit 1 ;; esac'
+#10 12.01 . preinstall: Done
+#10 12.15 Done in 10s using pnpm v10.26.1
+#10 DONE 12.5s
+
+#11 [migrate builder 6/6] RUN pnpm --filter @workspace/api-server run build
+#11 1.112 
+#11 1.112 > @workspace/api-server@0.0.0 build /workspace/artifacts/api-server
+#11 1.112 > node ./build.mjs
+#11 1.112 
+#11 1.367 
+#11 1.367   dist/index.mjs                       3.6mb ⚠️
+#11 1.367   dist/pino-worker.mjs               153.4kb
+#11 1.367   dist/pino-file.mjs                 142.0kb
+#11 1.367   dist/pino-pretty.mjs               114.6kb
+#11 1.367   dist/thread-stream-worker.mjs        7.3kb
+#11 1.367   dist/index.mjs.map                   7.6mb
+#11 1.367   dist/pino-worker.mjs.map           256.9kb
+#11 1.367   dist/pino-file.mjs.map             229.0kb
+#11 1.367   dist/pino-pretty.mjs.map           204.0kb
+#11 1.367   dist/thread-stream-worker.mjs.map   12.0kb
+#11 1.367 
+#11 1.367 ⚡ Done in 195ms
+#11 DONE 1.4s
+
+#12 [backend runner 2/4] WORKDIR /app
+#12 CACHED
+
+#13 [backend runner 3/4] COPY --from=builder /workspace/artifacts/api-server/dist ./dist
+#13 DONE 0.0s
+
+#14 [backend runner 4/4] RUN mkdir -p uploads
+#14 DONE 0.2s
+
+#15 [migrate] exporting to image
+#15 exporting layers
+#15 ...
+
+#16 [backend] exporting to image
+#16 exporting layers 0.6s done
+#16 exporting manifest sha256:6ff77ae63f41786dab36babaa4a9cbfed39de4e33383cb4466b534292e19539c done
+#16 exporting config sha256:8571e056c4bafbdb0fbc86bca1851cf9f4b51382ea260468306ba3641a9c4f33 done
+#16 exporting attestation manifest sha256:5d6ba066e279a5826dd234a541fbafa38c39003f77d5dbf0b568b9ee80a7f8cd done
+#16 exporting manifest list sha256:e72957e75a8d4e3a0e3bfe023365f7b6fe91897a7b54afc904f1889d13eedf5a done
+#16 naming to docker.io/library/villaaccess-backend:latest done
+#16 unpacking to docker.io/library/villaaccess-backend:latest 0.1s done
+#16 DONE 0.7s
+
+#17 [backend] resolving provenance for metadata file
+#17 DONE 0.0s
+
+#15 [migrate] exporting to image
+#15 exporting layers 14.8s done
+#15 exporting manifest sha256:a2224ddc848a060689182e42fba009eb1497af26bde6914640b0b78e018e1c2a done
+#15 exporting config sha256:7a32cc6fcfcdfe276d44b64c827d7893c546ca8caaed3cfe385d4ecf81241fd3 done
+#15 exporting attestation manifest sha256:0a65608cddc31aa43c952eeab3607e4750e849033ce088a144f7c36f719644f9 0.0s done
+#15 exporting manifest list sha256:a0a24ec890920720c6bffae806763672668964a74a7c5d423ceec4ed9bb1ae8b done
+#15 naming to docker.io/library/villaaccess-migrate:latest done
+#15 unpacking to docker.io/library/villaaccess-migrate:latest
+#15 unpacking to docker.io/library/villaaccess-migrate:latest 8.2s done
+#15 DONE 23.1s
+
+#18 [migrate] resolving provenance for metadata file
+#18 DONE 0.0s
+ Image villaaccess-backend Built 
+ Image villaaccess-migrate Built 
+ Container villaaccess-postgres-1 Running 
+ Container villaaccess-migrate-1 Recreate 
+ Container villaaccess-migrate-1 Recreated 
+ Container villaaccess-backend-1 Recreate 
+ Container villaaccess-backend-1 Recreated 
+ Container villaaccess-postgres-1 Waiting 
+ Container villaaccess-postgres-1 Healthy 
+ Container villaaccess-migrate-1 Starting 
+ Container villaaccess-migrate-1 Started 
+ Container villaaccess-migrate-1 Waiting 
+ Container villaaccess-migrate-1 Exited 
+ Container villaaccess-backend-1 Starting 
+ Container villaaccess-backend-1 Started 
+tmm@tmm:~/VillaAccess$ ssh tmm@192.168.100.176 'docker logs --since 120s villaaccess-backend-1 2>&1 | grep -iE "fallback|openai|vision|gpt|similarity|allowed|relay|skipped" | tail -30'
+tmm@tmm:~/VillaAccess$ 
