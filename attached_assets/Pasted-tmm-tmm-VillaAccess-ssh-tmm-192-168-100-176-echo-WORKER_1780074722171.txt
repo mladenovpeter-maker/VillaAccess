@@ -1,0 +1,25 @@
+tmm@tmm:~/VillaAccess$ ssh tmm@192.168.100.176 'echo "=== WORKER ===" ; docker logs --since 20s villaaccess-ai-worker-1 2>&1 | grep -iE "raw=|detection camera" | tail -10 ; echo "=== BACKEND ===" ; docker logs --since 20s villaaccess-backend-1 2>&1 | grep -iE "detection|opened|denied|matched|skipped" | grep -v no-match | tail -10'
+tmm@192.168.100.176's password: 
+=== WORKER ===
+[17:11:46] [INFO] detection camera=a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d plate=CE2020X → denied (No reservation found for this vehicle)
+[17:11:47] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] OCR raw='CE2020X' normalised='CE2020X' conf=0.0 plausible=True
+[17:11:47] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] OCR raw='CE2020X1' normalised='CE2020X1' conf=0.0 plausible=True
+[17:11:47] [INFO] detection camera=a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d plate=CE2020X1 → denied (No reservation found for this vehicle)
+[17:11:48] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] OCR raw='CE2020X' normalised='CE2020X' conf=0.0 plausible=True
+[17:11:48] [INFO] detection camera=a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d plate=CE2020X → denied (No reservation found for this vehicle)
+[17:11:48] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] OCR raw='CE2020' normalised='CE2020' conf=0.0 plausible=True
+[17:11:48] [INFO] detection camera=a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d plate=CE2020 → denied (No reservation found for this vehicle)
+[17:11:49] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] OCR raw='CE2020X' normalised='CE2020X' conf=0.0 plausible=True
+[17:11:49] [INFO] detection camera=a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d plate=CE2020X → denied (No reservation found for this vehicle)
+=== BACKEND ===
+{"level":30,"time":1780074702689,"pid":1,"hostname":"76bf8f7578f3","req":{"id":1096,"method":"POST","url":"/api/anpr/detection"},"res":{"statusCode":200},"responseTime":3,"msg":"request completed"}
+{"level":30,"time":1780074703253,"pid":1,"hostname":"76bf8f7578f3","req":{"id":1098,"method":"POST","url":"/api/anpr/detection"},"res":{"statusCode":200},"responseTime":5,"msg":"request completed"}
+{"level":30,"time":1780074703672,"pid":1,"hostname":"76bf8f7578f3","req":{"id":1100,"method":"POST","url":"/api/anpr/detection"},"res":{"statusCode":200},"responseTime":5,"msg":"request completed"}
+{"level":30,"time":1780074705215,"pid":1,"hostname":"76bf8f7578f3","req":{"id":1104,"method":"POST","url":"/api/anpr/detection"},"res":{"statusCode":200},"responseTime":5,"msg":"request completed"}
+{"level":30,"time":1780074705966,"pid":1,"hostname":"76bf8f7578f3","req":{"id":1106,"method":"POST","url":"/api/anpr/detection"},"res":{"statusCode":200},"responseTime":5,"msg":"request completed"}
+{"level":30,"time":1780074706743,"pid":1,"hostname":"76bf8f7578f3","req":{"id":1109,"method":"POST","url":"/api/anpr/detection"},"res":{"statusCode":200},"responseTime":5,"msg":"request completed"}
+{"level":30,"time":1780074707734,"pid":1,"hostname":"76bf8f7578f3","req":{"id":1112,"method":"POST","url":"/api/anpr/detection"},"res":{"statusCode":200},"responseTime":4,"msg":"request completed"}
+{"level":30,"time":1780074708233,"pid":1,"hostname":"76bf8f7578f3","req":{"id":1114,"method":"POST","url":"/api/anpr/detection"},"res":{"statusCode":200},"responseTime":5,"msg":"request completed"}
+{"level":30,"time":1780074708707,"pid":1,"hostname":"76bf8f7578f3","req":{"id":1116,"method":"POST","url":"/api/anpr/detection"},"res":{"statusCode":200},"responseTime":4,"msg":"request completed"}
+{"level":30,"time":1780074709230,"pid":1,"hostname":"76bf8f7578f3","req":{"id":1118,"method":"POST","url":"/api/anpr/detection"},"res":{"statusCode":200},"responseTime":5,"msg":"request completed"}
+tmm@tmm:~/VillaAccess$ 
