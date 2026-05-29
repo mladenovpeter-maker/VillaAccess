@@ -1,0 +1,38 @@
+tmm@tmm:~/VillaAccess$ ssh tmm@192.168.100.176 'cd ~/VillaAccess && grep -q "^ANPR_MIN_BOX_ASPECT" .env.docker || echo "ANPR_MIN_BOX_ASPECT=1.5" >> .env.docker; grep ANPR_MIN_BOX_ASPECT .env.docker; docker compose up -d ai-worker'
+ANPR_MIN_BOX_ASPECT=1.5
+time="2026-05-29T18:57:12Z" level=warning msg="/home/tmm/VillaAccess/docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+ Container villaaccess-postgres-1 Running 
+ Container villaaccess-backend-1 Running 
+ Container villaaccess-ai-worker-1 Running 
+ Container villaaccess-postgres-1 Waiting 
+ Container villaaccess-postgres-1 Healthy 
+ Container villaaccess-migrate-1 Starting 
+ Container villaaccess-migrate-1 Started 
+ Container villaaccess-migrate-1 Waiting 
+ Container villaaccess-migrate-1 Exited 
+ Container villaaccess-backend-1 Waiting 
+ Container villaaccess-backend-1 Healthy 
+tmm@tmm:~/VillaAccess$ ssh tmm@192.168.100.176 'echo "=== WORKER ==="; docker logs --since 60s villaaccess-ai-worker-1 2>&1 | grep -iE "aspect|OCR raw|candidate|detection|skipped|no.match" | tail -20; echo "=== BACKEND/AI ==="; docker logs --since 60s villaaccess-backend-1 2>&1 | grep -iE "fallback|openai|vision|similarity|allowed|relay|skipped" | tail -20'
+=== WORKER ===
+[18:57:12] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(990,1283,1202,1407) det_conf=0.69 REJECTED aspect=1.71<1.80
+[18:57:13] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(989,1281,1203,1408) det_conf=0.69 REJECTED aspect=1.69<1.80
+[18:57:13] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(989,1282,1202,1408) det_conf=0.69 REJECTED aspect=1.69<1.80
+[18:57:14] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(991,1283,1202,1407) det_conf=0.69 REJECTED aspect=1.70<1.80
+[18:57:14] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(989,1281,1203,1408) det_conf=0.69 REJECTED aspect=1.69<1.80
+[18:57:15] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(990,1283,1202,1407) det_conf=0.69 REJECTED aspect=1.71<1.80
+[18:57:15] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(989,1281,1203,1408) det_conf=0.69 REJECTED aspect=1.69<1.80
+[18:57:16] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(990,1283,1202,1408) det_conf=0.69 REJECTED aspect=1.70<1.80
+[18:57:16] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(989,1281,1203,1408) det_conf=0.69 REJECTED aspect=1.69<1.80
+[18:57:17] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(990,1282,1202,1408) det_conf=0.69 REJECTED aspect=1.68<1.80
+[18:57:17] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(989,1281,1202,1409) det_conf=0.69 REJECTED aspect=1.66<1.80
+[18:57:18] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(990,1282,1202,1408) det_conf=0.69 REJECTED aspect=1.68<1.80
+[18:57:18] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(990,1282,1203,1408) det_conf=0.69 REJECTED aspect=1.69<1.80
+[18:57:19] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(990,1283,1202,1408) det_conf=0.69 REJECTED aspect=1.70<1.80
+[18:57:19] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(990,1283,1202,1408) det_conf=0.69 REJECTED aspect=1.70<1.80
+[18:57:20] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(990,1282,1202,1407) det_conf=0.69 REJECTED aspect=1.70<1.80
+[18:57:20] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(989,1282,1203,1408) det_conf=0.69 REJECTED aspect=1.70<1.80
+[18:57:21] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(989,1282,1202,1407) det_conf=0.69 REJECTED aspect=1.70<1.80
+[18:57:21] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(990,1282,1202,1407) det_conf=0.69 REJECTED aspect=1.70<1.80
+[18:57:22] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(991,1284,1202,1407) det_conf=0.69 REJECTED aspect=1.72<1.80
+=== BACKEND/AI ===
+tmm@tmm:~/VillaAccess$ 
