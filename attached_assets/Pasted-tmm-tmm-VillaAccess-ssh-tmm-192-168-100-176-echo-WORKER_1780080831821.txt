@@ -1,0 +1,60 @@
+tmm@tmm:~/VillaAccess$ ssh tmm@192.168.100.176 'echo "=== WORKER (raw, last 180s) ==="; docker logs --since 180s villaaccess-ai-worker-1 2>&1 | tail -30; echo; echo "=== BACKEND (raw, last 180s) ==="; docker logs --since 180s villaaccess-backend-1 2>&1 | tail -25'
+=== WORKER (raw, last 180s) ===
+[18:53:26] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(990,1281,1203,1409) det_conf=0.69 REJECTED aspect=1.66<1.80
+[18:53:27] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(989,1280,1202,1410) det_conf=0.69 REJECTED aspect=1.64<1.80
+[18:53:27] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(989,1282,1202,1407) det_conf=0.69 REJECTED aspect=1.70<1.80
+[18:53:28] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(989,1282,1202,1407) det_conf=0.69 REJECTED aspect=1.70<1.80
+[18:53:28] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(989,1282,1202,1409) det_conf=0.69 REJECTED aspect=1.68<1.80
+[18:53:29] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(990,1282,1203,1408) det_conf=0.69 REJECTED aspect=1.69<1.80
+[18:53:30] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(991,1283,1201,1407) det_conf=0.69 REJECTED aspect=1.69<1.80
+[18:53:30] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(989,1282,1201,1409) det_conf=0.69 REJECTED aspect=1.67<1.80
+[18:53:30] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(991,1282,1202,1407) det_conf=0.69 REJECTED aspect=1.69<1.80
+[18:53:31] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(990,1282,1202,1407) det_conf=0.69 REJECTED aspect=1.70<1.80
+[18:53:31] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(991,1283,1202,1407) det_conf=0.69 REJECTED aspect=1.70<1.80
+[18:53:32] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(990,1282,1202,1408) det_conf=0.69 REJECTED aspect=1.68<1.80
+[18:53:32] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(989,1281,1203,1408) det_conf=0.69 REJECTED aspect=1.69<1.80
+[18:53:33] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(991,1282,1202,1408) det_conf=0.69 REJECTED aspect=1.67<1.80
+[18:53:33] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(989,1282,1202,1407) det_conf=0.69 REJECTED aspect=1.70<1.80
+[18:53:34] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(990,1281,1202,1407) det_conf=0.68 REJECTED aspect=1.68<1.80
+[18:53:34] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(990,1281,1203,1409) det_conf=0.69 REJECTED aspect=1.66<1.80
+[18:53:35] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(990,1282,1202,1407) det_conf=0.69 REJECTED aspect=1.70<1.80
+[18:53:35] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(990,1282,1202,1408) det_conf=0.69 REJECTED aspect=1.68<1.80
+[18:53:36] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(990,1282,1202,1407) det_conf=0.69 REJECTED aspect=1.70<1.80
+[18:53:36] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(990,1281,1202,1407) det_conf=0.69 REJECTED aspect=1.68<1.80
+[18:53:37] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(990,1282,1202,1407) det_conf=0.69 REJECTED aspect=1.70<1.80
+[18:53:37] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(989,1280,1203,1409) det_conf=0.69 REJECTED aspect=1.66<1.80
+[18:53:38] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(989,1281,1203,1408) det_conf=0.69 REJECTED aspect=1.69<1.80
+[18:53:38] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(989,1281,1203,1408) det_conf=0.69 REJECTED aspect=1.69<1.80
+[18:53:39] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(988,1281,1203,1409) det_conf=0.69 REJECTED aspect=1.68<1.80
+[18:53:39] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(991,1281,1202,1408) det_conf=0.69 REJECTED aspect=1.66<1.80
+[18:53:40] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(991,1282,1202,1408) det_conf=0.69 REJECTED aspect=1.67<1.80
+[18:53:40] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(988,1281,1202,1409) det_conf=0.69 REJECTED aspect=1.67<1.80
+[18:53:41] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(988,1282,1202,1407) det_conf=0.69 REJECTED aspect=1.71<1.80
+
+=== BACKEND (raw, last 180s) ===
+[fetchCamera] digest retry {
+  method: 'GET',
+  path: '/ISAPI/Streaming/channels/101/picture',
+  realm: 'IP Camera(GQ271)',
+  qop: 'auth',
+  algorithm: undefined
+}
+[fetchCamera] digest {
+  method: 'GET',
+  path: '/ISAPI/Streaming/channels/101/picture',
+  status: 200
+}
+{"level":30,"time":1780080821198,"pid":1,"hostname":"5433a9dc4bd2","req":{"id":273,"method":"GET","url":"/api/anpr/snapshot/a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d"},"res":{"statusCode":200},"responseTime":113,"msg":"request completed"}
+[fetchCamera] basic {
+  method: 'GET',
+  path: '/ISAPI/Streaming/channels/101/picture',
+  status: 401
+}
+[fetchCamera] digest retry {
+  method: 'GET',
+  path: '/ISAPI/Streaming/channels/101/picture',
+  realm: 'IP Camera(GQ271)',
+  qop: 'auth',
+  algorithm: undefined
+}
+tmm@tmm:~/VillaAccess$ 
