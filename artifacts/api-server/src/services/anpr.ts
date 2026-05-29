@@ -220,6 +220,15 @@ export async function handleAnprDetection(
   // log clean AND avoids burning cooldown on noise. Worker / OCR / relay
   // logic is untouched.
   if (!isPlausiblePlate(plate, input.confidence, camera.ocr_min_confidence ?? 70)) {
+    // AI fallback hook (additive, gated by AI_FALLBACK_ENABLED). A plate that
+    // fails the plausibility gate (e.g. a heavily obstructed/dirty plate where
+    // OCR only recovered a few chars like "20XP") still signals a failed
+    // recognition. Without this, such detections die here BEFORE the AI hook
+    // on the denied path — so a strongly occluded plate could never trigger
+    // OpenAI vision. We treat the implausible read as raw text (plate=null) so
+    // the downstream similarity gate compares it against expected plates,
+    // mirroring the no-match path. Fire-and-forget — never blocks the worker.
+    aiFallback.recordFailure(camera, null, input.raw_ocr_text ?? plate);
     return {
       action: "skipped_low_quality",
       plate,
