@@ -1,0 +1,78 @@
+tmm@tmm:~/VillaAccess$ ssh tmm@192.168.100.176 'cd ~/VillaAccess && git checkout -- docker-compose.yml 2>/dev/null; git pull origin main && grep -n "ANPR_MIN_BOX_ASPECT" docker-compose.yml && docker compose up -d --force-recreate ai-worker && echo "--- env (трябва 1.5) ---" && docker exec villaaccess-ai-worker-1 printenv ANPR_MIN_BOX_ASPECT'
+From https://github.com/mladenovpeter-maker/VillaAccess
+ * branch            main       -> FETCH_HEAD
+   a3e69fe..ce88040  main       -> origin/main
+Updating a3e69fe..ce88040
+Fast-forward
+ ...m-192-168-100-176-cd-VillaAcc_1780080513655.txt | 108 +++++++++++++++
+ ...m-192-168-100-176-cd-VillaAcc_1780080713492.txt | 151 +++++++++++++++++++++
+ ...m-192-168-100-176-cd-VillaAcc_1780081055418.txt |  38 ++++++
+ ...m-192-168-100-176-echo-WORKER_1780080831821.txt |  60 ++++++++
+ docker-compose.yml                                 |   1 +
+ 5 files changed, 358 insertions(+)
+ create mode 100644 attached_assets/Pasted-tmm-tmm-VillaAccess-ssh-tmm-192-168-100-176-cd-VillaAcc_1780080513655.txt
+ create mode 100644 attached_assets/Pasted-tmm-tmm-VillaAccess-ssh-tmm-192-168-100-176-cd-VillaAcc_1780080713492.txt
+ create mode 100644 attached_assets/Pasted-tmm-tmm-VillaAccess-ssh-tmm-192-168-100-176-cd-VillaAcc_1780081055418.txt
+ create mode 100644 attached_assets/Pasted-tmm-tmm-VillaAccess-ssh-tmm-192-168-100-176-echo-WORKER_1780080831821.txt
+161:      ANPR_MIN_BOX_ASPECT:           ${ANPR_MIN_BOX_ASPECT:-1.5}
+time="2026-05-29T19:05:45Z" level=warning msg="/home/tmm/VillaAccess/docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+ Container villaaccess-postgres-1 Running 
+ Container villaaccess-backend-1 Running 
+ Container villaaccess-ai-worker-1 Recreate 
+ Container villaaccess-ai-worker-1 Recreated 
+ Container villaaccess-postgres-1 Waiting 
+ Container villaaccess-postgres-1 Healthy 
+ Container villaaccess-migrate-1 Starting 
+ Container villaaccess-migrate-1 Started 
+ Container villaaccess-migrate-1 Waiting 
+ Container villaaccess-migrate-1 Exited 
+ Container villaaccess-backend-1 Waiting 
+ Container villaaccess-backend-1 Healthy 
+ Container villaaccess-ai-worker-1 Starting 
+ Container villaaccess-ai-worker-1 Started 
+--- env (трябва 1.5) ---
+1.5
+tmm@tmm:~/VillaAccess$ ssh tmm@192.168.100.176 'echo "=== WORKER ==="; docker logs --since 60s villaaccess-ai-worker-1 2>&1 | grep -iE "aspect|OCR raw|candidate|detection|no.match" | tail -20; echo "=== BACKEND/AI ==="; docker logs --since 60s villaaccess-backend-1 2>&1 | grep -iE "fallback|openai|vision|similarity|allowed|relay|skipped" | tail -20'
+=== WORKER ===
+[19:06:47] [INFO] detection camera=a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d plate=20XP → skipped_low_quality (Below plausibility threshold (length/alphanumeric/confidence))
+[19:06:47] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(996,1288,1199,1405) shrunk=(1020,1311,1175,1382) det_conf=0.69 → 1 OCR candidate(s)
+[19:06:47] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] OCR raw='20XP' normalised='20XP' conf=0.0 plausible=True
+[19:06:48] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(996,1288,1199,1404) shrunk=(1020,1311,1175,1381) det_conf=0.69 → 1 OCR candidate(s)
+[19:06:48] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] OCR raw='20XE' normalised='20XE' conf=0.0 plausible=True
+[19:06:48] [INFO] detection camera=a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d plate=20XE → skipped_low_quality (Below plausibility threshold (length/alphanumeric/confidence))
+[19:06:48] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(996,1288,1199,1404) shrunk=(1020,1311,1175,1381) det_conf=0.69 → 1 OCR candidate(s)
+[19:06:48] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] OCR raw='20XP' normalised='20XP' conf=0.0 plausible=True
+[19:06:48] [INFO] detection camera=a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d plate=20XP → skipped_low_quality (Below plausibility threshold (length/alphanumeric/confidence))
+[19:06:49] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(996,1288,1199,1404) shrunk=(1020,1311,1175,1381) det_conf=0.69 → 1 OCR candidate(s)
+[19:06:49] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] OCR raw='20XE' normalised='20XE' conf=0.0 plausible=True
+[19:06:49] [INFO] detection camera=a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d plate=20XE → skipped_low_quality (Below plausibility threshold (length/alphanumeric/confidence))
+[19:06:49] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(997,1288,1199,1404) shrunk=(1021,1311,1175,1381) det_conf=0.69 → 1 OCR candidate(s)
+[19:06:49] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] OCR raw='20XP' normalised='20XP' conf=0.0 plausible=True
+[19:06:50] [INFO] detection camera=a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d plate=20XP → skipped_low_quality (Below plausibility threshold (length/alphanumeric/confidence))
+[19:06:50] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(996,1288,1199,1404) shrunk=(1020,1311,1175,1381) det_conf=0.69 → 1 OCR candidate(s)
+[19:06:50] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] OCR raw='20XE' normalised='20XE' conf=0.0 plausible=True
+[19:06:50] [INFO] detection camera=a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d plate=20XE → skipped_low_quality (Below plausibility threshold (length/alphanumeric/confidence))
+[19:06:50] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] YOLO box=(996,1288,1199,1404) shrunk=(1020,1311,1175,1381) det_conf=0.69 → 1 OCR candidate(s)
+[19:06:50] [INFO] [a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d] OCR raw='20XE' normalised='20XE' conf=0.0 plausible=True
+=== BACKEND/AI ===
+[ai-fallback] camera=a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d similarity gate passed (best=66.7% "20XP" ≈ "CB2020XP") — invoking AI
+[ai-fallback] camera=a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d triggering AI on 3 snapshots
+[ai-fallback] camera=a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d verdict: {"plate":"020XP","make":"Mercedes","color":"gray","confidence":90,"reasoning":"The license plate is clearly visible in all images, and the vehicle is a gray Mercedes SUV."}
+[ai-fallback] camera=a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d fuzzy-matched AI verdict "020XP" → "CB2020XP" (76.9%)
+[ai-fallback] camera=a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d similarity gate passed (best=66.7% "20XP" ≈ "CB2020XP") — invoking AI
+[ai-fallback] camera=a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d triggering AI on 3 snapshots
+[ai-fallback] camera=a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d verdict: {"plate":"020XP","make":"Mercedes","color":"gray","confidence":90,"reasoning":"The license plate is clearly visible in all images, and the vehicle is a gray Mercedes SUV."}
+[ai-fallback] camera=a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d fuzzy-matched AI verdict "020XP" → "CB2020XP" (76.9%)
+[ai-fallback] camera=a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d similarity gate passed (best=66.7% "20XP" ≈ "CB2020XP") — invoking AI
+[ai-fallback] camera=a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d triggering AI on 3 snapshots
+[ai-fallback] camera=a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d verdict: {"plate":"020XP","make":"Mercedes","color":"gray","confidence":90,"reasoning":"The license plate is partially visible and consistent across images, and the vehicle is identifiable as a gray Mercedes SUV."}
+[ai-fallback] camera=a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d fuzzy-matched AI verdict "020XP" → "CB2020XP" (76.9%)
+[ai-fallback] camera=a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d similarity gate passed (best=66.7% "20XP" ≈ "CB2020XP") — invoking AI
+[ai-fallback] camera=a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d triggering AI on 3 snapshots
+[ai-fallback] OpenAI request failed: 429 Rate limit reached for gpt-4o-mini in organization org-eWLzQKFfnHWnIIF09gCrVlcC on tokens per min (TPM): Limit 200000, Used 200000, Requested 2490. Please try again in 747ms. Visit https://platform.openai.com/account/rate-limits to learn more.
+[ai-fallback] camera=a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d no verdict — skipping
+[ai-fallback] camera=a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d similarity gate passed (best=66.7% "20XP" ≈ "CB2020XP") — invoking AI
+[ai-fallback] camera=a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d triggering AI on 3 snapshots
+[ai-fallback] camera=a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d verdict: {"plate":"020XP","make":"Mercedes","color":"gray","confidence":90,"reasoning":"The license plate is clearly visible in all images, and the vehicle is identifiable as a gray Mercedes SUV."}
+[ai-fallback] camera=a346e90f-e3d7-4d83-bbac-0dd31f1f8f7d fuzzy-matched AI verdict "020XP" → "CB2020XP" (76.9%)
+tmm@tmm:~/VillaAccess$ 
