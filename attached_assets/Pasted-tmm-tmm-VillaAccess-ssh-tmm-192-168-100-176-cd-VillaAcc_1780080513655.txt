@@ -1,0 +1,108 @@
+tmm@tmm:~/VillaAccess$ ssh tmm@192.168.100.176 'cd ~/VillaAccess && git pull && docker compose up -d --build backend'
+
+From https://github.com/mladenovpeter-maker/VillaAccess
+   c19e5c7..65765fd  main       -> origin/main
+Updating c19e5c7..65765fd
+Fast-forward
+ ...ll-remote-Enumerating-objects_1780074146364.txt | 102 +++++
+ ...m-192-168-100-176-cd-VillaAcc_1780074270767.txt | 409 +++++++++++++++++++++
+ ...m-192-168-100-176-docker-logs_1780073913150.txt |  18 +
+ ...m-192-168-100-176-echo-WORKER_1780074722171.txt |  25 ++
+ 4 files changed, 554 insertions(+)
+ create mode 100644 attached_assets/Pasted-tmm-tmm-VillaAccess-git-pull-remote-Enumerating-objects_1780074146364.txt
+ create mode 100644 attached_assets/Pasted-tmm-tmm-VillaAccess-ssh-tmm-192-168-100-176-cd-VillaAcc_1780074270767.txt
+ create mode 100644 attached_assets/Pasted-tmm-tmm-VillaAccess-ssh-tmm-192-168-100-176-docker-logs_1780073913150.txt
+ create mode 100644 attached_assets/Pasted-tmm-tmm-VillaAccess-ssh-tmm-192-168-100-176-echo-WORKER_1780074722171.txt
+time="2026-05-29T18:48:01Z" level=warning msg="/home/tmm/VillaAccess/docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+ Image villaaccess-migrate Building 
+ Image villaaccess-backend Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 982B done
+#1 DONE 0.0s
+
+#2 [migrate internal] load build definition from Dockerfile
+#2 transferring dockerfile: 1.19kB done
+#2 DONE 0.0s
+
+#3 [migrate internal] load metadata for docker.io/library/node:22-alpine
+#3 DONE 0.7s
+
+#4 [backend internal] load .dockerignore
+#4 transferring context: 251B done
+#4 DONE 0.0s
+
+#5 [migrate builder 1/6] FROM docker.io/library/node:22-alpine@sha256:968df39aedcea65eeb078fb336ed7191baf48f972b4479711397108be0966920
+#5 resolve docker.io/library/node:22-alpine@sha256:968df39aedcea65eeb078fb336ed7191baf48f972b4479711397108be0966920 0.0s done
+#5 DONE 0.0s
+
+#6 [migrate internal] load build context
+#6 transferring context: 2.64MB 0.1s done
+#6 DONE 0.1s
+
+#7 [backend builder 2/6] RUN npm install -g pnpm@10 --quiet
+#7 CACHED
+
+#8 [backend builder 3/6] WORKDIR /workspace
+#8 CACHED
+
+#9 [backend builder 5/6] RUN pnpm install --frozen-lockfile
+#9 CACHED
+
+#10 [backend builder 4/6] COPY . .
+#10 CACHED
+
+#11 [backend runner 2/4] WORKDIR /app
+#11 CACHED
+
+#12 [backend runner 3/4] COPY --from=builder /workspace/artifacts/api-server/dist ./dist
+#12 CACHED
+
+#13 [migrate builder 6/6] RUN pnpm --filter @workspace/api-server run build
+#13 CACHED
+
+#14 [backend runner 4/4] RUN mkdir -p uploads
+#14 CACHED
+
+#15 [backend] exporting to image
+#15 exporting layers done
+#15 exporting manifest sha256:0264f414ba74741496eec82ad1504c1521d52ac088091bafef5a493e5cb9ce07 done
+#15 exporting config sha256:4fbca176fb64430c72fb11bf135ed49629f9843d82528eb1156b0fae7cb1b8ab done
+#15 exporting attestation manifest sha256:e74f71d05a29dfb3d2cefada076335b8f34cc62a40377692a4dbdc5b135a5cd8 0.0s done
+#15 exporting manifest list sha256:dd201f3604d4c626fa2b0a9d0856981c247951fdce84970f6efa6a4b7234bf90 done
+#15 naming to docker.io/library/villaaccess-backend:latest done
+#15 unpacking to docker.io/library/villaaccess-backend:latest done
+#15 DONE 0.1s
+
+#16 [migrate] exporting to image
+#16 exporting layers done
+#16 exporting manifest sha256:a069fbc5f7b930dcb7312f878e24c5742ca2def6cabee846ba914f985680613c done
+#16 exporting config sha256:1a151d5ae8f968dab43f929e3de721dda66163a1a52acc686523fe57472f5c84 done
+#16 exporting attestation manifest sha256:2438d88ee86be6e7db8ee399eb4b4a1210c298160159eb32fb059bf4e4557986 0.0s done
+#16 exporting manifest list sha256:1c7193d9ffa3c7ab057ed8f3a8e07a24fa13e6664d9144ed2310c29bc81921f2 done
+#16 naming to docker.io/library/villaaccess-migrate:latest done
+#16 unpacking to docker.io/library/villaaccess-migrate:latest done
+#16 DONE 0.1s
+
+#17 [migrate] resolving provenance for metadata file
+#17 DONE 0.0s
+
+#18 [backend] resolving provenance for metadata file
+#18 DONE 0.0s
+ Image villaaccess-migrate Built 
+ Image villaaccess-backend Built 
+ Container villaaccess-postgres-1 Running 
+ Container villaaccess-migrate-1 Recreate 
+ Container villaaccess-migrate-1 Recreated 
+ Container villaaccess-backend-1 Recreate 
+ Container villaaccess-backend-1 Recreated 
+ Container villaaccess-postgres-1 Waiting 
+ Container villaaccess-postgres-1 Healthy 
+ Container villaaccess-migrate-1 Starting 
+ Container villaaccess-migrate-1 Started 
+ Container villaaccess-migrate-1 Waiting 
+ Container villaaccess-migrate-1 Exited 
+ Container villaaccess-backend-1 Starting 
+ Container villaaccess-backend-1 Started 
+tmm@tmm:~/VillaAccess$ # 2) Тест: закрий табелата както преди, после гледай AI на живо
+ssh tmm@192.168.100.176 'docker logs --since 120s villaaccess-backend-1 2>&1 | grep -iE "fallback|openai|vision|gpt|similarity|allowed|relay|skipped" | tail -30'
+tmm@tmm:~/VillaAccess$ 
