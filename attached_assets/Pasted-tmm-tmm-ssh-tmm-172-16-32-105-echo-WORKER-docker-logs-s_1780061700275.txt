@@ -1,0 +1,23 @@
+tmm@tmm:~$ ssh tmm@172.16.32.105 'echo "=== WORKER ===" ; docker logs --since 30s villaaccess-ai-worker-1 2>&1 | grep -iE "detection camera|raw=CA|POST" | tail -10 ; echo "=== BACKEND ===" ; docker logs --since 30s villaaccess-backend-1 2>&1 | grep -iE "anpr/detection|no-match|opened|denied|relay|gate" | tail -15'
+tmm@172.16.32.105's password: 
+Permission denied, please try again.
+tmm@172.16.32.105's password: 
+=== WORKER ===
+=== BACKEND ===
+{"level":30,"time":1780061682153,"pid":1,"hostname":"0abc97902302","req":{"id":572755,"method":"POST","url":"/api/anpr/no-match"},"res":{"statusCode":200},"responseTime":2,"msg":"request completed"}
+{"level":30,"time":1780061682634,"pid":1,"hostname":"0abc97902302","req":{"id":572757,"method":"POST","url":"/api/anpr/no-match"},"res":{"statusCode":200},"responseTime":1,"msg":"request completed"}
+{"level":30,"time":1780061683150,"pid":1,"hostname":"0abc97902302","req":{"id":572759,"method":"POST","url":"/api/anpr/no-match"},"res":{"statusCode":200},"responseTime":1,"msg":"request completed"}
+{"level":30,"time":1780061683634,"pid":1,"hostname":"0abc97902302","req":{"id":572761,"method":"POST","url":"/api/anpr/no-match"},"res":{"statusCode":200},"responseTime":1,"msg":"request completed"}
+{"level":30,"time":1780061684475,"pid":1,"hostname":"0abc97902302","req":{"id":572763,"method":"POST","url":"/api/anpr/no-match"},"res":{"statusCode":200},"responseTime":2,"msg":"request completed"}
+{"level":30,"time":1780061684728,"pid":1,"hostname":"0abc97902302","req":{"id":572765,"method":"POST","url":"/api/anpr/no-match"},"res":{"statusCode":200},"responseTime":1,"msg":"request completed"}
+{"level":30,"time":1780061685197,"pid":1,"hostname":"0abc97902302","req":{"id":572767,"method":"POST","url":"/api/anpr/no-match"},"res":{"statusCode":200},"responseTime":2,"msg":"request completed"}
+{"level":30,"time":1780061685825,"pid":1,"hostname":"0abc97902302","req":{"id":572769,"method":"POST","url":"/api/anpr/no-match"},"res":{"statusCode":200},"responseTime":1,"msg":"request completed"}
+{"level":30,"time":1780061686706,"pid":1,"hostname":"0abc97902302","req":{"id":572772,"method":"POST","url":"/api/anpr/no-match"},"res":{"statusCode":200},"responseTime":1,"msg":"request completed"}
+{"level":30,"time":1780061687189,"pid":1,"hostname":"0abc97902302","req":{"id":572774,"method":"POST","url":"/api/anpr/no-match"},"res":{"statusCode":200},"responseTime":1,"msg":"request completed"}
+{"level":30,"time":1780061687704,"pid":1,"hostname":"0abc97902302","req":{"id":572776,"method":"POST","url":"/api/anpr/no-match"},"res":{"statusCode":200},"responseTime":1,"msg":"request completed"}
+{"level":30,"time":1780061688547,"pid":1,"hostname":"0abc97902302","req":{"id":572779,"method":"POST","url":"/api/anpr/no-match"},"res":{"statusCode":200},"responseTime":1,"msg":"request completed"}
+{"level":30,"time":1780061688786,"pid":1,"hostname":"0abc97902302","req":{"id":572781,"method":"POST","url":"/api/anpr/no-match"},"res":{"statusCode":200},"responseTime":1,"msg":"request completed"}
+{"level":30,"time":1780061689258,"pid":1,"hostname":"0abc97902302","req":{"id":572783,"method":"POST","url":"/api/anpr/no-match"},"res":{"statusCode":200},"responseTime":1,"msg":"request completed"}
+{"level":30,"time":1780061689903,"pid":1,"hostname":"0abc97902302","req":{"id":572785,"method":"POST","url":"/api/anpr/no-match"},"res":{"statusCode":200},"responseTime":1,"msg":"request completed"}
+tmm@tmm:~$ 
+tmm@tmm:~$ 
