@@ -84,6 +84,9 @@ services:
       # plate. Set AI_FALLBACK_ENABLED=true in .env.docker to enable.
       OPENAI_API_KEY:       ${OPENAI_API_KEY:-}
       AI_FALLBACK_ENABLED:  ${AI_FALLBACK_ENABLED:-false}
+      # Per-camera cooldown (seconds) after a real AI call before AI can fire
+      # again on the same camera. Default 60. Set 0 to disable.
+      AI_FALLBACK_COOLDOWN_SECONDS: ${AI_FALLBACK_COOLDOWN_SECONDS:-60}
       # Tuya smart-lock cloud integration (Phase 1: read-only).
       # Get these from iot.tuya.com → your Cloud Project → Overview.
       # TUYA_REGION: eu | us | in | cn (default eu).
