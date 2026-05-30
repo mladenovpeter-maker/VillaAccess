@@ -113,6 +113,38 @@ function sharedDigitCount(a: string, b: string): number {
   return n;
 }
 
+/**
+ * Longest run of consecutive characters common to both plates, regardless of
+ * where it sits in each string (shift-invariant). Unlike sharedDigitCount —
+ * which is LEFT-ALIGNED and silently returns 0 when OCR adds/drops a leading
+ * char — this matches one lingering car's OCR variants whose numeric core
+ * drifts in position: B2020Y vs EB2020X share the run "B2020" (5) even though
+ * the digits sit at different offsets. A 5+ char run in an EU plate necessarily
+ * spans the 4-digit core PLUS an adjacent letter, so requiring ≥5 both fixes the
+ * prefix-shift miss AND keeps two genuinely different cars that merely share the
+ * same 4 digits (run = 4, just the digits) distinct. Used ONLY by the dedup /
+ * gate-debounce hygiene paths — the fuzzy access-decision matcher is untouched.
+ */
+function longestCommonRun(a: string, b: string): number {
+  if (!a || !b) return 0;
+  let best = 0;
+  const prev = new Array(b.length + 1).fill(0);
+  for (let i = 1; i <= a.length; i++) {
+    let diag = 0;
+    for (let j = 1; j <= b.length; j++) {
+      const tmp = prev[j];
+      if (a[i - 1] === b[j - 1]) {
+        prev[j] = diag + 1;
+        if (prev[j] > best) best = prev[j];
+      } else {
+        prev[j] = 0;
+      }
+      diag = tmp;
+    }
+  }
+  return best;
+}
+
 // ─── Denied-event dedup (UI hygiene) ────────────────────────────────────────
 // A heavily occluded/dirty plate makes OCR emit many slightly-different reads
 // for the SAME lingering vehicle (e.g. B2020X, B2020Y, B2020XE, B2020 ...).
@@ -134,8 +166,12 @@ const DENIED_DEDUP_SIMILARITY = Number(
 // B2020YE / B2020 all share "2020" → 4), whereas a genuinely different denied
 // vehicle whose letters are coincidentally similar will share fewer digits and
 // is therefore still logged. Mirrors the fuzzy fallback's shared-digit gate.
-const DENIED_DEDUP_MIN_SHARED_DIGITS = Number(
-  process.env.ANPR_DENIED_DEDUP_MIN_DIGITS ?? 3,
+// Minimum shift-invariant common run (consecutive chars) to treat two denied
+// reads as the same lingering vehicle. 4 = the bare numeric core; safe here
+// because the denied path is pure UI-log hygiene (no access/relay impact), so
+// over-collapsing only costs a log row.
+const DENIED_DEDUP_MIN_RUN = Number(
+  process.env.ANPR_DENIED_DEDUP_MIN_RUN ?? 4,
 );
 const recentDenied = new Map<string, { plate: string; at: number }>();
 
@@ -158,8 +194,11 @@ function isDuplicateDenied(
   recentDenied.set(cameraId, { plate, at: now });
   if (!prev) return false;
   if (now - prev.at >= windowSecs * 1000) return false;
-  if (similarityPct(plate, prev.plate) < DENIED_DEDUP_SIMILARITY) return false;
-  return sharedDigitCount(plate, prev.plate) >= DENIED_DEDUP_MIN_SHARED_DIGITS;
+  // Shift-invariant: collapse when both reads share a long enough consecutive
+  // run (numeric core + adjacent char). Replaces the old left-aligned
+  // similarity+positional-digit test, which silently missed OCR variants whose
+  // leading char drifted (B2020Y vs EB2020X shared 0 positional digits).
+  return longestCommonRun(plate, prev.plate) >= DENIED_DEDUP_MIN_RUN;
 }
 
 // ── Gate-relay debounce (allowed path) ───────────────────────────────────────
@@ -190,8 +229,13 @@ function isDuplicateDenied(
 const GATE_DEDUP_SIMILARITY = Number(
   process.env.ANPR_GATE_DEDUP_SIMILARITY ?? DENIED_DEDUP_SIMILARITY,
 ); // percent (0–100); set 0 to disable
-const GATE_DEDUP_MIN_SHARED_DIGITS = Number(
-  process.env.ANPR_GATE_DEDUP_MIN_DIGITS ?? 4,
+// Minimum shift-invariant common run (consecutive chars) to treat an allowed
+// read as the same lingering vehicle that just opened the gate. Default 5 = the
+// 4-digit core PLUS one adjacent letter: this collapses OCR variants of one car
+// (which keep that 5+ run) yet still opens for a genuinely DIFFERENT car that
+// merely shares the same 4 digits (run = 4 < 5) — protecting a second legit car.
+const GATE_DEDUP_MIN_RUN = Number(
+  process.env.ANPR_GATE_DEDUP_MIN_RUN ?? 5,
 );
 const recentGateOpen = new Map<string, { plate: string; at: number }>();
 
@@ -211,8 +255,11 @@ function isRecentGateOpen(
   const prev = recentGateOpen.get(cameraId);
   if (!prev) return false;
   if (Date.now() - prev.at >= windowSecs * 1000) return false;
-  if (similarityPct(plate, prev.plate) < GATE_DEDUP_SIMILARITY) return false;
-  return sharedDigitCount(plate, prev.plate) >= GATE_DEDUP_MIN_SHARED_DIGITS;
+  // Shift-invariant: one car's OCR variants keep a long consecutive run (numeric
+  // core + adjacent letter) with the granting plate even when their leading char
+  // drifts (B2020Y vs EB2020X → run "B2020" = 5). The old left-aligned digit
+  // test returned 0 for exactly this case, so the barrier re-fired per variant.
+  return longestCommonRun(plate, prev.plate) >= GATE_DEDUP_MIN_RUN;
 }
 
 export interface AnprDetectionInput {

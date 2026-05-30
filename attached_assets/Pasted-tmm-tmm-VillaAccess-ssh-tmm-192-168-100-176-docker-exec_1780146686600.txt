@@ -1,0 +1,48 @@
+tmm@tmm:~/VillaAccess$ ssh tmm@192.168.100.176 "docker exec -i villaaccess-postgres-1 sh -c 'psql -U \$POSTGRES_USER -d \$POSTGRES_DB'" <<'SQL'
+SELECT license_plate, status, count(*) AS broя,
+       to_char(min(timestamp),'HH24:MI:SS') AS first,
+       to_char(max(timestamp),'HH24:MI:SS') AS last
+FROM access_events
+WHERE timestamp > now() - interval '90 minutes'
+GROUP BY license_plate, status
+ORDER BY last DESC;
+
+SELECT count(*) AS otvaryania_obshto
+FROM access_events
+WHERE status='allowed' AND event_type='entry'
+  AND timestamp > now() - interval '90 minutes';
+SQL
+ license_plate | status  | broя |  first   |   last   
+---------------+---------+------+----------+----------
+ B2020Y        | denied  |    4 | 12:59:46 | 13:02:28
+ 3B2120YE      | denied  |    1 | 13:02:26 | 13:02:26
+ 3B2020Y       | allowed |    1 | 13:01:17 | 13:01:17
+ EB2020XE      | allowed |    1 | 13:01:10 | 13:01:10
+ CB209A        | denied  |    1 | 13:01:01 | 13:01:01
+ B2A90         | denied  |    1 | 13:00:56 | 13:00:56
+ 22020Y        | denied  |    1 | 13:00:56 | 13:00:56
+ 2020YE        | denied  |    2 | 12:59:44 | 13:00:55
+ 2B2020Y1      | allowed |    1 | 13:00:52 | 13:00:52
+ 3B2020X       | allowed |    1 | 13:00:46 | 13:00:46
+ 2B2020YE      | allowed |    5 | 11:53:46 | 13:00:41
+ 020YE         | denied  |    1 | 13:00:31 | 13:00:31
+ 3B20201       | allowed |    1 | 13:00:14 | 13:00:14
+ EB2020X       | allowed |    9 | 12:45:28 | 12:59:40
+ 2B2020YT      | allowed |    1 | 12:57:58 | 12:57:58
+ CB2020Y1      | allowed |    3 | 12:48:46 | 12:55:30
+ 3B2020YE      | allowed |    8 | 12:09:35 | 12:54:11
+ 3B2020Y1      | allowed |    1 | 12:51:24 | 12:51:24
+ CB2020X       | allowed |   13 | 11:54:35 | 12:45:09
+ EB2020YE      | allowed |    4 | 11:54:41 | 12:44:43
+ EB2020Y1      | allowed |    1 | 12:40:28 | 12:40:28
+ 5B2020YE      | allowed |    1 | 12:10:57 | 12:10:57
+ CB2020X1      | allowed |    1 | 11:53:43 | 11:53:43
+ 82020XP       | denied  |    1 | 11:53:39 | 11:53:39
+(24 rows)
+
+ otvaryania_obshto 
+-------------------
+                52
+(1 row)
+
+tmm@tmm:~/VillaAccess$ 
