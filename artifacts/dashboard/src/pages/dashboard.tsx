@@ -111,14 +111,18 @@ function EventRow({ event }: { event: AccessEvent }) {
 export default function DashboardPage() {
   const { t } = useTranslation();
   const statsQ = useQuery({ queryKey: ["dashboard-stats"], queryFn: dashboardApi.stats, refetchInterval: 30000 });
-  // Fetch a wider window so we still have ~15 successful entries after we
-  // filter out denials/noise. Denied events remain available on the full
-  // Events page and in audit logs — the dashboard feed is intentionally
-  // limited to allowed entries so operators see real access activity only.
-  const eventsQ = useQuery({ queryKey: ["dashboard-events"], queryFn: () => dashboardApi.recentEvents(60), refetchInterval: 10000 });
-  const allowedEvents = (eventsQ.data ?? []).filter(
-    (e) => e.status === "allowed" && e.event_type === "entry",
-  ).slice(0, 15);
+  // Ask the server for allowed entries directly so a denied flood (e.g. a
+  // heavily occluded plate emitting many denied reads) can never push the real
+  // access activity out of the window and blank this panel. Denied events
+  // remain available on the full Events page and in audit logs — the dashboard
+  // feed is intentionally limited to allowed entries.
+  const eventsQ = useQuery({
+    queryKey: ["dashboard-events"],
+    queryFn: () =>
+      dashboardApi.recentEvents(15, { status: "allowed", event_type: "entry" }),
+    refetchInterval: 10000,
+  });
+  const allowedEvents = (eventsQ.data ?? []).slice(0, 15);
 
   const s = statsQ.data;
 

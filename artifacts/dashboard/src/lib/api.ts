@@ -183,8 +183,15 @@ export const authApi = {
 
 export const dashboardApi = {
   stats: () => api.get<DashboardStats>("/dashboard/stats"),
-  recentEvents: (limit = 20) =>
-    api.get<AccessEvent[]>(`/dashboard/recent-events?limit=${limit}`),
+  recentEvents: (
+    limit = 20,
+    opts?: { status?: string; event_type?: string },
+  ) => {
+    const p = new URLSearchParams({ limit: String(limit) });
+    if (opts?.status) p.set("status", opts.status);
+    if (opts?.event_type) p.set("event_type", opts.event_type);
+    return api.get<AccessEvent[]>(`/dashboard/recent-events?${p.toString()}`);
+  },
 };
 
 export const villasApi = {

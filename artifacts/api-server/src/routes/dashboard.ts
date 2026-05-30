@@ -8,7 +8,7 @@ import {
   camerasTable,
   entrancesTable,
 } from "@workspace/db";
-import { eq, gte, sql } from "drizzle-orm";
+import { and, eq, gte, sql } from "drizzle-orm";
 import { requireAuth } from "./auth";
 
 const router = Router();
@@ -53,9 +53,28 @@ router.get("/stats", requireAuth, async (_req, res) => {
 router.get("/recent-events", requireAuth, async (req, res) => {
   const limit = Math.min(parseInt(req.query.limit as string) || 20, 100);
 
+  // Optional server-side filters so a denied flood (e.g. a heavily occluded
+  // plate emitting many denied reads) can NOT starve a status-scoped feed.
+  // The dashboard "Recent events" panel requests status=allowed&event_type=entry
+  // so it always shows real access activity regardless of denied volume.
+  // When omitted, behaviour is unchanged: latest N events of any kind.
+  const status =
+    typeof req.query.status === "string" && req.query.status.length > 0
+      ? req.query.status
+      : null;
+  const eventType =
+    typeof req.query.event_type === "string" && req.query.event_type.length > 0
+      ? req.query.event_type
+      : null;
+
+  const conds = [];
+  if (status) conds.push(eq(accessEventsTable.status, status));
+  if (eventType) conds.push(eq(accessEventsTable.event_type, eventType));
+
   const events = await db
     .select()
     .from(accessEventsTable)
+    .where(conds.length > 0 ? and(...conds) : undefined)
     .orderBy(sql`${accessEventsTable.timestamp} desc`)
     .limit(limit);
 
