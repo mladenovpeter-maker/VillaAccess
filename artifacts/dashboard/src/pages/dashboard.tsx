@@ -94,11 +94,6 @@ function EventRow({ event }: { event: AccessEvent }) {
             {event.event_type?.replace("_", " ")}
           </span>
         </div>
-        {event.confidence_score != null && (
-          <p className="text-xs text-muted-foreground mt-0.5">
-            {t("dashboard.confidenceLabel")}: {event.confidence_score.toFixed(1)}%
-          </p>
-        )}
       </div>
       <div className="text-right shrink-0">
         <div className="text-xs font-medium text-foreground">{timeStr}</div>
