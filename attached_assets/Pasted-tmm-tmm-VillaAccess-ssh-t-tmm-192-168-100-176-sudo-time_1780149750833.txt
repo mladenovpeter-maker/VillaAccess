@@ -1,0 +1,41 @@
+tmm@tmm:~/VillaAccess$ ssh -t tmm@192.168.100.176 'sudo timedatectl set-timezone Europe/Sofia && sudo timedatectl set-ntp true && timedatectl'
+[sudo] password for tmm: 
+               Local time: Sat 2026-05-30 17:01:45 EEST
+           Universal time: Sat 2026-05-30 14:01:45 UTC
+                 RTC time: Sat 2026-05-30 14:01:45
+                Time zone: Europe/Sofia (EEST, +0300)
+System clock synchronized: yes
+              NTP service: active
+          RTC in local TZ: no
+Connection to 192.168.100.176 closed.
+tmm@tmm:~/VillaAccess$ ssh tmm@192.168.100.176 "docker exec -i villaaccess-postgres-1 sh -c 'psql -U \$POSTGRES_USER -d \$POSTGRES_DB'" <<'SQL'
+SELECT license_plate, count(*) AS opens,
+       min(timestamp AT TIME ZONE 'UTC' AT TIME ZONE 'Europe/Sofia') AS first_sofia,
+       max(timestamp AT TIME ZONE 'UTC' AT TIME ZONE 'Europe/Sofia') AS last_sofia
+FROM access_events
+WHERE status='allowed' AND event_type='entry' AND timestamp > now() - interval '2 hours'
+GROUP BY license_plate ORDER BY opens DESC;
+SQL
+ license_plate | opens |        first_sofia         |         last_sofia         
+---------------+-------+----------------------------+----------------------------
+ CB2020X       |    12 | 2026-05-30 15:06:29.375458 | 2026-05-30 15:45:09.090558
+ 3B2020YE      |     9 | 2026-05-30 15:09:35.613914 | 2026-05-30 16:19:45.812479
+ EB2020X       |     9 | 2026-05-30 15:45:28.174172 | 2026-05-30 15:59:40.900459
+ CB2020YE      |     8 | 2026-05-30 16:20:15.360739 | 2026-05-30 16:36:08.150205
+ 2B2020X       |     6 | 2026-05-30 16:20:40.470237 | 2026-05-30 16:34:34.470028
+ 2B2020YE      |     4 | 2026-05-30 15:56:00.975993 | 2026-05-30 16:00:41.883539
+ EB2020YE      |     3 | 2026-05-30 15:06:57.762729 | 2026-05-30 15:44:43.460342
+ CB2020Y1      |     3 | 2026-05-30 15:48:46.774117 | 2026-05-30 15:55:30.274592
+ 3B2020Y       |     1 | 2026-05-30 16:01:17.670373 | 2026-05-30 16:01:17.670373
+ 5B2020X       |     1 | 2026-05-30 16:20:11.543174 | 2026-05-30 16:20:11.543174
+ 5B2020YE      |     1 | 2026-05-30 15:10:57.664333 | 2026-05-30 15:10:57.664333
+ 3B2020X       |     1 | 2026-05-30 16:00:46.674195 | 2026-05-30 16:00:46.674195
+ 2B2020Y1      |     1 | 2026-05-30 16:00:52.58332  | 2026-05-30 16:00:52.58332
+ 3B20201       |     1 | 2026-05-30 16:00:14.510615 | 2026-05-30 16:00:14.510615
+ 2B2020YT      |     1 | 2026-05-30 15:57:58.17649  | 2026-05-30 15:57:58.17649
+ EB2020XE      |     1 | 2026-05-30 16:01:10.672588 | 2026-05-30 16:01:10.672588
+ EB2020Y1      |     1 | 2026-05-30 15:40:28.530502 | 2026-05-30 15:40:28.530502
+ 3B2020Y1      |     1 | 2026-05-30 15:51:24.540885 | 2026-05-30 15:51:24.540885
+(18 rows)
+
+tmm@tmm:~/VillaAccess$ 
