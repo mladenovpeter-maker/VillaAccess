@@ -1,2 +1,1 @@
-- [docker-compose env allowlist](docker-compose-env-allowlist.md) — a var in .env.docker reaches a container ONLY if listed in that service's `environment:` block (backend & ai-worker have no env_file).
-- [ANPR debounce design](anpr-debounce-design.md) — collapse OCR variants of one lingering car via shift-invariant longest-common-run (gate ≥5, denied ≥4); positional/left-aligned digit match silently breaks under OCR leading-char drift.
+- [Plate normalization](plate-normalization.md) — every manual plate WRITE path must call normaliseLicensePlate (Cyrillic→Latin homoglyphs); reservation path was a missed spot.

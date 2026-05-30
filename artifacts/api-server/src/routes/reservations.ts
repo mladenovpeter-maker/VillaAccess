@@ -13,6 +13,7 @@ import {
 } from "../lib/validation/reservation-validator";
 import { syncPinToIntercoms, revokePinFromIntercoms } from "../services/pin-sync";
 import { syncPinToLocks, revokePinFromLocks } from "../services/lock-sync";
+import { normaliseLicensePlate } from "./vehicles";
 
 const router = Router();
 
@@ -110,7 +111,7 @@ async function resolveLicensePlates(
 ): Promise<string[]> {
   const ids: string[] = [];
   for (const entry of plates) {
-    const normalized = entry.plate.trim().toUpperCase().replace(/\s+/g, "");
+    const normalized = normaliseLicensePlate(entry.plate);
     if (!normalized) continue;
 
     const existing = await db
