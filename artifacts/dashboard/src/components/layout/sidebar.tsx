@@ -32,7 +32,7 @@ export function Sidebar() {
   // ── Nav sections ────────────────────────────────────────────────────────────
 
   const mainItems: NavItem[] = [
-    { href: "/",             label: t("nav.dashboard"),    icon: LayoutDashboard,      roles: ["admin", "operator", "viewer"] },
+    { href: "/",             label: t("nav.dashboard"),    icon: LayoutDashboard,      roles: ["admin", "viewer"] },
     { href: "/controls",     label: t("nav.controls"),     icon: Zap,                  roles: ["admin", "operator"] },
     { href: "/villas",       label: t("nav.villas"),       icon: Building2,            roles: ["admin"] },
     { href: "/reservations", label: t("nav.reservations"), icon: CalendarDays,         roles: ["admin", "operator", "viewer"] },

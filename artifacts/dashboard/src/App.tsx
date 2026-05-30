@@ -35,6 +35,12 @@ const queryClient = new QueryClient({
   },
 });
 
+// Role-aware landing page. Operators don't have the dashboard, so they land on
+// (and are redirected to) Controls instead of "/".
+function homeFor(role?: string): string {
+  return role === "operator" ? "/controls" : "/";
+}
+
 function ProtectedRoute({
   component: Component,
   roles,
@@ -45,14 +51,14 @@ function ProtectedRoute({
   const { user, loading } = useAuth();
   if (loading) return <div className="h-screen flex items-center justify-center text-muted-foreground text-sm">Loading…</div>;
   if (!user) return <Redirect to="/login" />;
-  if (roles && !roles.includes(user.role as Role)) return <Redirect to="/" />;
+  if (roles && !roles.includes(user.role as Role)) return <Redirect to={homeFor(user.role)} />;
   return <Component />;
 }
 
 function PublicRoute({ component: Component }: { component: React.ComponentType }) {
   const { user, loading } = useAuth();
   if (loading) return null;
-  if (user) return <Redirect to="/" />;
+  if (user) return <Redirect to={homeFor(user.role)} />;
   return <Component />;
 }
 
@@ -64,8 +70,8 @@ function Router() {
     <Switch>
       <Route path="/login" component={() => <PublicRoute component={LoginPage} />} />
 
-      {/* All authenticated users (incl. operator + viewer) — pure view surfaces */}
-      <Route path="/"         component={() => <ProtectedRoute component={DashboardPage} />} />
+      {/* Dashboard — admin + viewer only (operators land on /controls instead) */}
+      <Route path="/"         component={() => <ProtectedRoute component={DashboardPage} roles={["admin", "viewer"]} />} />
       <Route path="/timeline" component={() => <ProtectedRoute component={TimelinePage} />} />
       <Route path="/events"   component={() => <ProtectedRoute component={EventsPage} />} />
 
