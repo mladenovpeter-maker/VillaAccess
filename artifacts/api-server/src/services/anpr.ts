@@ -113,6 +113,55 @@ function sharedDigitCount(a: string, b: string): number {
   return n;
 }
 
+// ─── Denied-event dedup (UI hygiene) ────────────────────────────────────────
+// A heavily occluded/dirty plate makes OCR emit many slightly-different reads
+// for the SAME lingering vehicle (e.g. B2020X, B2020Y, B2020XE, B2020 ...).
+// Each distinct string clears the exact-plate cooldown claim below and would
+// log its own "denied" access_event — flooding the dashboard with near-dupes.
+// We additionally suppress LOGGING (insert + live publish) of a denied
+// detection whose plate is highly similar to the most recent denied read on
+// the same camera within the camera's cooldown window.
+//
+// This NEVER touches the allowed path (the relay/gate always fires for an
+// allowed read, even one that arrives right after denied garbage variants) and
+// NEVER touches the AI fallback hook (still fired on every denied read so the
+// OpenAI re-read can recover the plate). OCR / worker / fuzzy logic unchanged.
+const DENIED_DEDUP_SIMILARITY = Number(
+  process.env.ANPR_DENIED_DEDUP_SIMILARITY ?? 70,
+); // percent (0–100); set 0 to disable dedup entirely
+// Safety gate: only collapse reads that ALSO share this many digits in the same
+// (left-aligned) positions. OCR drift of one plate keeps its digits (B2020X /
+// B2020YE / B2020 all share "2020" → 4), whereas a genuinely different denied
+// vehicle whose letters are coincidentally similar will share fewer digits and
+// is therefore still logged. Mirrors the fuzzy fallback's shared-digit gate.
+const DENIED_DEDUP_MIN_SHARED_DIGITS = Number(
+  process.env.ANPR_DENIED_DEDUP_MIN_DIGITS ?? 3,
+);
+const recentDenied = new Map<string, { plate: string; at: number }>();
+
+/**
+ * True when this denied detection is a near-duplicate of a recent denied read
+ * on the same camera (so its event should NOT be logged). Always advances the
+ * per-camera anchor to the latest read+time, so a continuously lingering
+ * vehicle collapses to a single logged denied event per visit. Suppression
+ * requires BOTH high similarity AND enough shared digits, so two different
+ * denied vehicles are not masked by letter-only resemblance.
+ */
+function isDuplicateDenied(
+  cameraId: string,
+  plate: string,
+  windowSecs: number,
+): boolean {
+  if (!(DENIED_DEDUP_SIMILARITY > 0)) return false;
+  const now = Date.now();
+  const prev = recentDenied.get(cameraId);
+  recentDenied.set(cameraId, { plate, at: now });
+  if (!prev) return false;
+  if (now - prev.at >= windowSecs * 1000) return false;
+  if (similarityPct(plate, prev.plate) < DENIED_DEDUP_SIMILARITY) return false;
+  return sharedDigitCount(plate, prev.plate) >= DENIED_DEDUP_MIN_SHARED_DIGITS;
+}
+
 export interface AnprDetectionInput {
   camera_id: string;
   plate: string;
@@ -403,38 +452,44 @@ export async function handleAnprDetection(
 
   // ── 7. Denied path ────────────────────────────────────────────────────────
   if (!decision.allowed) {
-    await db.insert(accessEventsTable).values({
-      event_type: "denied",
-      status: "denied",
-      confidence_score: input.confidence,
-      vehicle_id,
-      license_plate: plate,
-      entrance_id: camera.entrance_id,
-      camera_id: camera.id,
-      snapshot_url: input.snapshot_url ?? null,
-      notes: JSON.stringify(futureMeta),
-    });
-
-    void eventBus.publish({
-      event_type: "anpr.denied",
-      severity: "warning",
-      camera_id: camera.id,
-      vehicle_id,
-      source: "ai_worker",
-      payload: {
-        plate,
+    // Suppress LOGGING (event row + live feed) of near-duplicate denied reads
+    // of the same lingering vehicle (occluded plate → many OCR variants). The
+    // AI hook below still fires on every denied read, and the allowed path is
+    // never affected.
+    if (!isDuplicateDenied(camera.id, plate, cooldownSecs)) {
+      await db.insert(accessEventsTable).values({
+        event_type: "denied",
+        status: "denied",
+        confidence_score: input.confidence,
+        vehicle_id,
         license_plate: plate,
-        raw_ocr_text: input.raw_ocr_text ?? null,
-        confidence: input.confidence,
-        match_type: matchType,
-        matched_plate: matchedPlate,
-        similarity_pct: similarity,
-        vehicle_color: input.color ?? null,
-        decision_reason: decision.reason,
-        reason: decision.reason,
-        denial_code: decision.denial_code,
-      },
-    });
+        entrance_id: camera.entrance_id,
+        camera_id: camera.id,
+        snapshot_url: input.snapshot_url ?? null,
+        notes: JSON.stringify(futureMeta),
+      });
+
+      void eventBus.publish({
+        event_type: "anpr.denied",
+        severity: "warning",
+        camera_id: camera.id,
+        vehicle_id,
+        source: "ai_worker",
+        payload: {
+          plate,
+          license_plate: plate,
+          raw_ocr_text: input.raw_ocr_text ?? null,
+          confidence: input.confidence,
+          match_type: matchType,
+          matched_plate: matchedPlate,
+          similarity_pct: similarity,
+          vehicle_color: input.color ?? null,
+          decision_reason: decision.reason,
+          reason: decision.reason,
+          denial_code: decision.denial_code,
+        },
+      });
+    }
 
     // AI fallback hook (additive, gated by AI_FALLBACK_ENABLED env). No-op
     // when disabled. The hook itself grabs a fresh snapshot from the camera

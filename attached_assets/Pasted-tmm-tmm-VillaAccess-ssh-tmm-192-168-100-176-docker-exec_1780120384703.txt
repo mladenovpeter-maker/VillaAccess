@@ -1,0 +1,36 @@
+tmm@tmm:~/VillaAccess$ ssh tmm@192.168.100.176 "docker exec villaaccess-postgres-1 sh -c 'psql -U \$POSTGRES_USER -d \$POSTGRES_DB -c \"SELECT timestamp, event_type, status, license_plate, confidence_score FROM access_events ORDER BY timestamp DESC LIMIT 30;\"'"
+         timestamp          | event_type | status  | license_plate | confidence_score 
+----------------------------+------------+---------+---------------+------------------
+ 2026-05-30 05:52:53.243777 | denied     | denied  | B2020X        |                0
+ 2026-05-30 05:52:52.787647 | denied     | denied  | B2020Y        |                0
+ 2026-05-30 05:52:51.467642 | denied     | denied  | B2020X        |                0
+ 2026-05-30 05:52:51.101165 | denied     | denied  | B2020Y        |                0
+ 2026-05-30 05:52:50.707537 | denied     | denied  | B2020XE       |                0
+ 2026-05-30 05:52:49.911989 | denied     | denied  | B2020X        |                0
+ 2026-05-30 05:52:49.610784 | entry      | allowed | 7B2020X       |                0
+ 2026-05-30 05:52:46.076749 | denied     | denied  | B2020Y        |                0
+ 2026-05-30 05:52:42.613029 | denied     | denied  | B2020X        |                0
+ 2026-05-30 05:52:42.004731 | denied     | denied  | B2020X1       |                0
+ 2026-05-30 05:52:39.562261 | denied     | denied  | B2020X        |                0
+ 2026-05-30 05:52:39.198032 | denied     | denied  | B2020Y        |                0
+ 2026-05-30 05:52:38.600791 | entry      | allowed | CB2020XP      |               90
+ 2026-05-30 05:52:37.991822 | denied     | denied  | B2020X        |                0
+ 2026-05-30 05:52:37.483327 | denied     | denied  | B2020XE       |                0
+ 2026-05-30 05:52:37.223545 | entry      | allowed | CB2020XE      |                0
+ 2026-05-30 05:52:33.128013 | denied     | denied  | B2020X        |                0
+ 2026-05-30 05:52:32.759218 | denied     | denied  | B2020XE       |                0
+ 2026-05-30 05:52:32.014084 | denied     | denied  | B2020X        |                0
+ 2026-05-30 05:52:31.52387  | denied     | denied  | B2020YE       |                0
+ 2026-05-30 05:52:28.972859 | denied     | denied  | B2020X        |                0
+ 2026-05-30 05:52:28.361821 | denied     | denied  | B2020         |                0
+ 2026-05-30 05:52:25.582268 | denied     | denied  | B2020X        |                0
+ 2026-05-30 05:52:24.791739 | denied     | denied  | B2020Y        |                0
+ 2026-05-30 05:52:16.782777 | denied     | denied  | B2020X        |                0
+ 2026-05-30 05:52:16.384063 | denied     | denied  | B2020         |                0
+ 2026-05-30 05:52:15.628408 | denied     | denied  | B2020X        |                0
+ 2026-05-30 05:52:15.13996  | denied     | denied  | B2020         |                0
+ 2026-05-30 05:52:12.07977  | denied     | denied  | B2020X        |                0
+ 2026-05-30 05:52:11.580359 | denied     | denied  | B2020XE       |                0
+(30 rows)
+
+tmm@tmm:~/VillaAccess$ 

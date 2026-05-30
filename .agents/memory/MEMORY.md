@@ -1,1 +1,1 @@
-- [docker-compose env allowlist](docker-compose-env-allowlist.md) — vars in .env.docker reach a container ONLY if listed in that service's environment: block (backend & ai-worker use explicit allowlists, no env_file).
+- [docker-compose env allowlist](docker-compose-env-allowlist.md) — a var in .env.docker reaches a container ONLY if listed in that service's `environment:` block (backend & ai-worker have no env_file).
