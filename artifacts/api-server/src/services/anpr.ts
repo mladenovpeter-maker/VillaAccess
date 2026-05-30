@@ -162,6 +162,59 @@ function isDuplicateDenied(
   return sharedDigitCount(plate, prev.plate) >= DENIED_DEDUP_MIN_SHARED_DIGITS;
 }
 
+// ── Gate-relay debounce (allowed path) ───────────────────────────────────────
+// A lingering vehicle is read as DISTINCT-but-similar plates (CB2020XP /
+// CB2020X / 7B2020X / 2B2020X ...). Each distinct string passes the atomic
+// cooldown claim below and RE-FIRES the relay — so the barrier flaps
+// open/close several times for what is physically a single car. The exact-plate
+// repeat is already absorbed by the claim (last_anpr_plate IS DISTINCT FROM);
+// this additionally collapses the near-identical OCR variants.
+//
+// Suppression requires BOTH high similarity AND enough shared digits, so a
+// genuinely different vehicle still opens the gate immediately. The anchor is
+// recorded only after a SUCCESSFUL gate open (see the allowed path), so a failed
+// relay never blocks the next legitimate retry, and it is pinned to the plate
+// that GRANTED access (never drifts to a suppressed variant).
+//
+// The shared-digit gate defaults to 4 here (stricter than the denied path's 3):
+// the OCR variants of one lingering car preserve its full numeric core (e.g.
+// "2020" across 7B2020X / 2B2020X / CB2020X / CB2020XP → 4 left-aligned digits),
+// whereas a different car whose number differs by even one digit (CB2021XP)
+// shares only 3 — so it is NOT suppressed and opens the gate. Erring at 4 favours
+// OPENING (safe): the worst case is one extra relay pulse, never a blocked car.
+// Residual, documented limitation: two genuinely different cars that share the
+// SAME number but differ only in letters (CB2020XP vs CB2020XA) within the
+// window are indistinguishable from OCR letter-drift and could be collapsed;
+// negligible at a low-traffic villa gate. Set ANPR_GATE_DEDUP_SIMILARITY=0 to
+// disable entirely and restore "open on every distinct allowed read".
+const GATE_DEDUP_SIMILARITY = Number(
+  process.env.ANPR_GATE_DEDUP_SIMILARITY ?? DENIED_DEDUP_SIMILARITY,
+); // percent (0–100); set 0 to disable
+const GATE_DEDUP_MIN_SHARED_DIGITS = Number(
+  process.env.ANPR_GATE_DEDUP_MIN_DIGITS ?? 4,
+);
+const recentGateOpen = new Map<string, { plate: string; at: number }>();
+
+/**
+ * True when this allowed read is a near-duplicate of the plate that most
+ * recently opened THIS camera's gate, within the cooldown window — i.e. the
+ * same lingering vehicle re-read as a similar OCR variant. Read-only: the
+ * anchor is advanced by the caller only on a successful open (or to keep a
+ * continuously lingering vehicle collapsed), never here.
+ */
+function isRecentGateOpen(
+  cameraId: string,
+  plate: string,
+  windowSecs: number,
+): boolean {
+  if (!(GATE_DEDUP_SIMILARITY > 0)) return false;
+  const prev = recentGateOpen.get(cameraId);
+  if (!prev) return false;
+  if (Date.now() - prev.at >= windowSecs * 1000) return false;
+  if (similarityPct(plate, prev.plate) < GATE_DEDUP_SIMILARITY) return false;
+  return sharedDigitCount(plate, prev.plate) >= GATE_DEDUP_MIN_SHARED_DIGITS;
+}
+
 export interface AnprDetectionInput {
   camera_id: string;
   plate: string;
@@ -182,6 +235,7 @@ export interface AnprDetectionResult {
     | "skipped_no_villa"
     | "skipped_low_quality"
     | "denied"
+    | "skipped_gate_cooldown"
     | "allowed_relay_ok"
     | "allowed_relay_failed";
   plate: string;
@@ -510,8 +564,38 @@ export async function handleAnprDetection(
   }
 
   // ── 8. Allowed path: trigger relay ───────────────────────────────────────
+  // Gate-relay debounce: collapse near-duplicate allowed reads of the same
+  // lingering vehicle so the barrier doesn't flap open/close. The exact-plate
+  // repeat is already absorbed by the atomic claim above; this covers the
+  // DISTINCT-but-similar OCR variants of one car. A genuinely different vehicle
+  // (dissimilar plate) is NOT matched and opens the gate immediately.
+  const prevGateOpen = recentGateOpen.get(camera.id);
+  if (prevGateOpen && isRecentGateOpen(camera.id, plate, cooldownSecs)) {
+    // Extend the window so a continuously lingering vehicle stays collapsed, but
+    // keep the anchor pinned to the GRANTING plate (prevGateOpen.plate) so the
+    // comparison never drifts toward a suppressed variant. No relay re-pulse,
+    // no duplicate allowed event.
+    recentGateOpen.set(camera.id, { plate: prevGateOpen.plate, at: Date.now() });
+    aiFallback.recordSuccess(camera.id);
+    return {
+      action: "skipped_gate_cooldown",
+      plate,
+      vehicle_id,
+      reason: decision.reason,
+      match_type: matchType,
+      matched_plate: matchedPlate,
+      similarity_pct: similarity,
+    };
+  }
+
   const adapter = createAdapter(camera);
   const gate = await adapter.open_gate();
+
+  // Record the anchor only on a SUCCESSFUL open, so a failed relay does not
+  // suppress the next legitimate retry of the same/similar plate.
+  if (gate.success) {
+    recentGateOpen.set(camera.id, { plate, at: Date.now() });
+  }
 
   await db.insert(accessEventsTable).values({
     event_type: "entry",

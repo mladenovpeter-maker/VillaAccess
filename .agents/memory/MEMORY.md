@@ -1,1 +1,2 @@
 - [docker-compose env allowlist](docker-compose-env-allowlist.md) — a var in .env.docker reaches a container ONLY if listed in that service's `environment:` block (backend & ai-worker have no env_file).
+- [ANPR debounce design](anpr-debounce-design.md) — how/why OCR variants of one lingering car are collapsed on denied (dedup) + allowed/relay (gate debounce, needs 4 shared digits so a 1-digit-diff car still opens).
