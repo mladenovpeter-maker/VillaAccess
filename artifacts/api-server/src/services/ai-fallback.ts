@@ -60,6 +60,15 @@ const FAIL_RESET_SECONDS = Math.max(
   5,
   Number(process.env.AI_FALLBACK_RESET_SECONDS) || 30,
 );
+// After an AI call actually runs for a camera, suppress further AI triggers
+// for this many seconds. Prevents a vehicle lingering at the gate from
+// re-invoking OpenAI every few seconds (token burn / rate limits). Only the
+// AI path is throttled — normal OCR/relay flow is unaffected. Set to 0 to
+// disable. Override via AI_FALLBACK_COOLDOWN_SECONDS env var.
+const COOLDOWN_SECONDS = Math.max(
+  0,
+  Number(process.env.AI_FALLBACK_COOLDOWN_SECONDS ?? 60),
+);
 // Pre-AI guard: best raw OCR text from the 3 fails must match at least one
 // currently-expected plate (permanent-access vehicles + vehicles tied to an
 // active reservation for this camera's villa(s)) with similarity >= this
@@ -103,6 +112,7 @@ interface FailEntry {
 interface CameraState {
   fails: FailEntry[];
   inFlight: boolean;
+  cooldownUntil?: number; // epoch ms — AI triggers suppressed until this time
 }
 
 interface AiVerdict {
@@ -357,6 +367,9 @@ export function recordFailure(
 
     // Drop stale entries + don't pile up while AI is already running.
     if (s.inFlight) return;
+    // Post-run cooldown: a vehicle lingering at the gate keeps producing
+    // fails; without this it would re-invoke OpenAI every few seconds.
+    if (s.cooldownUntil && now < s.cooldownUntil) return;
     s.fails = s.fails.filter((f) => f.at >= cutoff);
     s.fails.push({
       buffer: cap.buffer,
@@ -377,6 +390,7 @@ export function recordFailure(
       s.inFlight = true;
       state.set(camera.id, s);
       const fails = [...s.fails];
+      let aiRan = false;
 
       void (async () => {
         // Pre-AI similarity gate: only invoke OpenAI when at least one
@@ -395,6 +409,7 @@ export function recordFailure(
           `[ai-fallback] camera=${camera.id} similarity gate passed ` +
             `(best=${gate.bestPct}% "${gate.bestRaw}" ≈ "${gate.bestExpected}") — invoking AI`,
         );
+        aiRan = true;
         await runAiFallback(camera, fails);
       })()
         .catch((err) => {
@@ -405,6 +420,12 @@ export function recordFailure(
           if (cur) {
             cur.inFlight = false;
             cur.fails = []; // reset whether gate passed/failed/AI ran
+            // Only start the cooldown when an AI call actually fired, so a
+            // failed similarity gate (no token cost) does not delay a real
+            // vehicle that arrives moments later.
+            if (aiRan && COOLDOWN_SECONDS > 0) {
+              cur.cooldownUntil = Date.now() + COOLDOWN_SECONDS * 1000;
+            }
             state.set(camera.id, cur);
           }
         });
