@@ -46,7 +46,8 @@ function formatDateTime(d: string | Date | null) {
   return new Date(d).toLocaleString([], { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 }
 function toInputDate(d: string | Date) {
-  return new Date(d).toISOString().slice(0, 10);
+  const dt = new Date(d);
+  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
 }
 function toInputTime(d: string | Date) {
   const dt = new Date(d);
@@ -202,8 +203,8 @@ export default function ReservationsPage() {
         ...(p.model.trim() ? { model: p.model.trim() } : {}),
         ...(p.color.trim() ? { color: p.color.trim() } : {}),
       }));
-    const checkIn  = form.check_in  ? `${form.check_in}T${form.check_in_time  || "14:00"}:00` : "";
-    const checkOut = form.check_out ? `${form.check_out}T${form.check_out_time || "11:00"}:00` : "";
+    const checkIn  = form.check_in  ? new Date(`${form.check_in}T${form.check_in_time  || "14:00"}:00`).toISOString() : "";
+    const checkOut = form.check_out ? new Date(`${form.check_out}T${form.check_out_time || "11:00"}:00`).toISOString() : "";
     const payload = {
       ...form,
       check_in:  checkIn,
