@@ -1,0 +1,66 @@
+tmm@tmm:~/VillaAccess$ git pull origin main
+docker compose up -d --build backend
+remote: Enumerating objects: 28, done.
+remote: Counting objects: 100% (28/28), done.
+remote: Compressing objects: 100% (5/5), done.
+remote: Total 15 (delta 10), reused 15 (delta 10), pack-reused 0 (from 0)
+Unpacking objects: 100% (15/15), 3.72 KiB | 951.00 KiB/s, done.
+From https://github.com/mladenovpeter-maker/VillaAccess
+ * branch            main       -> FETCH_HEAD
+   00440ca..95341b0  main       -> origin/main
+Updating 00440ca..95341b0
+Fast-forward
+ .agents/memory/MEMORY.md                           |  1 +
+ .agents/memory/vehicle-archive-phase2.md           | 31 ++++++++++++++++
+ artifacts/api-server/src/index.ts                  |  8 ++--
+ artifacts/api-server/src/routes/reservations.ts    |  6 +++
+ artifacts/api-server/src/routes/vehicles.ts        |  6 ++-
+ .../api-server/src/services/vehicle-archive.ts     | 43 +++++++++++++++++++---
+ 6 files changed, 84 insertions(+), 11 deletions(-)
+ create mode 100644 .agents/memory/vehicle-archive-phase2.md
+WARN[0000] /home/tmm/VillaAccess/docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion 
+[+] Building 37.8s (18/18) FINISHED                                             
+ => [internal] load local bake definitions                                 0.0s
+ => => reading from stdin 982B                                             0.0s
+ => [backend internal] load build definition from Dockerfile               0.0s
+ => => transferring dockerfile: 1.19kB                                     0.0s
+ => [migrate internal] load metadata for docker.io/library/node:22-alpine  0.4s
+ => [migrate internal] load .dockerignore                                  0.0s
+ => => transferring context: 251B                                          0.0s
+ => [backend builder 1/6] FROM docker.io/library/node:22-alpine@sha256:96  0.0s
+ => => resolve docker.io/library/node:22-alpine@sha256:968df39aedcea65eeb  0.0s
+ => [migrate internal] load build context                                  0.0s
+ => => transferring context: 91.78kB                                       0.0s
+ => CACHED [migrate builder 2/6] RUN npm install -g pnpm@10 --quiet        0.0s
+ => CACHED [backend builder 3/6] WORKDIR /workspace                        0.0s
+ => [migrate builder 4/6] COPY . .                                         0.0s
+ => [migrate builder 5/6] RUN pnpm install --frozen-lockfile              12.1s
+ => [migrate builder 6/6] RUN pnpm --filter @workspace/api-server run bui  1.4s
+ => [migrate] exporting to image                                          23.6s 
+ => => exporting layers                                                   15.0s 
+ => => exporting manifest sha256:0c05dc5cf37025e13b7cea36e7c3ad4268ea248d  0.0s 
+ => => exporting config sha256:43549dd39959d9fc5b49f6f17bdef09b56fc32d797  0.0s 
+ => => exporting attestation manifest sha256:24a3ec80632440527f8ca32677b4  0.0s 
+ => => exporting manifest list sha256:eb68211d078ec88f929ae07985723c6d784  0.0s 
+ => => naming to docker.io/library/villaaccess-migrate:latest              0.0s
+ => => unpacking to docker.io/library/villaaccess-migrate:latest           8.6s
+ => CACHED [backend runner 2/4] WORKDIR /app                               0.0s
+ => [backend runner 3/4] COPY --from=builder /workspace/artifacts/api-ser  0.0s
+ => [backend runner 4/4] RUN mkdir -p uploads                              0.1s
+ => [backend] exporting to image                                           0.7s
+ => => exporting layers                                                    0.6s
+ => => exporting manifest sha256:aea29577fa6704bfad058ef69e922125c091c64e  0.0s
+ => => exporting config sha256:3b2a1b089d5ac7a4681cb66bbea369a0412fcc9411  0.0s
+ => => exporting attestation manifest sha256:f507495051b217b201867b963e44  0.0s
+ => => exporting manifest list sha256:9b7d00d3a599be8ae76eb5f569ba6e43e85  0.0s
+ => => naming to docker.io/library/villaaccess-backend:latest              0.0s
+ => => unpacking to docker.io/library/villaaccess-backend:latest           0.1s
+ => [backend] resolving provenance for metadata file                       0.0s
+ => [migrate] resolving provenance for metadata file                       0.0s
+[+] up 5/5
+ ✔ Image villaaccess-migrate        Built                                  37.8s
+ ✔ Image villaaccess-backend        Built                                  37.8s
+ ✔ Container villaaccess-postgres-1 Healthy                                11.7s
+ ✔ Container villaaccess-migrate-1  Exited                                 12.4s
+ ✔ Container villaaccess-backend-1  Started                                11.5s
+tmm@tmm:~/VillaAccess$ 
