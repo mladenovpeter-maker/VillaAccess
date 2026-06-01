@@ -8,7 +8,7 @@ import {
   camerasTable,
   entrancesTable,
 } from "@workspace/db";
-import { and, eq, gte, sql } from "drizzle-orm";
+import { and, eq, gte, isNull, sql } from "drizzle-orm";
 import { requireAuth } from "./auth";
 
 const router = Router();
@@ -20,7 +20,7 @@ router.get("/stats", requireAuth, async (_req, res) => {
   const [villas, reservations, vehicles, eventsToday, cameras, entrances] = await Promise.all([
     db.select({ count: sql<number>`count(*)::int` }).from(villasTable),
     db.select({ count: sql<number>`count(*)::int` }).from(reservationsTable).where(eq(reservationsTable.status, "active")),
-    db.select({ count: sql<number>`count(*)::int` }).from(vehiclesTable),
+    db.select({ count: sql<number>`count(*)::int` }).from(vehiclesTable).where(isNull(vehiclesTable.archived_at)),
     db.select({ count: sql<number>`count(*)::int`, status: accessEventsTable.status })
       .from(accessEventsTable)
       .where(gte(accessEventsTable.timestamp, today))

@@ -29,3 +29,8 @@ operator even though access still works — confusing and looks like data loss.
 
 **Grace:** `ARCHIVE_GRACE_MS` MUST equal `CHECKOUT_GRACE_MS` (1h) in the
 validator (value is not exported there by design; mirrored here).
+
+**Counts must match the list:** any aggregate that counts vehicles (e.g. the
+dashboard `/stats` "total_vehicles" card) MUST apply `archived_at IS NULL`, same
+as `GET /vehicles`. Otherwise the dashboard shows e.g. "1 vehicle" while the list
+is empty. Keep every vehicle count and the list filter in lockstep.
