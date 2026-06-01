@@ -56,7 +56,7 @@ import { and, eq, isNull, ne, sql } from "drizzle-orm";
 // MUST match CHECKOUT_GRACE_MS in lib/validation/reservation-validator.ts (1h).
 const ARCHIVE_GRACE_MS = 1 * 60 * 60 * 1000;
 
-const DRY_RUN = true; // Phase 1: never flip without operator approval.
+const DRY_RUN = false; // Phase 2: live archiving enabled (sets archived_at).
 
 interface ArchiveCandidate {
   id: string;
@@ -139,17 +139,21 @@ export async function sweepArchivableVehiclesDryRun(): Promise<{
     : (totalRows as any).rows ?? [];
   const scanned = Number(totalArr[0]?.count ?? 0);
 
+  const mode = DRY_RUN ? "DRY-RUN" : "LIVE";
+
   if (candidates.length === 0) {
     console.log(
-      `[vehicle-archive][DRY-RUN] scanned=${scanned} candidates=0 ` +
+      `[vehicle-archive][${mode}] scanned=${scanned} candidates=0 ` +
         `(no temporary reservation vehicles past grace window)`,
     );
     return { scanned, candidates: 0 };
   }
 
   console.log(
-    `[vehicle-archive][DRY-RUN] scanned=${scanned} candidates=${candidates.length} ` +
-      `— would archive these vehicles (no UPDATE performed):`,
+    `[vehicle-archive][${mode}] scanned=${scanned} candidates=${candidates.length} ` +
+      (DRY_RUN
+        ? `— would archive these vehicles (no UPDATE performed):`
+        : `— archiving these vehicles:`),
   );
 
   const now = Date.now();
@@ -177,7 +181,7 @@ export async function sweepArchivableVehiclesDryRun(): Promise<{
     };
 
     console.log(
-      `[vehicle-archive][DRY-RUN]   plate=${detail.license_plate} id=${detail.id} ` +
+      `[vehicle-archive][${mode}]   plate=${detail.license_plate} id=${detail.id} ` +
         `status=${detail.status} access_type=${detail.access_type} ` +
         `reservation_links=${detail.link_count} ` +
         `latest_reservation_status=${detail.latest_reservation_status} ` +
@@ -185,6 +189,35 @@ export async function sweepArchivableVehiclesDryRun(): Promise<{
         `hours_past_grace=${detail.hours_since_grace_closed} ` +
         `reason="all reservations are cancelled/completed and (check_out + 1h grace) is in the past"`,
     );
+  }
+
+  if (!DRY_RUN) {
+    // Atomic, race-safe archive: re-evaluate the SAME eligibility predicate at
+    // UPDATE time (criteria 1-5), not the stale candidate id list. So a vehicle
+    // re-linked to a new/future reservation between the SELECT above and now is
+    // NOT archived. Part 3 (resolveLicensePlates un-archive) covers the residual
+    // window where a reservation commits just after this statement's snapshot.
+    const archived = await db.execute<{ id: string }>(sql`
+      UPDATE vehicles v
+         SET archived_at = NOW(), updated_at = NOW()
+       WHERE v.access_type = 'reservation'
+         AND v.status <> 'blacklisted'
+         AND v.archived_at IS NULL
+         AND EXISTS (
+           SELECT 1 FROM reservation_vehicles rv WHERE rv.vehicle_id = v.id
+         )
+         AND NOT EXISTS (
+           SELECT 1
+             FROM reservation_vehicles rv
+             JOIN reservations r ON r.id = rv.reservation_id
+            WHERE rv.vehicle_id = v.id
+              AND r.status <> 'cancelled'
+              AND (r.check_out + ${graceInterval}) > NOW()
+         )
+      RETURNING v.id
+    `);
+    const archivedRows: any[] = Array.isArray(archived) ? archived : (archived as any).rows ?? [];
+    console.log(`[vehicle-archive][LIVE] archived ${archivedRows.length} vehicle(s)`);
   }
 
   return { scanned, candidates: candidates.length };

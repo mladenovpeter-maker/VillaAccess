@@ -121,6 +121,12 @@ async function resolveLicensePlates(
       .limit(1);
 
     if (existing[0]) {
+      // Phase 2: a returning guest re-uses an archived vehicle → un-archive it
+      // so it reappears in the operational list instead of duplicating.
+      await db
+        .update(vehiclesTable)
+        .set({ archived_at: null, updated_at: new Date() })
+        .where(eq(vehiclesTable.id, existing[0].id));
       ids.push(existing[0].id);
     } else {
       const [created] = await db

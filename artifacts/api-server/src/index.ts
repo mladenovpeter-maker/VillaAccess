@@ -31,10 +31,10 @@ seedDefaultUsers()
       startExpirySweep();
       startLockExpirySweep();
       logger.info("PIN expiry sweep started (every 5 min)");
-      // Phase 1 dry-run: identify temporary reservation vehicles whose
-      // access window (check_out + 1h grace) has fully closed. LOG ONLY —
-      // no UPDATE/DELETE. See services/vehicle-archive.ts.
+      // Phase 2 live: archive temporary reservation vehicles whose access
+      // window (check_out + 1h grace) has fully closed by setting archived_at.
+      // See services/vehicle-archive.ts.
       startVehicleArchiveSweep();
-      logger.info("Vehicle archive sweep started (every 5 min, DRY-RUN)");
+      logger.info("Vehicle archive sweep started (every 5 min, LIVE)");
     });
   });

@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import { vehiclesTable, vehicleSnapshotsTable, accessEventsTable } from "@workspace/db";
-import { eq, or, ilike, sql, desc, and } from "drizzle-orm";
+import { eq, or, ilike, sql, desc, and, isNull } from "drizzle-orm";
 import { requireAuth } from "./auth";
 import { z } from "zod";
 import { eventBus } from "../lib/events";
@@ -114,9 +114,11 @@ const vehicleBodySchema = z.object({
 // ─── GET /vehicles ────────────────────────────────────────────────────────────
 
 router.get("/", requireAuth, async (req, res) => {
-  const { status, search, plate_region } = req.query;
+  const { status, search, plate_region, include_archived } = req.query;
 
   const conditions = [];
+  // Phase 2: hide archived (expired-reservation) vehicles by default.
+  if (include_archived !== "true") conditions.push(isNull(vehiclesTable.archived_at));
   if (status) conditions.push(eq(vehiclesTable.status, status as any));
   if (plate_region) conditions.push(eq(vehiclesTable.plate_region, plate_region as string));
   if (search) {
