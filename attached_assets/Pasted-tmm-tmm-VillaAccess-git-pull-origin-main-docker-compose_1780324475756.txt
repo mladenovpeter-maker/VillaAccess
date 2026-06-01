@@ -1,0 +1,46 @@
+tmm@tmm:~/VillaAccess$ git pull origin main
+docker compose up -d --build backend
+remote: Enumerating objects: 30, done.
+remote: Counting objects: 100% (30/30), done.
+remote: Compressing objects: 100% (5/5), done.
+remote: Total 20 (delta 15), reused 20 (delta 15), pack-reused 0 (from 0)
+Unpacking objects: 100% (20/20), 120.40 KiB | 2.15 MiB/s, done.
+From https://github.com/mladenovpeter-maker/VillaAccess
+ * branch            main       -> FETCH_HEAD
+   95341b0..2c15940  main       -> origin/main
+Updating 95341b0..2c15940
+Fast-forward
+ .agents/memory/vehicle-archive-phase2.md           |   5 ++
+ artifacts/api-server/src/routes/dashboard.ts       |   4 +-
+ ...ll-origin-main-docker-compose_1780307110847.txt |  51 ++++++++++++++++
+ ...ll-origin-main-docker-compose_1780307209707.txt |  66 +++++++++++++++++++++
+ ...enshot_2026-06-01_at_17.20.16_1780323627062.png | Bin 0 -> 139005 bytes
+ 5 files changed, 124 insertions(+), 2 deletions(-)
+ create mode 100644 attached_assets/Pasted-tmm-tmm-VillaAccess-git-pull-origin-main-docker-compose_1780307110847.txt
+ create mode 100644 attached_assets/Pasted-tmm-tmm-VillaAccess-git-pull-origin-main-docker-compose_1780307209707.txt
+ create mode 100644 attached_assets/Screenshot_2026-06-01_at_17.20.16_1780323627062.png
+WARN[0000] /home/tmm/VillaAccess/docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion 
+[+] Building 22.2s (16/17)                                                      
+ => => resolve docker.io/library/node:22-alpine@sha256:968df39aedcea65eeb  0.0s
+ => [backend internal] load build context                                  0.0s
+ => => transferring context: 36.93kB                                       0.0s
+ => CACHED [backend builder 2/6] RUN npm install -g pnpm@10 --quiet        0.0s
+ => CACHED [backend builder 3/6] WORKDIR /workspace                        0.0s
+ => [backend builder 4/6] COPY . .                                         0.0s
+ => [backend builder 5/6] RUN pnpm install --frozen-lockfile              12.2s
+ => [migrate builder 6/6] RUN pnpm --filter @workspace/api-server run bui  1.4s
+ => [migrate] exporting to image                                           8.1s
+ => => exporting layers                                                    8.1s
+ => CACHED [backend runner 2/4] WORKDIR /app                               0.0s
+ => [backend runner 3/4] COPY --from=builder /workspace/artifacts/api-ser  0.0s
+ => [backend runner 4/4] RUN mkdir -p uploads                              0.1s
+ => [backend] exporting to image                                           0.6s
+ => => exporting layers                                                    0.5s
+ => => exporting manifest sha256:df95a8a5ccd65fd560e45e067a6e93c3df736d9e  0.0s
+ => => exporting config sha256:65dcedad704268d5db6c18e55daf6b2be892a4a298  0.0s 
+ => => exporting attestation manifest sha256:c062d08d2d51448b640f878935ca  0.0s 
+ => => exporting manifest list sha256:8e039be9035cac4a06b66c08c8f9952449a  0.0s 
+ => => naming to docker.io/library/villaaccess-backend:latest              0.0s 
+ => => unpacking to docker.io/library/villaaccess-backend:latest           0.1s 
+ => [backend] resolving provenance for metadata file                       0.0s
+
