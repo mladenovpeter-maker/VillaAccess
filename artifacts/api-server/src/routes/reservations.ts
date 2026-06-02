@@ -370,6 +370,24 @@ router.delete("/:id", requireAuth, async (req: any, res) => {
   const rows = await db.select().from(reservationsTable).where(eq(reservationsTable.id, req.params.id)).limit(1);
   if (!rows[0]) { res.status(404).json({ detail: "Not found" }); return; }
 
+  // A reservation whose access window has already closed cannot grant entry even
+  // if a PIN is still present on a device — Hikvision enforces the credential's
+  // validity endTime, so an expired PIN is inert. For such reservations the
+  // revoke is best-effort: we still attempt it, but a revoke failure (e.g. the
+  // user was already removed by the expiry sweep and the device reports
+  // "not found" in a shape revokePin doesn't recognise) must NOT block the
+  // delete. Strict abort-on-failure is kept ONLY for still-active/upcoming
+  // reservations, where an orphaned PIN would remain usable.
+  // "Expired" strictly means the credential validity window has elapsed — the
+  // ONLY state that guarantees any PIN still on a device is inert (Hikvision
+  // enforces the endTime). We deliberately do NOT shortcut on status alone: a
+  // completed/cancelled booking can still have a future endTime (early checkout,
+  // a cancellation before the stay), and bypassing revoke-gating there could
+  // orphan a still-usable PIN.
+  const CHECKOUT_GRACE_MS = 60 * 60 * 1000; // mirrors reservation-validator grace
+  const checkOutMs = rows[0].check_out ? new Date(rows[0].check_out).getTime() : null;
+  const isExpired = checkOutMs != null && Date.now() > checkOutMs + CHECKOUT_GRACE_MS;
+
   // Abort the delete if device-side revoke fails. Consistency over silent
   // orphan: we will not remove the DB row until we know every Hikvision
   // terminal has dropped the user. The reservation stays put with
@@ -377,14 +395,17 @@ router.delete("/:id", requireAuth, async (req: any, res) => {
   try {
     const result = await revokePinFromIntercoms(rows[0], req.user?.id);
     if (result.failed > 0) {
-      console.warn(`[reservations.delete] aborted — revoke had ${result.failed}/${result.total} failure(s) for reservation ${rows[0].id}`);
-      res.status(502).json({
-        detail: "Could not revoke PIN from one or more intercoms — reservation NOT deleted. Please retry.",
-        intercoms_failed:    result.failed,
-        intercoms_total:     result.total,
-        failures: result.results.filter((r) => !r.success).map((r) => ({ intercom: r.intercom_name, error: r.error })),
-      });
-      return;
+      console.warn(`[reservations.delete] revoke had ${result.failed}/${result.total} failure(s) for reservation ${rows[0].id}`);
+      if (!isExpired) {
+        res.status(502).json({
+          detail: "Could not revoke PIN from one or more intercoms — reservation NOT deleted. Please retry.",
+          intercoms_failed:    result.failed,
+          intercoms_total:     result.total,
+          failures: result.results.filter((r) => !r.success).map((r) => ({ intercom: r.intercom_name, error: r.error })),
+        });
+        return;
+      }
+      console.warn(`[reservations.delete] reservation ${rows[0].id} access window already closed — proceeding with delete despite revoke failure (orphaned PIN is past its validity endTime)`);
     }
     // Best-effort: revoke the smart-lock password as well. We do NOT
     // block the delete on smart-lock revoke failure for two reasons:
@@ -405,12 +426,15 @@ router.delete("/:id", requireAuth, async (req: any, res) => {
       console.error(`[reservations.delete] smart-lock revoke threw (non-fatal):`, err);
     }
   } catch (err) {
-    console.error(`[reservations.delete] aborted — revoke threw for reservation ${rows[0].id}:`, err);
-    res.status(502).json({
-      detail: "Intercom revoke failed — reservation NOT deleted. Please retry.",
-      error:  err instanceof Error ? err.message : String(err),
-    });
-    return;
+    console.error(`[reservations.delete] revoke threw for reservation ${rows[0].id}:`, err);
+    if (!isExpired) {
+      res.status(502).json({
+        detail: "Intercom revoke failed — reservation NOT deleted. Please retry.",
+        error:  err instanceof Error ? err.message : String(err),
+      });
+      return;
+    }
+    console.warn(`[reservations.delete] revoke threw for already-closed reservation ${rows[0].id} — proceeding with delete (PIN past its validity endTime)`);
   }
 
   await db.delete(reservationsTable).where(eq(reservationsTable.id, req.params.id));

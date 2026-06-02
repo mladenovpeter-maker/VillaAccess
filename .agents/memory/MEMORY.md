@@ -1,3 +1,4 @@
 - [Plate normalization](plate-normalization.md) — every manual plate WRITE path must call normaliseLicensePlate (Cyrillic→Latin homoglyphs); reservation path was a missed spot.
 - [Reservation datetime TZ](reservation-datetime-tz.md) — send UTC via toISOString() from browser, display local; naive datetime strings drift by server offset
 - [Vehicle archive Phase 2](vehicle-archive-phase2.md) — expiry hides vehicles via soft archived_at, not delete; archiving UPDATE must re-check eligibility atomically (race), un-archive on plate reuse
+- [Reservation delete revoke gating](reservation-delete-revoke-gating.md) — DELETE blocks on PIN-revoke failure; for already-expired reservations revoke is best-effort so past bookings stay deletable
