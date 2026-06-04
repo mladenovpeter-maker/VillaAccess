@@ -4,6 +4,7 @@ import { seedDefaultUsers } from "./lib/seed";
 import { startExpirySweep } from "./services/pin-sync";
 import { startLockExpirySweep } from "./services/lock-sync";
 import { startVehicleArchiveSweep } from "./services/vehicle-archive";
+import { startSnapshotRetentionSweep } from "./services/snapshot-retention";
 
 const rawPort = process.env["PORT"];
 
@@ -36,5 +37,10 @@ seedDefaultUsers()
       // See services/vehicle-archive.ts.
       startVehicleArchiveSweep();
       logger.info("Vehicle archive sweep started (every 5 min, LIVE)");
+      // Housekeeping: purge snapshot image files older than
+      // settings.snapshot_retention_days (default 90; <=0 disables). Reclaims
+      // disk from camera/AI snapshots that have no DB row. Runs daily.
+      startSnapshotRetentionSweep();
+      logger.info("Snapshot retention sweep started (daily)");
     });
   });
