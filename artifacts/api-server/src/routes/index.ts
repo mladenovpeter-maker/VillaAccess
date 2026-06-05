@@ -20,6 +20,7 @@ import { diagnosticsRouter } from "./diagnostics";
 import { exportRouter } from "./export";
 import { usersRouter } from "./users";
 import { tempCredentialsRouter } from "./temp-credentials";
+import { aiUsageRouter } from "./ai-usage";
 
 const router: IRouter = Router();
 
@@ -61,6 +62,7 @@ router.use("/diagnostics",      requireAuth, adminOnly, diagnosticsRouter);
 router.use("/settings",         requireAuth, adminOnly, settingsRouter);
 router.use("/export",           requireAuth, adminOnly, exportRouter);
 router.use("/users",            requireAuth, adminOnly, usersRouter);
+router.use("/ai-usage",         requireAuth, adminOnly, aiUsageRouter);
 router.use("/temp-credentials", requireAuth, writeAccess, tempCredentialsRouter);
 router.use("/mock",             requireAuth, adminOnly, mockRouter);
 

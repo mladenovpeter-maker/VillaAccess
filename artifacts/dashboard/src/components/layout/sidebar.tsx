@@ -5,7 +5,7 @@ import {
   LayoutDashboard, CalendarDays, Car, ShieldCheck, Camera, ScrollText,
   Activity, LogOut, Menu, X, Building2, DoorOpen, FlaskConical,
   Stethoscope, Settings2, HeartPulse, GitCommitHorizontal,
-  Download, Users, KeyRound, Phone, Lock, Zap,
+  Download, Users, KeyRound, Phone, Lock, Zap, Sparkles,
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -56,6 +56,7 @@ export function Sidebar() {
 
   const toolItems: NavItem[] = [
     { href: "/diagnostics", label: t("nav.diagnostics"), icon: Stethoscope,  roles: ["admin"] },
+    { href: "/ai-usage",    label: t("nav.aiUsage"),     icon: Sparkles,     roles: ["admin"] },
     { href: "/health",      label: t("nav.health"),      icon: HeartPulse,   roles: ["admin"] },
     { href: "/export",      label: t("nav.export"),      icon: Download,     roles: ["admin"] },
     { href: "/settings",    label: t("nav.settings"),    icon: Settings2,    roles: ["admin"] },

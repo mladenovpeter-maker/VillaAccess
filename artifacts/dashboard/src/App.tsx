@@ -26,6 +26,7 @@ import ExportPage from "@/pages/export";
 import VillasPage from "@/pages/villas";
 import UsersPage from "@/pages/users";
 import TempCredentialsPage from "@/pages/temp-credentials";
+import AiUsagePage from "@/pages/ai-usage";
 
 type Role = "admin" | "operator" | "viewer";
 
@@ -93,6 +94,7 @@ function Router() {
       <Route path="/export"           component={() => <ProtectedRoute component={ExportPage}           roles={adminOnly} />} />
       <Route path="/settings"         component={() => <ProtectedRoute component={SettingsPage}         roles={adminOnly} />} />
       <Route path="/users"            component={() => <ProtectedRoute component={UsersPage}            roles={adminOnly} />} />
+      <Route path="/ai-usage"         component={() => <ProtectedRoute component={AiUsagePage}          roles={adminOnly} />} />
       <Route path="/temp-credentials" component={() => <ProtectedRoute component={TempCredentialsPage} roles={opOrAbove} />} />
       <Route path="/mock"             component={() => <ProtectedRoute component={MockPage}             roles={adminOnly} />} />
 

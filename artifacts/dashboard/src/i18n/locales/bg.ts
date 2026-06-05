@@ -18,6 +18,7 @@ const bg = {
     tempCredentials: "Временен достъп",
     tools: "Инструменти",
     diagnostics: "Диагностика на камери",
+    aiUsage: "AI разход",
     health: "Системно здраве",
     export: "Експорт на данни",
     settings: "Настройки",
@@ -544,6 +545,20 @@ const bg = {
     firing: "…",
     customConfidence: "Персонализирана увереност",
     denyReason: "Причина за отказ",
+  },
+  aiUsage: {
+    title: "AI разход",
+    subtitle: "Колко пъти системата е ползвала AI разпознаване и приблизителна цена",
+    monthCalls: "Извиквания този месец",
+    todayCalls: "Извиквания днес",
+    openedByAi: "Отворени от AI",
+    deniedByAi: "Отказани от AI",
+    thisMonth: "този месец",
+    estimated: "прибл.",
+    last14Days: "Последни 14 дни",
+    noUsage: "Няма AI извиквания за периода",
+    disclaimer:
+      "Приблизителна оценка ({{rate}} на извикване). Точната сметка виж в таблото на OpenAI (platform.openai.com → Usage), където можеш да зададеш и твърд лимит на разхода.",
   },
   diag: {
     title: "Диагностика на камери",

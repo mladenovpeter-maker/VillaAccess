@@ -18,6 +18,7 @@ const en = {
     tempCredentials: "Temp Access",
     tools: "Tools",
     diagnostics: "Camera Diagnostics",
+    aiUsage: "AI Usage",
     health: "System Health",
     export: "Export Data",
     settings: "Settings",
@@ -544,6 +545,20 @@ const en = {
     firing: "…",
     customConfidence: "Custom confidence",
     denyReason: "Deny reason",
+  },
+  aiUsage: {
+    title: "AI Usage",
+    subtitle: "How often the system used AI recognition and the estimated cost",
+    monthCalls: "Calls this month",
+    todayCalls: "Calls today",
+    openedByAi: "Opened by AI",
+    deniedByAi: "Denied by AI",
+    thisMonth: "this month",
+    estimated: "est.",
+    last14Days: "Last 14 days",
+    noUsage: "No AI calls in this period",
+    disclaimer:
+      "Estimate ({{rate}} per call). For the exact bill see the OpenAI dashboard (platform.openai.com → Usage), where you can also set a hard spending limit.",
   },
   diag: {
     title: "Camera Diagnostics",

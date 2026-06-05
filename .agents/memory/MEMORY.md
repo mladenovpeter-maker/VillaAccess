@@ -7,3 +7,4 @@
 - [ANPR OCR camera quality](anpr-ocr-camera-quality.md) — bad OCR on one camera = physical/config not code: full-width top box=OSD overlay misread; near-square REJECTED boxes=oblique angle; Tesseract conf always 0
 - [SSE auth gotcha](sse-auth-gotcha.md) — never put an SSE/EventSource route behind header-based requireAuth; it can't send headers, self-auths via ?token=; blanket auth = stuck "connecting"
 - [ANPR fuzzy gates](anpr-fuzzy-gates.md) — partial-match needs 3 gates; Tesseract conf~0 means partial_min_confidence>0 disables fuzzy; min_matching_digits=4 blocks any 1-digit misread
+- [tsc project-reference noise](tsc-project-reference-noise.md) — standalone `tsc --noEmit` floods false "@workspace/db has no exported member"; trust esbuild dev build + runtime smoke test, not the noise
