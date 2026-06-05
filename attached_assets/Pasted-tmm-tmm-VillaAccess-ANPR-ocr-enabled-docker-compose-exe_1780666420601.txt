@@ -1,0 +1,33 @@
+tmm@tmm:~/VillaAccess$ # А) Кои камери реално правят ANPR (ocr_enabled)?
+docker compose exec -T postgres psql -U villa_user -d villa_access -c \
+"SELECT name, ip_address, ocr_enabled, status FROM cameras ORDER BY ip_address;"
+WARN[0000] /home/tmm/VillaAccess/docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion 
+      name      | ip_address | ocr_enabled | status 
+----------------+------------+-------------+--------
+ Портал Юг      | 6.5.4.5    | t           | online
+ Бариера механа | 6.5.4.7    | t           | online
+(2 rows)
+
+tmm@tmm:~/VillaAccess$ # Б) Как точно е регистрирана сивата кола (точен номер, статус, тип достъп)?
+docker compose exec -T postgres psql -U villa_user -d villa_access -c \
+"SELECT license_plate, owner_name, status, access_type FROM vehicles WHERE license_plate ILIKE '%2760%';"
+WARN[0000] /home/tmm/VillaAccess/docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion 
+ license_plate | owner_name | status | access_type 
+---------------+------------+--------+-------------
+(0 rows)
+
+tmm@tmm:~/VillaAccess$ # В) Какво реално е разчел OCR-ът за този номер (варианти + увереност + коя камера)?
+docker compose exec -T postgres psql -U villa_user -d villa_access -c \
+"SELECT (e.timestamp AT TIME ZONE 'UTC' AT TIME ZONE 'Europe/Sofia') AS t,
+        c.name, e.license_plate, e.status, e.confidence_score
+ FROM access_events e JOIN cameras c ON c.id = e.camera_id
+ WHERE e.license_plate ILIKE 'CB276%' OR e.license_plate ILIKE '%2760%'
+ ORDER BY e.timestamp DESC LIMIT 20;"
+WARN[0000] /home/tmm/VillaAccess/docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion 
+             t              |      name      | license_plate | status | confidence_score 
+----------------------------+----------------+---------------+--------+------------------
+ 2026-06-05 16:23:04.76455  | Бариера механа | C82760P       | denied |                2
+ 2026-06-05 15:57:29.563785 | Бариера механа | CB2760PC      | denied |                0
+(2 rows)
+
+tmm@tmm:~/VillaAccess$ 
