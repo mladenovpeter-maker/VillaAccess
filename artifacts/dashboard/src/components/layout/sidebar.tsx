@@ -44,8 +44,8 @@ export function Sidebar() {
     { href: "/access-control", label: t("nav.intercoms"),  icon: KeyRound,             roles: ["admin"] },
     { href: "/locks",          label: t("nav.locks"),       icon: Lock,                 roles: ["admin"] },
     { href: "/entrances",    label: t("nav.entrances"),    icon: DoorOpen,             roles: ["admin"] },
+    { href: "/events",       label: t("nav.events"),       icon: Activity,             roles: ["admin", "operator", "viewer"] },
     // Hidden from menu (backend + routes still active). Access by typing URL directly.
-    // { href: "/events",       label: t("nav.events"),       icon: Activity,             roles: ["admin", "operator", "viewer"] },
     // { href: "/logs",         label: t("nav.logs"),         icon: ScrollText,           roles: ["admin", "operator", "viewer"] },
   ];
 
