@@ -3,3 +3,4 @@
 - [Vehicle archive Phase 2](vehicle-archive-phase2.md) — expiry hides vehicles via soft archived_at, not delete; archiving UPDATE must re-check eligibility atomically (race), un-archive on plate reuse
 - [Reservation delete revoke gating](reservation-delete-revoke-gating.md) — DELETE blocks on PIN-revoke failure; for already-expired reservations revoke is best-effort so past bookings stay deletable
 - [Snapshot retention purge](snapshot-retention.md) — snapshot files come from 3 producers, most have NO DB row; purge by on-disk date-folder, not DB
+- [Tuya local control](tuya-local-control.md) — local-only lock control rarely viable; broadcast scan won't cross subnets, force-scan needs keys, key bootstrap needs cloud once; cloud IoT Core is free (extend trial)
