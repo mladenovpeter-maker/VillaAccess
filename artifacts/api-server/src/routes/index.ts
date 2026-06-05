@@ -33,7 +33,12 @@ router.use("/auth", authRouter);
 // All authenticated — read-only viewers, write blocked for viewer
 router.use("/dashboard",     requireAuth,                  dashboardRouter);
 router.use("/access",        requireAuth,  writeAccess,    accessRouter);
-router.use("/events",        requireAuth,                  eventsRouter);
+// NOTE: no blanket requireAuth here. The SSE endpoint /events/stream
+// authenticates via a ?token= query param (EventSource cannot send the
+// Authorization header), and the other routes (/events, /events/stats)
+// apply requireAuth individually inside the router. A blanket requireAuth
+// would 401 the SSE stream and leave the live feed stuck "connecting".
+router.use("/events",                                      eventsRouter);
 router.use("/logs",          requireAuth,                  logsRouter);
 router.use("/snapshots",     requireAuth,                  snapshotsRouter);
 
