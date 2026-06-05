@@ -678,6 +678,11 @@ export interface EventStats {
   sse_clients: number;
 }
 
+// Events endpoints reuse the shared `request` helper (bearer auth + 401 refresh).
+function authedFetch<T>(path: string): Promise<T> {
+  return request<T>(path);
+}
+
 export const eventsApi = {
   list: (params?: {
     category?: string;
