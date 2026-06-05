@@ -1,0 +1,312 @@
+tmm@tmm:~/VillaAccess$ cd ~/VillaAccess
+docker compose exec -T postgres psql -U villa_user -d villa_access -c "SELECT id, name, ocr_enabled, polling_interval_ms, ocr_min_confidence FROM cameras ORDER BY name;"
+WARN[0000] /home/tmm/VillaAccess/docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion 
+                  id                  |      name      | ocr_enabled | polling_interval_ms | ocr_min_confidence 
+--------------------------------------+----------------+-------------+---------------------+--------------------
+ 11db5e1b-f9df-4d1f-b070-6563ec9cb7f1 | Бариера механа | t           |                1500 |                 70
+ 35b86338-6a98-4467-83a7-6a16e25514bc | Портал Юг      | t           |                1500 |                 70
+(2 rows)
+
+tmm@tmm:~/VillaAccess$ docker compose logs --tail=300 ai-worker
+WARN[0000] /home/tmm/VillaAccess/docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion 
+ai-worker-1  | [14:50:19] [INFO] detection camera=11db5e1b-f9df-4d1f-b070-6563ec9cb7f1 plate=CB2760P → allowed_relay_ok (Permanent access vehicle)
+ai-worker-1  | [14:50:20] [INFO] [11db5e1b-f9df-4d1f-b070-6563ec9cb7f1] YOLO box=(1577,640,1935,813) shrunk=(1619,674,1893,779) det_conf=0.79 → 1 OCR candidate(s)
+ai-worker-1  | [14:50:20] [INFO] [11db5e1b-f9df-4d1f-b070-6563ec9cb7f1] OCR raw='1CB2780P' normalised='1CB2780P' conf=0.0 plausible=True
+ai-worker-1  | [14:50:20] [INFO] detection camera=11db5e1b-f9df-4d1f-b070-6563ec9cb7f1 plate=1CB2780P → denied (No reservation found for this vehicle)
+ai-worker-1  | [14:50:21] [INFO] [11db5e1b-f9df-4d1f-b070-6563ec9cb7f1] YOLO box=(1576,640,1935,813) shrunk=(1619,674,1892,779) det_conf=0.79 → 1 OCR candidate(s)
+ai-worker-1  | [14:50:21] [INFO] [11db5e1b-f9df-4d1f-b070-6563ec9cb7f1] OCR raw='CB2780P' normalised='CB2780P' conf=0.0 plausible=True
+ai-worker-1  | [14:50:24] [INFO] detection camera=11db5e1b-f9df-4d1f-b070-6563ec9cb7f1 plate=CB2780P → allowed_relay_ok (Permanent access vehicle)
+ai-worker-1  | [14:50:25] [INFO] [11db5e1b-f9df-4d1f-b070-6563ec9cb7f1] YOLO box=(1527,639,1884,803) shrunk=(1569,671,1842,771) det_conf=0.78 → 1 OCR candidate(s)
+ai-worker-1  | [14:50:25] [INFO] [11db5e1b-f9df-4d1f-b070-6563ec9cb7f1] OCR raw='CB27805' normalised='CB27805' conf=0.0 plausible=True
+ai-worker-1  | [14:50:25] [INFO] detection camera=11db5e1b-f9df-4d1f-b070-6563ec9cb7f1 plate=CB27805 → skipped_gate_cooldown (Permanent access vehicle)
+ai-worker-1  | [14:50:26] [INFO] [11db5e1b-f9df-4d1f-b070-6563ec9cb7f1] YOLO box=(1343,592,1679,738) shrunk=(1383,621,1639,709) det_conf=0.77 → 1 OCR candidate(s)
+ai-worker-1  | [14:50:26] [INFO] [11db5e1b-f9df-4d1f-b070-6563ec9cb7f1] OCR raw='CB2780P' normalised='CB2780P' conf=0.0 plausible=True
+ai-worker-1  | [14:50:26] [INFO] detection camera=11db5e1b-f9df-4d1f-b070-6563ec9cb7f1 plate=CB2780P → skipped_gate_cooldown (Permanent access vehicle)
+ai-worker-1  | [14:50:28] [INFO] [11db5e1b-f9df-4d1f-b070-6563ec9cb7f1] YOLO box=(1180,559,1470,681) shrunk=(1214,583,1436,657) det_conf=0.75 → 1 OCR candidate(s)
+ai-worker-1  | [14:50:28] [INFO] [11db5e1b-f9df-4d1f-b070-6563ec9cb7f1] OCR raw='CB2780P' normalised='CB2780P' conf=0.0 plausible=True
+ai-worker-1  | [14:50:29] [INFO] [11db5e1b-f9df-4d1f-b070-6563ec9cb7f1] YOLO box=(1071,537,1319,637) shrunk=(1100,557,1290,617) det_conf=0.72 → 1 OCR candidate(s)
+ai-worker-1  | [14:50:29] [INFO] [11db5e1b-f9df-4d1f-b070-6563ec9cb7f1] OCR raw='CB2780P1' normalised='CB2780P1' conf=0.0 plausible=True
+ai-worker-1  | [14:50:29] [INFO] detection camera=11db5e1b-f9df-4d1f-b070-6563ec9cb7f1 plate=CB2780P1 → skipped_gate_cooldown (Permanent access vehicle)
+ai-worker-1  | [14:50:31] [INFO] [11db5e1b-f9df-4d1f-b070-6563ec9cb7f1] YOLO box=(929,508,1129,591) shrunk=(953,524,1105,575) det_conf=0.72 → 1 OCR candidate(s)
+ai-worker-1  | [14:50:31] [INFO] [11db5e1b-f9df-4d1f-b070-6563ec9cb7f1] OCR raw='CB2780P' normalised='CB2780P' conf=38.0 plausible=True
+ai-worker-1  | [14:50:31] [INFO] detection camera=11db5e1b-f9df-4d1f-b070-6563ec9cb7f1 plate=CB2780P → skipped_gate_cooldown (Permanent access vehicle)
+ai-worker-1  | [14:50:32] [INFO] [11db5e1b-f9df-4d1f-b070-6563ec9cb7f1] YOLO box=(818,482,970,556) shrunk=(836,496,952,542) det_conf=0.68 → 1 OCR candidate(s)
+ai-worker-1  | [14:50:32] [INFO] [11db5e1b-f9df-4d1f-b070-6563ec9cb7f1] OCR raw='CB2760P' normalised='CB2760P' conf=28.0 plausible=True
+ai-worker-1  | [14:50:35] [INFO] detection camera=11db5e1b-f9df-4d1f-b070-6563ec9cb7f1 plate=CB2760P → allowed_relay_ok (Permanent access vehicle)
+ai-worker-1  | [14:50:36] [INFO] [11db5e1b-f9df-4d1f-b070-6563ec9cb7f1] YOLO box=(709,459,806,520) shrunk=(720,471,795,508) det_conf=0.51 → 1 OCR candidate(s)
+ai-worker-1  | [14:50:36] [INFO] [11db5e1b-f9df-4d1f-b070-6563ec9cb7f1] OCR raw='82760P' normalised='82760P' conf=0.0 plausible=True
+ai-worker-1  | [14:50:36] [INFO] detection camera=11db5e1b-f9df-4d1f-b070-6563ec9cb7f1 plate=82760P → denied (No reservation found for this vehicle)
+ai-worker-1  | [14:50:37] [INFO] [11db5e1b-f9df-4d1f-b070-6563ec9cb7f1] YOLO box=(708,457,790,509) shrunk=(717,467,781,499) det_conf=0.40 → 1 OCR candidate(s)
+ai-worker-1  | [14:50:37] [INFO] [11db5e1b-f9df-4d1f-b070-6563ec9cb7f1] OCR raw='B2760P' normalised='B2760P' conf=0.0 plausible=True
+ai-worker-1  | [14:50:37] [INFO] detection camera=11db5e1b-f9df-4d1f-b070-6563ec9cb7f1 plate=B2760P → denied (No reservation found for this vehicle)
+ai-worker-1  | [14:50:39] [INFO] [11db5e1b-f9df-4d1f-b070-6563ec9cb7f1] YOLO box=(689,454,785,510) shrunk=(700,465,774,499) det_conf=0.55 → 1 OCR candidate(s)
+ai-worker-1  | [14:50:39] [INFO] [11db5e1b-f9df-4d1f-b070-6563ec9cb7f1] OCR raw='182760P' normalised='182760P' conf=0.0 plausible=True
+ai-worker-1  | [14:50:39] [INFO] detection camera=11db5e1b-f9df-4d1f-b070-6563ec9cb7f1 plate=182760P → denied (No reservation found for this vehicle)
+ai-worker-1  | [14:50:40] [INFO] [11db5e1b-f9df-4d1f-b070-6563ec9cb7f1] YOLO box=(684,448,776,506) shrunk=(695,459,765,495) det_conf=0.58 → 1 OCR candidate(s)
+ai-worker-1  | [14:50:40] [INFO] [11db5e1b-f9df-4d1f-b070-6563ec9cb7f1] OCR raw='7780P' normalised='7780P' conf=0.0 plausible=True
+ai-worker-1  | [14:50:40] [INFO] detection camera=11db5e1b-f9df-4d1f-b070-6563ec9cb7f1 plate=7780P → denied (No reservation found for this vehicle)
+ai-worker-1  | [14:50:42] [INFO] [11db5e1b-f9df-4d1f-b070-6563ec9cb7f1] YOLO box=(687,453,764,503) shrunk=(696,463,755,493) det_conf=0.54 → 1 OCR candidate(s)
+ai-worker-1  | [14:50:42] [INFO] [11db5e1b-f9df-4d1f-b070-6563ec9cb7f1] OCR raw='B2780P' normalised='B2780P' conf=0.0 plausible=True
+ai-worker-1  | [14:50:42] [INFO] detection camera=11db5e1b-f9df-4d1f-b070-6563ec9cb7f1 plate=B2780P → denied (No reservation found for this vehicle)
+ai-worker-1  | [14:50:43] [INFO] [11db5e1b-f9df-4d1f-b070-6563ec9cb7f1] YOLO box=(686,454,763,504) shrunk=(695,464,754,494) det_conf=0.55 → 1 OCR candidate(s)
+ai-worker-1  | [14:50:43] [INFO] [11db5e1b-f9df-4d1f-b070-6563ec9cb7f1] OCR raw='CB2760P' normalised='CB2760P' conf=0.0 plausible=True
+ai-worker-1  | [14:50:43] [INFO] detection camera=11db5e1b-f9df-4d1f-b070-6563ec9cb7f1 plate=CB2760P → skipped_gate_cooldown (Permanent access vehicle)
+ai-worker-1  | [14:50:45] [INFO] [11db5e1b-f9df-4d1f-b070-6563ec9cb7f1] YOLO box=(685,453,763,504) shrunk=(694,463,754,494) det_conf=0.55 → 1 OCR candidate(s)
+ai-worker-1  | [14:50:45] [INFO] [11db5e1b-f9df-4d1f-b070-6563ec9cb7f1] OCR raw='CB7700P' normalised='CB7700P' conf=0.0 plausible=True
+ai-worker-1  | [14:50:45] [INFO] detection camera=11db5e1b-f9df-4d1f-b070-6563ec9cb7f1 plate=CB7700P → denied (No reservation found for this vehicle)
+ai-worker-1  | [14:50:46] [INFO] [11db5e1b-f9df-4d1f-b070-6563ec9cb7f1] YOLO box=(685,453,764,504) shrunk=(694,463,755,494) det_conf=0.56 → 1 OCR candidate(s)
+ai-worker-1  | [14:50:46] [INFO] [11db5e1b-f9df-4d1f-b070-6563ec9cb7f1] OCR raw='CB7780P' normalised='CB7780P' conf=0.0 plausible=True
+ai-worker-1  | [14:50:49] [INFO] detection camera=11db5e1b-f9df-4d1f-b070-6563ec9cb7f1 plate=CB7780P → allowed_relay_ok (Permanent access vehicle)
+ai-worker-1  | [14:50:50] [INFO] [11db5e1b-f9df-4d1f-b070-6563ec9cb7f1] YOLO box=(686,454,764,504) shrunk=(695,464,755,494) det_conf=0.55 → 1 OCR candidate(s)
+ai-worker-1  | [14:50:50] [INFO] [11db5e1b-f9df-4d1f-b070-6563ec9cb7f1] OCR raw='CB2720P' normalised='CB2720P' conf=0.0 plausible=True
+ai-worker-1  | [14:50:53] [INFO] detection camera=11db5e1b-f9df-4d1f-b070-6563ec9cb7f1 plate=CB2720P → allowed_relay_ok (Access granted)
+ai-worker-1  | [14:50:53] [INFO] [11db5e1b-f9df-4d1f-b070-6563ec9cb7f1] YOLO box=(686,454,763,504) shrunk=(695,464,754,494) det_conf=0.56 → 1 OCR candidate(s)
+ai-worker-1  | [14:50:53] [INFO] [11db5e1b-f9df-4d1f-b070-6563ec9cb7f1] OCR raw='CB270P' normalised='CB270P' conf=0.0 plausible=True
+ai-worker-1  | [14:50:53] [INFO] detection camera=11db5e1b-f9df-4d1f-b070-6563ec9cb7f1 plate=CB270P → denied (No reservation found for this vehicle)
+ai-worker-1  | [14:50:54] [INFO] [11db5e1b-f9df-4d1f-b070-6563ec9cb7f1] YOLO box=(685,453,762,504) shrunk=(694,463,753,494) det_conf=0.55 → 1 OCR candidate(s)
+ai-worker-1  | [14:50:54] [INFO] [11db5e1b-f9df-4d1f-b070-6563ec9cb7f1] OCR raw='CB7700' normalised='CB7700' conf=0.0 plausible=True
+ai-worker-1  | [14:50:55] [INFO] detection camera=11db5e1b-f9df-4d1f-b070-6563ec9cb7f1 plate=CB7700 → denied (No reservation found for this vehicle)
+ai-worker-1  | [14:50:56] [INFO] [11db5e1b-f9df-4d1f-b070-6563ec9cb7f1] YOLO box=(685,454,763,504) shrunk=(694,464,754,494) det_conf=0.57 → 1 OCR candidate(s)
+ai-worker-1  | [14:50:56] [INFO] [11db5e1b-f9df-4d1f-b070-6563ec9cb7f1] OCR raw='CB2720P' normalised='CB2720P' conf=0.0 plausible=True
+ai-worker-1  | [14:50:56] [INFO] detection camera=11db5e1b-f9df-4d1f-b070-6563ec9cb7f1 plate=CB2720P → skipped_gate_cooldown (Access granted)
+ai-worker-1  | [14:51:01] [INFO] [11db5e1b-f9df-4d1f-b070-6563ec9cb7f1] YOLO box=(686,454,763,504) shrunk=(695,464,754,494) det_conf=0.56 → 1 OCR candidate(s)
+ai-worker-1  | [14:51:01] [INFO] [11db5e1b-f9df-4d1f-b070-6563ec9cb7f1] OCR raw='CB2760P' normalised='CB2760P' conf=0.0 plausible=True
+ai-worker-1  | [14:51:01] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(0,0,1378,224) shrunk=(165,44,1213,180) det_conf=0.25 → 1 OCR candidate(s)
+ai-worker-1  | [14:51:01] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] OCR raw='9520260P17550257' normalised='9520260P17550257' conf=0.0 plausible=False
+ai-worker-1  | [14:51:04] [INFO] detection camera=11db5e1b-f9df-4d1f-b070-6563ec9cb7f1 plate=CB2760P → allowed_relay_ok (Permanent access vehicle)
+ai-worker-1  | [14:51:04] [INFO] [11db5e1b-f9df-4d1f-b070-6563ec9cb7f1] YOLO box=(683,453,770,503) shrunk=(693,463,760,493) det_conf=0.39 → 1 OCR candidate(s)
+ai-worker-1  | [14:51:04] [INFO] [11db5e1b-f9df-4d1f-b070-6563ec9cb7f1] OCR raw='B7769P0' normalised='B7769P0' conf=0.0 plausible=True
+ai-worker-1  | [14:51:04] [INFO] detection camera=11db5e1b-f9df-4d1f-b070-6563ec9cb7f1 plate=B7769P0 → denied (No reservation found for this vehicle)
+ai-worker-1  | [14:51:06] [INFO] [11db5e1b-f9df-4d1f-b070-6563ec9cb7f1] YOLO box=(684,453,770,503) shrunk=(694,463,760,493) det_conf=0.41 → 1 OCR candidate(s)
+ai-worker-1  | [14:51:06] [INFO] [11db5e1b-f9df-4d1f-b070-6563ec9cb7f1] OCR raw='587769P0' normalised='587769P0' conf=0.0 plausible=True
+ai-worker-1  | [14:51:06] [INFO] detection camera=11db5e1b-f9df-4d1f-b070-6563ec9cb7f1 plate=587769P0 → denied (No reservation found for this vehicle)
+ai-worker-1  | [14:51:07] [INFO] [11db5e1b-f9df-4d1f-b070-6563ec9cb7f1] YOLO box=(683,453,770,502) shrunk=(693,462,760,493) det_conf=0.41 → 1 OCR candidate(s)
+ai-worker-1  | [14:51:07] [INFO] [11db5e1b-f9df-4d1f-b070-6563ec9cb7f1] OCR raw='B260PO' normalised='B260PO' conf=0.0 plausible=True
+ai-worker-1  | [14:51:07] [INFO] detection camera=11db5e1b-f9df-4d1f-b070-6563ec9cb7f1 plate=B260PO → denied (No reservation found for this vehicle)
+ai-worker-1  | [14:51:09] [INFO] [11db5e1b-f9df-4d1f-b070-6563ec9cb7f1] YOLO box=(683,453,770,503) shrunk=(693,463,760,493) det_conf=0.40 → 1 OCR candidate(s)
+ai-worker-1  | [14:51:09] [INFO] [11db5e1b-f9df-4d1f-b070-6563ec9cb7f1] OCR raw='CB2749P0' normalised='CB2749P0' conf=30.0 plausible=True
+ai-worker-1  | [14:51:09] [INFO] detection camera=11db5e1b-f9df-4d1f-b070-6563ec9cb7f1 plate=CB2749P0 → denied (No reservation found for this vehicle)
+ai-worker-1  | [14:51:10] [INFO] [11db5e1b-f9df-4d1f-b070-6563ec9cb7f1] YOLO box=(684,453,770,503) shrunk=(694,463,760,493) det_conf=0.38 → 1 OCR candidate(s)
+ai-worker-1  | [14:51:10] [INFO] [11db5e1b-f9df-4d1f-b070-6563ec9cb7f1] OCR raw='B77090' normalised='B77090' conf=0.0 plausible=True
+ai-worker-1  | [14:51:10] [INFO] detection camera=11db5e1b-f9df-4d1f-b070-6563ec9cb7f1 plate=B77090 → denied (No reservation found for this vehicle)
+ai-worker-1  | [14:51:12] [INFO] [11db5e1b-f9df-4d1f-b070-6563ec9cb7f1] YOLO box=(684,453,769,502) shrunk=(694,462,759,493) det_conf=0.36 → 1 OCR candidate(s)
+ai-worker-1  | [14:51:12] [INFO] [11db5e1b-f9df-4d1f-b070-6563ec9cb7f1] OCR raw='5B7749P0' normalised='5B7749P0' conf=0.0 plausible=True
+ai-worker-1  | [14:51:12] [INFO] detection camera=11db5e1b-f9df-4d1f-b070-6563ec9cb7f1 plate=5B7749P0 → denied (No reservation found for this vehicle)
+ai-worker-1  | [14:51:13] [INFO] [11db5e1b-f9df-4d1f-b070-6563ec9cb7f1] YOLO box=(683,453,770,503) shrunk=(693,463,760,493) det_conf=0.37 → 1 OCR candidate(s)
+ai-worker-1  | [14:51:13] [INFO] [11db5e1b-f9df-4d1f-b070-6563ec9cb7f1] OCR raw='CB2749PO' normalised='CB2749PO' conf=0.0 plausible=True
+ai-worker-1  | [14:51:13] [INFO] detection camera=11db5e1b-f9df-4d1f-b070-6563ec9cb7f1 plate=CB2749PO → denied (No reservation found for this vehicle)
+ai-worker-1  | [14:51:15] [INFO] [11db5e1b-f9df-4d1f-b070-6563ec9cb7f1] YOLO box=(683,453,770,502) shrunk=(693,462,760,493) det_conf=0.42 → 1 OCR candidate(s)
+ai-worker-1  | [14:51:15] [INFO] [11db5e1b-f9df-4d1f-b070-6563ec9cb7f1] OCR raw='877690' normalised='877690' conf=0.0 plausible=False
+ai-worker-1  | [14:51:16] [INFO] [11db5e1b-f9df-4d1f-b070-6563ec9cb7f1] YOLO box=(684,454,769,502) shrunk=(694,463,759,493) det_conf=0.42 → 1 OCR candidate(s)
+ai-worker-1  | [14:51:16] [INFO] [11db5e1b-f9df-4d1f-b070-6563ec9cb7f1] OCR raw='8776900' normalised='8776900' conf=0.0 plausible=False
+ai-worker-1  | [14:51:18] [INFO] [11db5e1b-f9df-4d1f-b070-6563ec9cb7f1] YOLO box=(683,453,769,501) shrunk=(693,462,759,492) det_conf=0.46 → 1 OCR candidate(s)
+ai-worker-1  | [14:51:18] [INFO] [11db5e1b-f9df-4d1f-b070-6563ec9cb7f1] OCR raw='CB279PO' normalised='CB279PO' conf=0.0 plausible=True
+ai-worker-1  | [14:51:18] [INFO] detection camera=11db5e1b-f9df-4d1f-b070-6563ec9cb7f1 plate=CB279PO → denied (No reservation found for this vehicle)
+ai-worker-1  | [14:51:19] [INFO] [11db5e1b-f9df-4d1f-b070-6563ec9cb7f1] YOLO box=(682,453,770,503) shrunk=(692,463,760,493) det_conf=0.37 → 1 OCR candidate(s)
+ai-worker-1  | [14:51:19] [INFO] [11db5e1b-f9df-4d1f-b070-6563ec9cb7f1] OCR raw='C87729P0' normalised='C87729P0' conf=0.0 plausible=True
+ai-worker-1  | [14:51:19] [INFO] detection camera=11db5e1b-f9df-4d1f-b070-6563ec9cb7f1 plate=C87729P0 → denied (No reservation found for this vehicle)
+ai-worker-1  | [14:51:21] [INFO] [11db5e1b-f9df-4d1f-b070-6563ec9cb7f1] YOLO box=(684,455,767,501) shrunk=(693,464,758,492) det_conf=0.40 → 1 OCR candidate(s)
+ai-worker-1  | [14:51:21] [INFO] [11db5e1b-f9df-4d1f-b070-6563ec9cb7f1] OCR raw='087769PC' normalised='087769PC' conf=0.0 plausible=True
+ai-worker-1  | [14:51:21] [INFO] detection camera=11db5e1b-f9df-4d1f-b070-6563ec9cb7f1 plate=087769PC → denied (No reservation found for this vehicle)
+ai-worker-1  | [14:51:22] [INFO] [11db5e1b-f9df-4d1f-b070-6563ec9cb7f1] YOLO box=(684,454,767,502) shrunk=(693,463,758,493) det_conf=0.48 → 1 OCR candidate(s)
+ai-worker-1  | [14:51:22] [INFO] [11db5e1b-f9df-4d1f-b070-6563ec9cb7f1] OCR raw='CB2789PC' normalised='CB2789PC' conf=23.0 plausible=True
+ai-worker-1  | [14:51:25] [INFO] detection camera=11db5e1b-f9df-4d1f-b070-6563ec9cb7f1 plate=CB2789PC → allowed_relay_ok (Permanent access vehicle)
+ai-worker-1  | [14:51:26] [INFO] [11db5e1b-f9df-4d1f-b070-6563ec9cb7f1] YOLO box=(684,452,768,502) shrunk=(694,462,758,492) det_conf=0.32 → 1 OCR candidate(s)
+ai-worker-1  | [14:51:26] [INFO] [11db5e1b-f9df-4d1f-b070-6563ec9cb7f1] OCR raw='827607' normalised='827607' conf=0.0 plausible=False
+ai-worker-1  | [14:51:27] [INFO] [11db5e1b-f9df-4d1f-b070-6563ec9cb7f1] YOLO box=(680,453,771,503) shrunk=(690,463,761,493) det_conf=0.40 → 1 OCR candidate(s)
+ai-worker-1  | [14:51:27] [INFO] [11db5e1b-f9df-4d1f-b070-6563ec9cb7f1] OCR raw='CB278PO' normalised='CB278PO' conf=0.0 plausible=True
+ai-worker-1  | [14:51:27] [INFO] detection camera=11db5e1b-f9df-4d1f-b070-6563ec9cb7f1 plate=CB278PO → skipped_gate_cooldown (Permanent access vehicle)
+ai-worker-1  | [14:51:29] [INFO] [11db5e1b-f9df-4d1f-b070-6563ec9cb7f1] YOLO box=(678,454,759,503) shrunk=(687,463,750,494) det_conf=0.52 → 1 OCR candidate(s)
+ai-worker-1  | [14:51:29] [INFO] [11db5e1b-f9df-4d1f-b070-6563ec9cb7f1] OCR raw='1527608' normalised='1527608' conf=15.0 plausible=False
+ai-worker-1  | [14:51:30] [INFO] [11db5e1b-f9df-4d1f-b070-6563ec9cb7f1] YOLO box=(679,453,760,504) shrunk=(688,463,751,494) det_conf=0.53 → 1 OCR candidate(s)
+ai-worker-1  | [14:51:30] [INFO] [11db5e1b-f9df-4d1f-b070-6563ec9cb7f1] OCR raw='C8270P' normalised='C8270P' conf=0.0 plausible=True
+ai-worker-1  | [14:51:30] [INFO] detection camera=11db5e1b-f9df-4d1f-b070-6563ec9cb7f1 plate=C8270P → denied (No reservation found for this vehicle)
+ai-worker-1  | [14:51:37] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(2,0,1342,227) shrunk=(162,45,1182,182) det_conf=0.26 → 1 OCR candidate(s)
+ai-worker-1  | [14:51:37] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] OCR raw='952026P173B12' normalised='952026P173B12' conf=0.0 plausible=False
+ai-worker-1  | [14:52:03] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(0,0,1380,221) shrunk=(165,44,1215,177) det_conf=0.25 → 1 OCR candidate(s)
+ai-worker-1  | [14:52:03] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] OCR raw='05202842B20' normalised='05202842B20' conf=0.0 plausible=False
+ai-worker-1  | [14:53:34] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(0,0,1388,220) shrunk=(166,44,1222,176) det_conf=0.26 → 1 OCR candidate(s)
+ai-worker-1  | [14:53:34] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] OCR raw='082028P75334' normalised='082028P75334' conf=0.0 plausible=False
+ai-worker-1  | [14:54:44] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(0,0,1388,220) shrunk=(166,44,1222,176) det_conf=0.28 → 1 OCR candidate(s)
+ai-worker-1  | [14:54:44] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] OCR raw='952026P17184749' normalised='952026P17184749' conf=0.0 plausible=False
+ai-worker-1  | [14:55:10] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(431,182,574,265) shrunk=(448,198,557,249) det_conf=0.55 → 1 OCR candidate(s)
+ai-worker-1  | [14:55:10] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] OCR raw='PP' normalised='PP' conf=0.0 plausible=False
+ai-worker-1  | [14:55:12] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(827,312,1022,431) shrunk=(850,335,999,408) det_conf=0.66 → 1 OCR candidate(s)
+ai-worker-1  | [14:55:12] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] OCR raw='27100E' normalised='27100E' conf=0.0 plausible=True
+ai-worker-1  | [14:55:12] [INFO] detection camera=35b86338-6a98-4467-83a7-6a16e25514bc plate=27100E → denied (No reservation found for this vehicle)
+ai-worker-1  | [14:55:13] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(1235,445,1436,638) det_conf=0.68 REJECTED aspect=1.04<1.50
+ai-worker-1  | [14:55:13] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(640,487,799,755) det_conf=0.37 REJECTED aspect=0.59<1.50
+ai-worker-1  | [14:55:15] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(1393,494,1594,723) det_conf=0.65 REJECTED aspect=0.88<1.50
+ai-worker-1  | [14:55:15] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(1399,528,1575,709) det_conf=0.37 REJECTED aspect=0.97<1.50
+ai-worker-1  | [14:55:16] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(1393,492,1595,723) det_conf=0.66 REJECTED aspect=0.87<1.50
+ai-worker-1  | [14:55:18] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(1397,504,1592,711) det_conf=0.65 REJECTED aspect=0.94<1.50
+ai-worker-1  | [14:55:18] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(1399,544,1576,702) det_conf=0.26 REJECTED aspect=1.12<1.50
+ai-worker-1  | [14:55:19] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(1393,493,1594,722) det_conf=0.65 REJECTED aspect=0.88<1.50
+ai-worker-1  | [14:55:19] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(1399,527,1575,709) det_conf=0.29 REJECTED aspect=0.97<1.50
+ai-worker-1  | [14:55:21] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(1392,492,1595,723) det_conf=0.66 REJECTED aspect=0.88<1.50
+ai-worker-1  | [14:55:21] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(1398,537,1578,704) det_conf=0.28 REJECTED aspect=1.08<1.50
+ai-worker-1  | [14:55:22] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(1393,493,1594,722) det_conf=0.65 REJECTED aspect=0.88<1.50
+ai-worker-1  | [14:55:22] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(1398,540,1578,703) det_conf=0.28 REJECTED aspect=1.10<1.50
+ai-worker-1  | [14:55:24] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(1391,492,1595,723) det_conf=0.67 REJECTED aspect=0.88<1.50
+ai-worker-1  | [14:55:24] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(1396,536,1579,704) det_conf=0.30 REJECTED aspect=1.09<1.50
+ai-worker-1  | [14:55:25] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(1392,492,1595,721) det_conf=0.65 REJECTED aspect=0.89<1.50
+ai-worker-1  | [14:55:25] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(1398,540,1578,703) det_conf=0.29 REJECTED aspect=1.10<1.50
+ai-worker-1  | [14:55:27] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(1395,503,1594,712) det_conf=0.65 REJECTED aspect=0.95<1.50
+ai-worker-1  | [14:55:27] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(1398,542,1578,703) det_conf=0.29 REJECTED aspect=1.12<1.50
+ai-worker-1  | [14:55:28] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(1392,491,1594,722) det_conf=0.67 REJECTED aspect=0.87<1.50
+ai-worker-1  | [14:55:28] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(1398,525,1576,709) det_conf=0.32 REJECTED aspect=0.97<1.50
+ai-worker-1  | [14:55:30] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(1392,492,1595,723) det_conf=0.66 REJECTED aspect=0.88<1.50
+ai-worker-1  | [14:55:30] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(1397,538,1578,704) det_conf=0.27 REJECTED aspect=1.09<1.50
+ai-worker-1  | [14:55:31] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(1393,491,1595,723) det_conf=0.66 REJECTED aspect=0.87<1.50
+ai-worker-1  | [14:55:33] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(1392,492,1594,723) det_conf=0.66 REJECTED aspect=0.87<1.50
+ai-worker-1  | [14:55:33] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(1398,525,1576,709) det_conf=0.40 REJECTED aspect=0.97<1.50
+ai-worker-1  | [14:55:34] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(1393,492,1595,721) det_conf=0.66 REJECTED aspect=0.88<1.50
+ai-worker-1  | [14:55:34] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(1398,538,1579,703) det_conf=0.25 REJECTED aspect=1.10<1.50
+ai-worker-1  | [14:55:36] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(1392,492,1595,723) det_conf=0.66 REJECTED aspect=0.88<1.50
+ai-worker-1  | [14:55:36] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(1398,538,1578,703) det_conf=0.29 REJECTED aspect=1.09<1.50
+ai-worker-1  | [14:55:37] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(1392,491,1594,722) det_conf=0.67 REJECTED aspect=0.87<1.50
+ai-worker-1  | [14:55:37] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(1397,535,1579,704) det_conf=0.28 REJECTED aspect=1.08<1.50
+ai-worker-1  | [14:55:39] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(1395,504,1591,712) det_conf=0.65 REJECTED aspect=0.94<1.50
+ai-worker-1  | [14:55:39] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(1398,542,1574,703) det_conf=0.35 REJECTED aspect=1.09<1.50
+ai-worker-1  | [14:55:40] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(1365,487,1564,694) det_conf=0.70 REJECTED aspect=0.96<1.50
+ai-worker-1  | [14:55:42] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(1174,426,1374,602) det_conf=0.67 REJECTED aspect=1.14<1.50
+ai-worker-1  | [14:55:43] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(1036,386,1240,528) det_conf=0.69 REJECTED aspect=1.44<1.50
+ai-worker-1  | [14:55:45] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(986,368,1195,504) shrunk=(1011,395,1170,477) det_conf=0.69 → 1 OCR candidate(s)
+ai-worker-1  | [14:55:45] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] OCR raw='7' normalised='7' conf=6.0 plausible=False
+ai-worker-1  | [14:55:46] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(985,369,1194,504) shrunk=(1010,396,1169,477) det_conf=0.71 → 0 OCR candidate(s)
+ai-worker-1  | [14:55:48] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(985,369,1194,504) shrunk=(1010,396,1169,477) det_conf=0.70 → 0 OCR candidate(s)
+ai-worker-1  | [14:55:49] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(982,363,1194,504) shrunk=(1007,391,1169,476) det_conf=0.70 → 0 OCR candidate(s)
+ai-worker-1  | [14:55:51] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(697,306,908,420) shrunk=(722,328,883,398) det_conf=0.70 → 0 OCR candidate(s)
+ai-worker-1  | [14:55:52] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(336,195,475,270) shrunk=(352,210,459,255) det_conf=0.35 → 1 OCR candidate(s)
+ai-worker-1  | [14:55:52] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] OCR raw='T' normalised='T' conf=0.0 plausible=False
+ai-worker-1  | [14:56:00] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(877,141,1013,227) shrunk=(893,158,997,210) det_conf=0.40 → 1 OCR candidate(s)
+ai-worker-1  | [14:56:00] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] OCR raw='57180' normalised='57180' conf=0.0 plausible=False
+ai-worker-1  | [14:56:01] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(884,326,1115,439) shrunk=(911,348,1088,417) det_conf=0.71 → 1 OCR candidate(s)
+ai-worker-1  | [14:56:01] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] OCR raw='B780E' normalised='B780E' conf=0.0 plausible=True
+ai-worker-1  | [14:56:01] [INFO] detection camera=35b86338-6a98-4467-83a7-6a16e25514bc plate=B780E → denied (No reservation found for this vehicle)
+ai-worker-1  | [14:56:03] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(792,610,1130,757) shrunk=(832,639,1090,728) det_conf=0.74 → 1 OCR candidate(s)
+ai-worker-1  | [14:56:03] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] OCR raw='7180E' normalised='7180E' conf=0.0 plausible=True
+ai-worker-1  | [14:56:03] [INFO] detection camera=35b86338-6a98-4467-83a7-6a16e25514bc plate=7180E → denied (No reservation found for this vehicle)
+ai-worker-1  | [14:56:04] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(807,744,1202,920) shrunk=(854,779,1155,885) det_conf=0.70 → 1 OCR candidate(s)
+ai-worker-1  | [14:56:04] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] OCR raw='B71' normalised='B71' conf=0.0 plausible=False
+ai-worker-1  | [14:56:06] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(808,743,1200,917) shrunk=(855,777,1153,883) det_conf=0.71 → 1 OCR candidate(s)
+ai-worker-1  | [14:56:06] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] OCR raw='57180' normalised='57180' conf=0.0 plausible=False
+ai-worker-1  | [14:56:07] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(808,743,1201,916) shrunk=(855,777,1154,882) det_conf=0.71 → 1 OCR candidate(s)
+ai-worker-1  | [14:56:07] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] OCR raw='B7180' normalised='B7180' conf=0.0 plausible=True
+ai-worker-1  | [14:56:07] [INFO] detection camera=35b86338-6a98-4467-83a7-6a16e25514bc plate=B7180 → denied (No reservation found for this vehicle)
+ai-worker-1  | [14:56:09] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(809,744,1200,916) shrunk=(855,778,1154,882) det_conf=0.70 → 1 OCR candidate(s)
+ai-worker-1  | [14:56:09] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] OCR raw='B7180' normalised='B7180' conf=0.0 plausible=True
+ai-worker-1  | [14:56:10] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(809,744,1200,915) shrunk=(855,778,1154,881) det_conf=0.71 → 1 OCR candidate(s)
+ai-worker-1  | [14:56:10] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] OCR raw='57180' normalised='57180' conf=0.0 plausible=False
+ai-worker-1  | [14:56:12] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(809,743,1201,916) shrunk=(856,777,1154,882) det_conf=0.71 → 1 OCR candidate(s)
+ai-worker-1  | [14:56:12] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] OCR raw='52100' normalised='52100' conf=0.0 plausible=False
+ai-worker-1  | [14:56:13] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(810,744,1200,914) shrunk=(856,778,1154,880) det_conf=0.71 → 1 OCR candidate(s)
+ai-worker-1  | [14:56:13] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] OCR raw='57180' normalised='57180' conf=6.0 plausible=False
+ai-worker-1  | [14:56:15] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(810,744,1200,914) shrunk=(856,778,1154,880) det_conf=0.71 → 1 OCR candidate(s)
+ai-worker-1  | [14:56:15] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] OCR raw='57180' normalised='57180' conf=0.0 plausible=False
+ai-worker-1  | [14:56:16] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(810,744,1200,916) shrunk=(856,778,1154,882) det_conf=0.71 → 1 OCR candidate(s)
+ai-worker-1  | [14:56:16] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] OCR raw='B7180' normalised='B7180' conf=0.0 plausible=True
+ai-worker-1  | [14:56:18] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(809,744,1201,915) shrunk=(856,778,1154,881) det_conf=0.71 → 1 OCR candidate(s)
+ai-worker-1  | [14:56:18] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] OCR raw='71B0K' normalised='71B0K' conf=0.0 plausible=True
+ai-worker-1  | [14:56:18] [INFO] detection camera=35b86338-6a98-4467-83a7-6a16e25514bc plate=71B0K → denied (No reservation found for this vehicle)
+ai-worker-1  | [14:56:19] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(810,742,1201,916) shrunk=(856,776,1155,882) det_conf=0.71 → 1 OCR candidate(s)
+ai-worker-1  | [14:56:19] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] OCR raw='7100' normalised='7100' conf=0.0 plausible=False
+ai-worker-1  | [14:56:21] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(810,745,1200,914) shrunk=(856,778,1154,881) det_conf=0.71 → 1 OCR candidate(s)
+ai-worker-1  | [14:56:21] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] OCR raw='B7180' normalised='B7180' conf=0.0 plausible=True
+ai-worker-1  | [14:56:21] [INFO] detection camera=35b86338-6a98-4467-83a7-6a16e25514bc plate=B7180 → denied (No reservation found for this vehicle)
+ai-worker-1  | [14:56:22] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(811,744,1200,917) shrunk=(857,778,1154,883) det_conf=0.71 → 1 OCR candidate(s)
+ai-worker-1  | [14:56:22] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] OCR raw='7180' normalised='7180' conf=0.0 plausible=False
+ai-worker-1  | [14:56:24] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(809,743,1201,916) shrunk=(856,777,1154,882) det_conf=0.71 → 1 OCR candidate(s)
+ai-worker-1  | [14:56:24] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] OCR raw='57100' normalised='57100' conf=0.0 plausible=False
+ai-worker-1  | [14:56:25] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(810,743,1200,917) shrunk=(856,777,1154,883) det_conf=0.71 → 1 OCR candidate(s)
+ai-worker-1  | [14:56:25] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] OCR raw='7160E' normalised='7160E' conf=0.0 plausible=True
+ai-worker-1  | [14:56:25] [INFO] detection camera=35b86338-6a98-4467-83a7-6a16e25514bc plate=7160E → denied (No reservation found for this vehicle)
+ai-worker-1  | [14:56:27] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(811,743,1201,915) shrunk=(857,777,1155,881) det_conf=0.71 → 1 OCR candidate(s)
+ai-worker-1  | [14:56:27] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] OCR raw='7780' normalised='7780' conf=0.0 plausible=False
+ai-worker-1  | [14:56:28] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(810,743,1200,916) shrunk=(856,777,1154,882) det_conf=0.71 → 1 OCR candidate(s)
+ai-worker-1  | [14:56:28] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] OCR raw='57180' normalised='57180' conf=0.0 plausible=False
+ai-worker-1  | [14:56:30] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(811,744,1201,916) shrunk=(857,778,1155,882) det_conf=0.71 → 1 OCR candidate(s)
+ai-worker-1  | [14:56:30] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] OCR raw='57180' normalised='57180' conf=0.0 plausible=False
+ai-worker-1  | [14:56:31] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(810,745,1200,915) shrunk=(856,779,1154,881) det_conf=0.71 → 1 OCR candidate(s)
+ai-worker-1  | [14:56:31] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] OCR raw='B7180' normalised='B7180' conf=0.0 plausible=True
+ai-worker-1  | [14:56:31] [INFO] detection camera=35b86338-6a98-4467-83a7-6a16e25514bc plate=B7180 → denied (No reservation found for this vehicle)
+ai-worker-1  | [14:56:33] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(812,745,1200,914) shrunk=(858,778,1154,881) det_conf=0.71 → 1 OCR candidate(s)
+ai-worker-1  | [14:56:33] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] OCR raw='577180' normalised='577180' conf=0.0 plausible=False
+ai-worker-1  | [14:56:34] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(810,744,1201,916) shrunk=(856,778,1155,882) det_conf=0.71 → 1 OCR candidate(s)
+ai-worker-1  | [14:56:34] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] OCR raw='B7180' normalised='B7180' conf=0.0 plausible=True
+ai-worker-1  | [14:56:36] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(810,744,1200,917) shrunk=(856,778,1154,883) det_conf=0.71 → 1 OCR candidate(s)
+ai-worker-1  | [14:56:36] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] OCR raw='7100' normalised='7100' conf=0.0 plausible=False
+ai-worker-1  | [14:56:37] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(810,745,1201,915) shrunk=(856,779,1155,881) det_conf=0.71 → 1 OCR candidate(s)
+ai-worker-1  | [14:56:37] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] OCR raw='57180' normalised='57180' conf=0.0 plausible=False
+ai-worker-1  | [14:56:39] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(811,746,1201,914) shrunk=(857,779,1155,881) det_conf=0.71 → 1 OCR candidate(s)
+ai-worker-1  | [14:56:39] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] OCR raw='B71B0' normalised='B71B0' conf=0.0 plausible=True
+ai-worker-1  | [14:56:39] [INFO] detection camera=35b86338-6a98-4467-83a7-6a16e25514bc plate=B71B0 → denied (No reservation found for this vehicle)
+ai-worker-1  | [14:56:40] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(809,742,1202,916) shrunk=(856,776,1155,882) det_conf=0.71 → 1 OCR candidate(s)
+ai-worker-1  | [14:56:40] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] OCR raw='5780' normalised='5780' conf=0.0 plausible=False
+ai-worker-1  | [14:56:42] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(809,743,1201,916) shrunk=(856,777,1154,882) det_conf=0.71 → 1 OCR candidate(s)
+ai-worker-1  | [14:56:42] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] OCR raw='57780' normalised='57780' conf=3.0 plausible=False
+ai-worker-1  | [14:56:43] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(809,744,1200,916) shrunk=(855,778,1154,882) det_conf=0.71 → 1 OCR candidate(s)
+ai-worker-1  | [14:56:43] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] OCR raw='B71B0E' normalised='B71B0E' conf=0.0 plausible=True
+ai-worker-1  | [14:56:43] [INFO] detection camera=35b86338-6a98-4467-83a7-6a16e25514bc plate=B71B0E → denied (No reservation found for this vehicle)
+ai-worker-1  | [14:56:45] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(810,742,1201,917) shrunk=(856,777,1155,882) det_conf=0.71 → 1 OCR candidate(s)
+ai-worker-1  | [14:56:45] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] OCR raw='57780' normalised='57780' conf=0.0 plausible=False
+ai-worker-1  | [14:56:46] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(810,743,1201,917) shrunk=(856,777,1155,883) det_conf=0.71 → 1 OCR candidate(s)
+ai-worker-1  | [14:56:46] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] OCR raw='57180' normalised='57180' conf=0.0 plausible=False
+ai-worker-1  | [14:56:48] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(810,743,1200,918) shrunk=(856,778,1154,883) det_conf=0.71 → 1 OCR candidate(s)
+ai-worker-1  | [14:56:48] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] OCR raw='67180' normalised='67180' conf=9.0 plausible=False
+ai-worker-1  | [14:56:49] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(811,743,1200,916) shrunk=(857,777,1154,882) det_conf=0.71 → 1 OCR candidate(s)
+ai-worker-1  | [14:56:49] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] OCR raw='7100' normalised='7100' conf=0.0 plausible=False
+ai-worker-1  | [14:56:51] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(811,744,1201,916) shrunk=(857,778,1155,882) det_conf=0.71 → 1 OCR candidate(s)
+ai-worker-1  | [14:56:51] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] OCR raw='57180' normalised='57180' conf=0.0 plausible=False
+ai-worker-1  | [14:56:52] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(813,746,1200,916) shrunk=(859,780,1154,882) det_conf=0.71 → 1 OCR candidate(s)
+ai-worker-1  | [14:56:52] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] OCR raw='71B0' normalised='71B0' conf=0.0 plausible=True
+ai-worker-1  | [14:56:52] [INFO] detection camera=35b86338-6a98-4467-83a7-6a16e25514bc plate=71B0 → skipped_low_quality (Below plausibility threshold (length/alphanumeric/confidence))
+ai-worker-1  | [14:56:54] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(811,743,1200,916) shrunk=(857,777,1154,882) det_conf=0.71 → 1 OCR candidate(s)
+ai-worker-1  | [14:56:54] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] OCR raw='7100' normalised='7100' conf=0.0 plausible=False
+ai-worker-1  | [14:56:55] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(808,739,1201,916) shrunk=(855,774,1154,881) det_conf=0.70 → 1 OCR candidate(s)
+ai-worker-1  | [14:56:55] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] OCR raw='57780E' normalised='57780E' conf=0.0 plausible=True
+ai-worker-1  | [14:56:55] [INFO] detection camera=35b86338-6a98-4467-83a7-6a16e25514bc plate=57780E → denied (No reservation found for this vehicle)
+ai-worker-1  | [14:56:57] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(806,723,1197,907) shrunk=(852,759,1151,871) det_conf=0.74 → 1 OCR candidate(s)
+ai-worker-1  | [14:56:57] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] OCR raw='71BOE' normalised='71BOE' conf=0.0 plausible=True
+ai-worker-1  | [14:56:57] [INFO] detection camera=35b86338-6a98-4467-83a7-6a16e25514bc plate=71BOE → denied (No reservation found for this vehicle)
+ai-worker-1  | [14:56:58] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(928,523,1232,677) shrunk=(964,553,1196,647) det_conf=0.73 → 1 OCR candidate(s)
+ai-worker-1  | [14:56:58] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] OCR raw='57180' normalised='57180' conf=0.0 plausible=False
+ai-worker-1  | [14:57:00] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(976,309,1188,419) shrunk=(1001,331,1163,397) det_conf=0.72 → 1 OCR candidate(s)
+ai-worker-1  | [14:57:00] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] OCR raw='50180E' normalised='50180E' conf=0.0 plausible=True
+ai-worker-1  | [14:57:00] [INFO] detection camera=35b86338-6a98-4467-83a7-6a16e25514bc plate=50180E → denied (No reservation found for this vehicle)
+ai-worker-1  | [14:57:01] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(859,170,1013,259) shrunk=(877,187,995,242) det_conf=0.60 → 1 OCR candidate(s)
+ai-worker-1  | [14:57:01] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] OCR raw='577608' normalised='577608' conf=28.0 plausible=False
+ai-worker-1  | [14:57:28] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(855,52,1067,188) shrunk=(880,79,1042,161) det_conf=0.25 → 0 OCR candidate(s)
+ai-worker-1  | [14:57:30] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(1070,174,1280,274) shrunk=(1095,194,1255,254) det_conf=0.68 → 1 OCR candidate(s)
+ai-worker-1  | [14:57:30] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] OCR raw='57780' normalised='57780' conf=31.0 plausible=False
+ai-worker-1  | [14:57:31] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(1264,273,1492,390) shrunk=(1291,296,1465,367) det_conf=0.69 → 1 OCR candidate(s)
+ai-worker-1  | [14:57:31] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] OCR raw='70E' normalised='70E' conf=0.0 plausible=False
+ai-worker-1  | [14:57:33] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(1309,301,1538,423) shrunk=(1336,325,1511,399) det_conf=0.74 → 1 OCR candidate(s)
+ai-worker-1  | [14:57:33] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] OCR raw='2160E' normalised='2160E' conf=0.0 plausible=True
+ai-worker-1  | [14:57:33] [INFO] detection camera=35b86338-6a98-4467-83a7-6a16e25514bc plate=2160E → denied (No reservation found for this vehicle)
+ai-worker-1  | [14:57:34] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(1310,301,1537,423) shrunk=(1337,325,1510,399) det_conf=0.74 → 1 OCR candidate(s)
+ai-worker-1  | [14:57:34] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] OCR raw='700E' normalised='700E' conf=0.0 plausible=True
+ai-worker-1  | [14:57:34] [INFO] detection camera=35b86338-6a98-4467-83a7-6a16e25514bc plate=700E → skipped_low_quality (Below plausibility threshold (length/alphanumeric/confidence))
+ai-worker-1  | [14:57:36] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(1310,301,1538,422) shrunk=(1337,325,1511,398) det_conf=0.73 → 1 OCR candidate(s)
+ai-worker-1  | [14:57:36] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] OCR raw='21B0E' normalised='21B0E' conf=0.0 plausible=True
+ai-worker-1  | [14:57:36] [INFO] detection camera=35b86338-6a98-4467-83a7-6a16e25514bc plate=21B0E → denied (No reservation found for this vehicle)
+ai-worker-1  | [14:57:37] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(1311,300,1537,424) shrunk=(1338,324,1510,400) det_conf=0.74 → 1 OCR candidate(s)
+ai-worker-1  | [14:57:37] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] OCR raw='57160E' normalised='57160E' conf=0.0 plausible=True
+ai-worker-1  | [14:57:37] [INFO] detection camera=35b86338-6a98-4467-83a7-6a16e25514bc plate=57160E → denied (No reservation found for this vehicle)
+ai-worker-1  | [14:57:39] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(1309,301,1537,423) shrunk=(1336,325,1510,399) det_conf=0.74 → 1 OCR candidate(s)
+ai-worker-1  | [14:57:39] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] OCR raw='52180E' normalised='52180E' conf=0.0 plausible=True
+ai-worker-1  | [14:57:39] [INFO] detection camera=35b86338-6a98-4467-83a7-6a16e25514bc plate=52180E → denied (No reservation found for this vehicle)
+ai-worker-1  | [14:57:40] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(1310,301,1537,423) shrunk=(1337,325,1510,399) det_conf=0.73 → 1 OCR candidate(s)
+ai-worker-1  | [14:57:40] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] OCR raw='52700E' normalised='52700E' conf=0.0 plausible=True
+ai-worker-1  | [14:57:40] [INFO] detection camera=35b86338-6a98-4467-83a7-6a16e25514bc plate=52700E → denied (No reservation found for this vehicle)
+ai-worker-1  | [14:57:42] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(1310,300,1536,424) shrunk=(1337,324,1509,400) det_conf=0.74 → 1 OCR candidate(s)
+ai-worker-1  | [14:57:42] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] OCR raw='57180E' normalised='57180E' conf=0.0 plausible=True
+ai-worker-1  | [14:57:42] [INFO] detection camera=35b86338-6a98-4467-83a7-6a16e25514bc plate=57180E → denied (No reservation found for this vehicle)
+ai-worker-1  | [14:57:43] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(1310,301,1536,423) shrunk=(1337,325,1509,399) det_conf=0.74 → 1 OCR candidate(s)
+ai-worker-1  | [14:57:43] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] OCR raw='52760E' normalised='52760E' conf=0.0 plausible=True
+ai-worker-1  | [14:57:43] [INFO] detection camera=35b86338-6a98-4467-83a7-6a16e25514bc plate=52760E → denied (No reservation found for this vehicle)
+ai-worker-1  | [14:57:45] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(1310,300,1537,424) shrunk=(1337,324,1510,400) det_conf=0.74 → 1 OCR candidate(s)
+ai-worker-1  | [14:57:45] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] OCR raw='5780E' normalised='5780E' conf=0.0 plausible=True
+ai-worker-1  | [14:57:45] [INFO] detection camera=35b86338-6a98-4467-83a7-6a16e25514bc plate=5780E → denied (No reservation found for this vehicle)
+ai-worker-1  | [14:57:46] [INFO] [35b86338-6a98-4467-83a7-6a16e25514bc] YOLO box=(1504,387,1739,553) det_conf=0.71 REJECTED aspect=1.42<1.50
+tmm@tmm:~/VillaAccess$ 
