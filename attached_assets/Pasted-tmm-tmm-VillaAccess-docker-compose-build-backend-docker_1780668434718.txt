@@ -1,0 +1,41 @@
+tmm@tmm:~/VillaAccess$ docker compose build backend
+docker compose up -d --force-recreate backend
+WARN[0000] /home/tmm/VillaAccess/docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion 
+[+] Building 21.0s (16/16) FINISHED                                             
+ => [internal] load local bake definitions                                 0.0s
+ => => reading from stdin 963B                                             0.0s
+ => [internal] load build definition from Dockerfile                       0.0s
+ => => transferring dockerfile: 1.19kB                                     0.0s
+ => [internal] load metadata for docker.io/library/node:22-alpine          1.7s
+ => [internal] load .dockerignore                                          0.0s
+ => => transferring context: 251B                                          0.0s
+ => [builder 1/6] FROM docker.io/library/node:22-alpine@sha256:968df39aed  0.0s
+ => => resolve docker.io/library/node:22-alpine@sha256:968df39aedcea65eeb  0.0s
+ => [internal] load build context                                          0.0s
+ => => transferring context: 39.87kB                                       0.0s
+ => CACHED [builder 2/6] RUN npm install -g pnpm@10 --quiet                0.0s
+ => CACHED [builder 3/6] WORKDIR /workspace                                0.0s
+ => [builder 4/6] COPY . .                                                 0.1s
+ => [builder 5/6] RUN pnpm install --frozen-lockfile                      14.6s
+ => [builder 6/6] RUN pnpm --filter @workspace/api-server run build        2.7s 
+ => CACHED [runner 2/4] WORKDIR /app                                       0.0s 
+ => [runner 3/4] COPY --from=builder /workspace/artifacts/api-server/dist  0.1s 
+ => [runner 4/4] RUN mkdir -p uploads                                      0.3s 
+ => exporting to image                                                     1.0s 
+ => => exporting layers                                                    0.7s 
+ => => exporting manifest sha256:e5b6dce58db2c02581f3814b7a434aa0944835fb  0.0s 
+ => => exporting config sha256:837e01669b3541bd5e0cb5642b581f2dfa7911d6b4  0.0s
+ => => exporting attestation manifest sha256:61ab90f2029ee401af1efeef994d  0.0s
+ => => exporting manifest list sha256:92e7809db6f0348ebc8c296e76d2f684120  0.0s
+ => => naming to docker.io/library/villaaccess-backend:latest              0.0s
+ => => unpacking to docker.io/library/villaaccess-backend:latest           0.1s
+ => resolving provenance for metadata file                                 0.0s
+[+] build 1/2
+ ⠙ Image villaaccess-migrate Building                                      21.1s
+ ✔ Image villaaccess-backend Built                                         21.1s
+WARN[0000] /home/tmm/VillaAccess/docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion 
+[+] up 3/3
+ ✔ Container villaaccess-postgres-1 Healthy                                10.9s
+ ✔ Container villaaccess-backend-1  Started                                11.9s
+ ✔ Container villaaccess-migrate-1  Exited                                  0.7s
+tmm@tmm:~/VillaAccess$ 
