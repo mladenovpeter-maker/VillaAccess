@@ -35,7 +35,7 @@ _Describe the high-level user-facing capabilities of this app once they exist._
 ## User preferences
 
 - **Език:** Отговаряй винаги на български.
-- **Git workflow:** Auto-commit + `git push origin main` след всяка завършена задача — без да чакаш потвърждение. В края давай commit hash + deploy команди за сървъра (`git pull && docker compose up -d --build <service>`).
+- **Git workflow:** Auto-commit + `git push origin main` след всяка завършена задача — без да чакаш потвърждение. **ВИНАГИ след GitHub push давай командите за теглене/деплой на новата версия на сървъра** (`cd ~/VillaAccess && git pull && docker compose build <services> && docker compose up -d <services>`), като посочиш само реално променените services (backend/frontend/ai-worker) и дали трябва migrate.
 - **Git push pattern:** `bash` блокира destructive git. Използвай `code_execution` (Node) с `execSync` за commit/push. Преди това: `find .git -name '*.lock' -delete`. Commit msg → файл (`/tmp/cm.txt`) → `git -c user.name=Replit -c user.email=agent@replit.com commit -F /tmp/cm.txt`.
 - **Constraints (read-only zones):** Не пипай OCR/YOLO/EasyOCR, relay logic, Docker arch, snapshot flow, reservations logic (с изключение на authorized PIN gen change), Hikvision, villas, fuzzy gating. Само additive промени.
 - **Self-hosted target:** 6.5.4.254, Docker compose, `.env.docker`. Repo: github.com/mladenovpeter-maker/VillaAccess `main`.
