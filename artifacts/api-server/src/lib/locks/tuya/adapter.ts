@@ -219,40 +219,50 @@ function readAccessSecret(): string {
 }
 
 /**
- * Decrypt the per-ticket AES-128 session key.
+ * Decrypt the per-ticket session key.
  *
- *   ticket_key (hex) = AES-128-ECB-NoPadding(plain_session_key,
- *                                            key=AccessSecret[0:16])
+ *   ticket_key (hex) = AES-256-ECB(plain_session_key, key=AccessSecret[full 32B])
  *
  * Returns the raw 16-byte session key. Throws on length mismatch.
  */
 function decryptTicketKey(ticketKeyHex: string): Buffer {
   const secret = readAccessSecret();
-  const aesKey = Buffer.from(secret.slice(0, 16), "utf8");
+  // Tuya encrypts ticket_key with the FULL Access Secret used as an AES-256 key
+  // (the 32-char secret read as a UTF-8 string = 32 bytes). Using only the first
+  // 16 bytes as an AES-128 key yields a WRONG 16-byte session key, so the
+  // temp-password is then encrypted with the wrong key and Tuya rejects the
+  // create request with code 1109 "param is illegal". This is the documented,
+  // forum-confirmed flow (aes-256-ecb decrypt → 16-byte key → aes-128 encrypt).
+  const aesKey = Buffer.from(secret, "utf8");
+  if (aesKey.length !== 32) {
+    throw new Error(
+      `TUYA_ACCESS_SECRET must be 32 bytes for AES-256 ticket decryption, got ${aesKey.length}`,
+    );
+  }
   const ciphertext = Buffer.from(ticketKeyHex, "hex");
   if (ciphertext.length === 0 || ciphertext.length % 16 !== 0) {
     throw new Error(
       `Tuya ticket_key has unexpected length ${ciphertext.length} (must be multiple of 16)`,
     );
   }
-  const decipher = crypto.createDecipheriv("aes-128-ecb", aesKey, null);
+  const decipher = crypto.createDecipheriv("aes-256-ecb", aesKey, null);
   decipher.setAutoPadding(false);
   const plain = Buffer.concat([decipher.update(ciphertext), decipher.final()]);
-  // The decrypted buffer should be exactly 16 bytes (one AES block) — the
-  // session key. Some Tuya regions return additional PKCS#7 padding bytes;
-  // in that case take the first 16.
+  // The decrypted blob is the 16-byte session key followed by PKCS#7 padding.
+  // Take the first 16 bytes (works whether or not a padding block is present).
   return plain.subarray(0, 16);
 }
 
 /**
- * AES-128-ECB ENCRYPT the PIN with PKCS#7 padding, returned as lowercase hex.
+ * AES-128-ECB ENCRYPT the PIN with PKCS#7 padding, returned as UPPERCASE hex.
  * Tuya's spec requires PKCS#7 padding for the password field.
  */
 function encryptPin(pin: string, sessionKey: Buffer): string {
   const cipher = crypto.createCipheriv("aes-128-ecb", sessionKey, null);
   cipher.setAutoPadding(true);
   const ct = Buffer.concat([cipher.update(pin, "utf8"), cipher.final()]);
-  return ct.toString("hex");
+  // Tuya's examples use UPPERCASE hex for the password field.
+  return ct.toString("hex").toUpperCase();
 }
 
 /** Local IANA time-zone name, e.g. "Europe/Sofia". Tuya rejects offset format

@@ -21,7 +21,28 @@ Known triggers, in rough order of how often they bite here:
 - **(invalid_time - effective_time) < ~24h.** Tuya enforces a 24h minimum
   duration for type=0 temp passwords; <24h → 1109. Bump invalid_time up.
 
-**Timestamp unit is the stubborn one — and it's model-dependent.** After fixing
+**ROOT CAUSE (the real one): ticket_key was decrypted with the WRONG AES key.**
+After ASCII name + IANA tz were fixed, the lock STILL returned 1109 with BOTH
+epoch seconds AND milliseconds — proving the time unit was never the issue. The
+actual bug was in `decryptTicketKey`: Tuya encrypts `ticket_key` with the **FULL
+32-byte Access Secret as an AES-256-ECB key**, but the code used only the first
+16 bytes as an AES-128 key. That yields a wrong 16-byte session key → the PIN is
+encrypted with the wrong key → Tuya can't decrypt it → 1109 "param is illegal".
+The 1109 here is a DECRYPTION failure surfaced as a generic param error, which is
+why every other param looked perfect yet it still failed.
+**Correct, forum-confirmed flow** (tuyaos.com t=2516, accepted answer p=15574):
+1. decrypt `ticket_key` (hex) with **aes-256-ecb**, key = full Access Secret as
+   UTF-8 (32 bytes); take the first 16 bytes of the result = session key.
+2. encrypt the PIN with **aes-128-ecb** + PKCS7 using that 16-byte key.
+3. send the ciphertext as **UPPERCASE hex** in `password`; `effective_time`/
+   `invalid_time` in **epoch SECONDS** (10-digit); `password_type:"ticket"`.
+**Why it was missed:** the code "looked" right (produced 32 hex = one block) and
+nobody could test locally — Tuya creds live ONLY on the user's server, not in the
+repl/code-exec sandbox, so every hypothesis cost a full server rebuild. Lesson:
+for opaque crypto-handshake 1109s, verify the exact algorithm against Tuya's
+forum/SDK FIRST rather than guessing param-by-param.
+
+**Timestamp unit (earlier red herring) — model-dependent.** After fixing
 the ASCII name + IANA timezone, the villa locks (products `bf2a…`, `bf56a0fe…`)
 STILL returned 1109 with the body otherwise valid (`name:"popo"`,
 `time_zone:"Europe/Sofia"`, future effective, 24h+ duration, 32-hex ticket
