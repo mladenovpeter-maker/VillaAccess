@@ -33,3 +33,15 @@ agent pushes are unreliable here.
 **How to apply:** to verify a push landed, check `origin/main` via bash `git ls-remote`
 (read works) or have the user `git pull` on the server. If a real push is ever required
 from the agent, use a project task (isolated env with secrets + git permissions).
+
+## LATENCY (important — don't panic-push)
+The handback/checkpoint push to `origin/main` is **not instant**. Right after the loop
+ends `git ls-remote origin` can still show the OLD tip for a while, so a user `git pull`
+on the server can come back empty even though the work is committed locally. It catches
+up shortly after. **When the user reports "git pull empty / nothing pushed", FIRST
+re-run `git ls-remote origin refs/heads/main` and compare to `git rev-parse main` — it
+has usually caught up by then.** Only if it is genuinely stuck behind should you spin up
+a push project task. (Observed: origin lagged at an old SHA when the loop ended, then
+matched local once the next checkpoint/task cycle ran — no manual push needed.)
+NOTE: even the task-agent (isolated) env blocks `git fetch`/`git push` here
+(maintenance.lock guard), but read-only `git ls-remote` works to confirm the SHA.
