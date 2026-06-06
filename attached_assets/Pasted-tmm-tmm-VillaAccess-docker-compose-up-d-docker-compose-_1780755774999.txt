@@ -1,0 +1,50 @@
+tmm@tmm:~/VillaAccess$ docker compose up -d
+docker compose logs migrate --tail=30
+docker compose ps
+WARN[0000] /home/tmm/VillaAccess/docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion 
+[+] up 6/6
+ ✔ Container villaaccess-postgres-1    Healthy                             11.2s
+ ✔ Container villaaccess-ai-worker-1   Started                             17.8s
+ ✔ Container villaaccess-cloudflared-1 Running                              0.0s
+ ✔ Container villaaccess-migrate-1     Exited                               0.7s
+ ✔ Container villaaccess-backend-1     Healthy                              5.7s
+ ✔ Container villaaccess-frontend-1    Started                              0.3s
+WARN[0000] /home/tmm/VillaAccess/docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion 
+migrate-1  |   severity: 'FATAL',
+migrate-1  |   code: '28P01',
+migrate-1  |   detail: undefined,
+migrate-1  |   hint: undefined,
+migrate-1  |   position: undefined,
+migrate-1  |   internalPosition: undefined,
+migrate-1  |   internalQuery: undefined,
+migrate-1  |   where: undefined,
+migrate-1  |   schema: undefined,
+migrate-1  |   table: undefined,
+migrate-1  |   column: undefined,
+migrate-1  |   dataType: undefined,
+migrate-1  |   constraint: undefined,
+migrate-1  |   file: 'auth.c',
+migrate-1  |   line: '331',
+migrate-1  |   routine: 'auth_failed'
+migrate-1  | }
+migrate-1  | [migrate] ✓ 0000_init.sql (already applied)
+migrate-1  | [migrate] ✓ 0010_add_acs_fields_to_intercoms.sql (already applied)
+migrate-1  | [migrate] ✓ 0011_add_anpr_fields_to_cameras.sql (already applied)
+migrate-1  | [migrate] ✓ 0012_add_partial_match_to_cameras.sql (already applied)
+migrate-1  | [migrate] ✓ 0013_cleanup_anpr_polluted_vehicles.sql (already applied)
+migrate-1  | [migrate] ✓ 0014_drop_legacy_columns.sql (already applied)
+migrate-1  | [migrate] ✓ 0015_add_vehicle_archived_at.sql (already applied)
+migrate-1  | [migrate] ✓ 0016_villa_entrances_join.sql (already applied)
+migrate-1  | [migrate] ✓ 0017_add_smart_locks.sql (already applied)
+migrate-1  | [migrate] ✓ 0018_add_smart_lock_passwords.sql (already applied)
+migrate-1  | [migrate] ✓ 0019_smart_lock_passwords_unique_active.sql (already applied)
+migrate-1  | [migrate] ✓ 0020_standalone_temp_credentials.sql (already applied)
+migrate-1  | [migrate] done — 0 newly applied, 12 already applied, 12 total
+WARN[0000] /home/tmm/VillaAccess/docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion 
+NAME                        IMAGE                           COMMAND                  SERVICE       CREATED          STATUS                   PORTS
+villaaccess-ai-worker-1     villaaccess-ai-worker           "python -u worker.py"    ai-worker     18 seconds ago   Up Less than a second    
+villaaccess-backend-1       villaaccess-backend             "docker-entrypoint.s…"   backend       5 minutes ago    Up 6 seconds (healthy)   8080/tcp
+villaaccess-cloudflared-1   cloudflare/cloudflared:latest   "cloudflared --no-au…"   cloudflared   9 hours ago      Up 9 hours               
+villaaccess-frontend-1      villaaccess-frontend            "/docker-entrypoint.…"   frontend      5 minutes ago    Up Less than a second    0.0.0.0:3000->80/tcp, [::]:3000->80/tcp
+villaaccess-postgres-1      postgres:16-alpine              "docker-entrypoint.s…"   postgres      5 minutes ago    Up 5 minutes (healthy)   5432/tcp
+tmm@tmm:~/VillaAccess$ 
