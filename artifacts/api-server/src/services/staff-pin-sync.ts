@@ -60,6 +60,16 @@ function toEmployeeNo(credentialId: string): string {
   return BigInt("0x" + hash.slice(0, 14)).toString(10);
 }
 
+// Hikvision DS-K terminals use a 32-bit time_t and reject any endTime beyond
+// the Y2038 boundary. "Permanent" PINs carry a far-future sentinel (year 2099)
+// in the DB, which the device refuses → the whole push fails. Cap the
+// device-side endTime to a safe in-2037 value (kept comfortably inside 2037
+// across all server timezones). The DB row is untouched — it stays permanent.
+const HIK_MAX_VALID_TO = new Date("2037-12-30T12:00:00Z");
+function deviceValidTo(validUntil: Date): Date {
+  return validUntil.getTime() > HIK_MAX_VALID_TO.getTime() ? HIK_MAX_VALID_TO : validUntil;
+}
+
 async function getSyncTargets() {
   // Only Hikvision intercoms can receive PINs — filter at the query so
   // non-Hikvision devices never count toward sync_status as "failed".
@@ -119,7 +129,7 @@ export async function syncCredentialToIntercoms(
         guestName: displayName(cred),
         pin:       cred.pin_code,
         validFrom: cred.valid_from,
-        validTo:   cred.valid_until,
+        validTo:   deviceValidTo(cred.valid_until),
       });
       const now = new Date();
       await db
