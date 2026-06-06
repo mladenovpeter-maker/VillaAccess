@@ -1,0 +1,106 @@
+tmm@tmm:~/VillaAccess$ docker compose --env-file .env.docker up --build -d
+WARN[0000] The "CF_TUNNEL_TOKEN" variable is not set. Defaulting to a blank string. 
+WARN[0000] The "ANPR_WORKER_TOKEN" variable is not set. Defaulting to a blank string. 
+WARN[0000] The "POSTGRES_PASSWORD" variable is not set. Defaulting to a blank string. 
+WARN[0000] The "POSTGRES_PASSWORD" variable is not set. Defaulting to a blank string. 
+WARN[0000] The "POSTGRES_PASSWORD" variable is not set. Defaulting to a blank string. 
+WARN[0000] The "JWT_SECRET" variable is not set. Defaulting to a blank string. 
+WARN[0000] The "ANPR_WORKER_TOKEN" variable is not set. Defaulting to a blank string. 
+WARN[0000] /home/tmm/VillaAccess/docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion 
+[+] Building 66.6s (44/44) FINISHED                                             
+ => [internal] load local bake definitions                                 0.0s
+ => => reading from stdin 1.86kB                                           0.0s
+ => [migrate internal] load build definition from Dockerfile               0.0s
+ => => transferring dockerfile: 1.19kB                                     0.0s
+ => [ai-worker internal] load build definition from Dockerfile             0.0s
+ => => transferring dockerfile: 1.88kB                                     0.0s
+ => [frontend internal] load build definition from Dockerfile              0.0s
+ => => transferring dockerfile: 1.00kB                                     0.0s
+ => [ai-worker internal] load metadata for docker.io/library/python:3.11-  1.3s
+ => [backend internal] load metadata for docker.io/library/node:22-alpine  1.2s
+ => [frontend internal] load metadata for docker.io/library/node:22-bookw  1.2s
+ => [frontend internal] load metadata for docker.io/library/nginx:alpine   1.3s
+ => [frontend internal] load .dockerignore                                 0.0s
+ => => transferring context: 251B                                          0.0s
+ => [backend builder 1/6] FROM docker.io/library/node:22-alpine@sha256:96  0.1s
+ => => resolve docker.io/library/node:22-alpine@sha256:968df39aedcea65eeb  0.1s
+ => [migrate internal] load build context                                  0.1s
+ => => transferring context: 155.65kB                                      0.1s
+ => CACHED [frontend runner 1/3] FROM docker.io/library/nginx:alpine@sha2  0.1s
+ => => resolve docker.io/library/nginx:alpine@sha256:8b1e78743a03dbb2c951  0.1s
+ => [frontend builder 1/6] FROM docker.io/library/node:22-bookworm-slim@s  0.1s
+ => => resolve docker.io/library/node:22-bookworm-slim@sha256:7af03b14a13  0.1s 
+ => [ai-worker 1/7] FROM docker.io/library/python:3.11-slim@sha256:a3ab0b  0.1s
+ => => resolve docker.io/library/python:3.11-slim@sha256:a3ab0b966bc4e915  0.1s
+ => [ai-worker internal] load build context                                0.0s
+ => => transferring context: 163B                                          0.0s
+ => CACHED [ai-worker 2/7] WORKDIR /app                                    0.0s
+ => CACHED [ai-worker 3/7] RUN apt-get update && apt-get install -y --no-  0.0s
+ => CACHED [ai-worker 4/7] COPY docker/ai-worker/requirements.txt ./requi  0.0s
+ => CACHED [ai-worker 5/7] RUN pip install --no-cache-dir -r requirements  0.0s
+ => CACHED [ai-worker 6/7] RUN mkdir -p /app/models &&     curl -fsSL "ht  0.0s
+ => CACHED [ai-worker 7/7] COPY docker/ai-worker/worker.py ./worker.py     0.0s
+ => [ai-worker] exporting to image                                         0.1s
+ => => exporting layers                                                    0.0s
+ => => exporting manifest sha256:42d5f03de9292bc8a6ce2d225cbcdce73b50874e  0.0s
+ => => exporting config sha256:a6e4dd5c54caa8df934c0c903a1fcf8de600b449f4  0.0s
+ => => exporting attestation manifest sha256:978f1b5e34f4f111479615bb6773  0.0s
+ => => exporting manifest list sha256:01e74b1456288c3804f4d01a22e1d326a45  0.0s
+ => => naming to docker.io/library/villaaccess-ai-worker:latest            0.0s
+ => => unpacking to docker.io/library/villaaccess-ai-worker:latest         0.0s
+ => CACHED [backend builder 2/6] RUN npm install -g pnpm@10 --quiet        0.0s
+ => CACHED [backend builder 3/6] WORKDIR /workspace                        0.0s
+ => CACHED [frontend builder 2/6] RUN npm install -g pnpm@10 --quiet       0.0s
+ => CACHED [frontend builder 3/6] WORKDIR /workspace                       0.0s
+ => [migrate builder 4/6] COPY . .                                         0.2s
+ => [frontend builder 4/6] COPY . .                                        0.2s
+ => [migrate builder 5/6] RUN pnpm install --frozen-lockfile              17.6s
+ => [frontend builder 5/6] RUN pnpm install --frozen-lockfile             17.6s
+ => [ai-worker] resolving provenance for metadata file                     0.0s
+ => [frontend builder 6/6] RUN pnpm --filter @workspace/dashboard run bui  9.0s
+ => [migrate builder 6/6] RUN pnpm --filter @workspace/api-server run bui  3.7s
+ => [migrate] exporting to image                                          43.3s
+ => => exporting layers                                                   26.7s
+ => => exporting manifest sha256:2bb0ea6bd3da24267ae518dde335d16309d9ca40  0.0s
+ => => exporting config sha256:e083134d75c3e0626b29c8654cf42cee3ac0f21cf5  0.0s
+ => => exporting attestation manifest sha256:ecf5eeba73103e0e3cd8642913bc  0.1s
+ => => exporting manifest list sha256:163068ed2130b77ac351f056c9d943f5d60  0.0s
+ => => naming to docker.io/library/villaaccess-migrate:latest              0.0s
+ => => unpacking to docker.io/library/villaaccess-migrate:latest          16.4s
+ => CACHED [backend runner 2/4] WORKDIR /app                               0.0s
+ => [backend runner 3/4] COPY --from=builder /workspace/artifacts/api-ser  0.1s
+ => [backend runner 4/4] RUN mkdir -p uploads                              0.3s
+ => [backend] exporting to image                                           1.5s
+ => => exporting layers                                                    1.1s
+ => => exporting manifest sha256:dec0d6858d0bf470a98091deaa7a042fb85a46c8  0.0s
+ => => exporting config sha256:8247e7c78e677e680790c799767f10887827d23ce4  0.0s
+ => => exporting attestation manifest sha256:771edef1b0a8a0cfe2b4689f5365  0.1s
+ => => exporting manifest list sha256:421cca48eb50aaa5d1dffdd8188e3b8d93d  0.0s
+ => => naming to docker.io/library/villaaccess-backend:latest              0.0s
+ => => unpacking to docker.io/library/villaaccess-backend:latest           0.2s
+ => [backend] resolving provenance for metadata file                       0.0s
+ => [frontend runner 2/3] COPY --from=builder /workspace/artifacts/dashbo  0.1s
+ => [frontend runner 3/3] COPY docker/frontend/nginx.conf /etc/nginx/conf  0.1s
+ => [frontend] exporting to image                                          0.4s
+ => => exporting layers                                                    0.2s
+ => => exporting manifest sha256:8f49af9031b4ec78864c517c1e3257794f79f534  0.0s
+ => => exporting config sha256:86fb4c8cd4a6f51efb9c78ba8f62aed618abc99032  0.0s
+ => => exporting attestation manifest sha256:46cc7cc6794023188691a53204df  0.0s
+ => => exporting manifest list sha256:ebc5a06a5246518ecf0b8d1ca5bc097e49e  0.0s
+ => => naming to docker.io/library/villaaccess-frontend:latest             0.0s
+ => => unpacking to docker.io/library/villaaccess-frontend:latest          0.1s
+ => [frontend] resolving provenance for metadata file                      0.0s
+ => [migrate] resolving provenance for metadata file                       0.0s
+[+] up 10/10
+ ✔ Image villaaccess-migrate           Built                               66.6s
+ ✔ Image villaaccess-backend           Built                               66.6s
+ ✔ Image villaaccess-frontend          Built                               66.6s
+ ✔ Image villaaccess-ai-worker         Built                               66.6s
+ ✔ Container villaaccess-postgres-1    Healthy                             30.8s
+ ✘ Container villaaccess-migrate-1     Error service "migrate" didn...     28.9s
+ ✔ Container villaaccess-backend-1     Recreated                           10.4s
+ ✔ Container villaaccess-frontend-1    Recreated                            0.4s
+ ✔ Container villaaccess-ai-worker-1   Recreated                           10.4s
+ ✔ Container villaaccess-cloudflared-1 Recreated                            0.3s
+service "migrate" didn't complete successfully: exit 1
+tmm@tmm:~/VillaAccess$ 
