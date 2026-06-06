@@ -42,7 +42,7 @@ _Describe the high-level user-facing capabilities of this app once they exist._
 
 ## Gotchas
 
-- **Docker compose env file:** compose чете `.env` по default, не `.env.docker`. На сървъра е създаден symlink `.env -> .env.docker`, така че `docker compose up -d` работи без флаг. Ако symlink-ът липсва, използвай `docker compose --env-file .env.docker up -d` или `${POSTGRES_PASSWORD}` ще се разшири на празно и migrate ще падне с `28P01: password authentication failed`.
+- **Docker compose env file (РЕКУРЕНТНА ПРИЧИНА за `28P01` при деплой):** compose чете `.env` по default, не `.env.docker`. Целта е `.env` да е symlink към `.env.docker` (един източник). Но symlink-ът е бил подменян с ОТДЕЛЕН реален `.env` файл с друга парола (видяно: `.env` real file, `POSTGRES_PASSWORD=12345678`). Тогава `docker compose up -d` (без флаг) праща паролата от `.env`, която ≠ паролата във volume-а → `migrate` пада с `28P01: password authentication failed for user "villa_user"`. Кодът/ъпдейтите НЕ пипат тези файлове (`.env.docker` е gitignored). Постоянен fix: консолидирай в един файл (`ln -sf .env.docker .env`, със `POSTGRES_PASSWORD` съвпадащ с volume-а).
 - **Postgres password lives in volume:** `POSTGRES_PASSWORD` се чете само при първи init. Ако паролата в `.env.docker` се промени след това, postgres продължава със старата. Fix: `docker compose exec postgres psql -U villa_user -d villa_access -c "ALTER USER villa_user WITH PASSWORD '<new>';"` (Unix socket вътре в контейнера има trust auth, не иска парола).
 
 ## Pointers
