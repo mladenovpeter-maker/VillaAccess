@@ -48,3 +48,13 @@ silently breaks services because compose substitutes missing vars with blank str
 **Why:** the file is the single source of truth on the server and is fragile (gitignored, lost before).
 **How to apply:** before giving server update commands, verify `.env.docker` has all required keys;
 if a service breaks after `up`, check the WARN lines about unset variables first — they are the tell.
+
+## Permanent password-drift fix (single source of truth)
+A second `.env` file (real file, not symlink) once drifted from `.env.docker` and caused recurring
+28P01. Permanent fix: make `.env` a symlink to `.env.docker` (`ln -sf .env.docker .env`) so compose
+reads one file. When the live DB role password no longer matches the file, **align the DB to the
+file, do NOT weaken the file** to the drifted value: reset the role via the trust socket using the
+password read straight from the file —
+`PW=$(grep '^POSTGRES_PASSWORD=' .env.docker | cut -d= -f2-)` then
+`docker compose exec -T postgres psql -U villa_user -d villa_access -c "ALTER USER villa_user PASSWORD '$PW';"`,
+then `docker compose up -d` to recreate services with the matching env. No data loss.

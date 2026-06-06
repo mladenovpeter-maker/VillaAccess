@@ -1,0 +1,111 @@
+tmm@tmm:~/VillaAccess$ cd ~/VillaAccess
+
+# 1. Вземи паролата от .env.docker и я приложи на DB ролята (без загуба на данни — през trust socket)
+PW=$(grep '^POSTGRES_PASSWORD=' .env.docker | cut -d= -f2-)
+docker compose exec -T postgres psql -U villa_user -d villa_access -c "ALTER USER villa_user PASSWORD '$PW';"
+
+# 2. Рестартирай стека, за да хванат услугите новата (вече съвпадаща) парола
+docker compose up -d
+
+# 3. Провери състоянието
+docker compose ps
+docker compose logs --tail=20 migrate backend
+WARN[0000] /home/tmm/VillaAccess/docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion 
+ALTER ROLE
+WARN[0000] /home/tmm/VillaAccess/docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion 
+[+] up 6/6
+ ✔ Container villaaccess-postgres-1    Healthy                             26.8s
+ ✔ Container villaaccess-migrate-1     Exited                              27.1s
+ ✔ Container villaaccess-backend-1     Healthy                             32.7s
+ ✔ Container villaaccess-frontend-1    Running                              0.0s
+ ✔ Container villaaccess-ai-worker-1   Started                             22.6s
+ ✔ Container villaaccess-cloudflared-1 Running                              0.0s
+WARN[0000] /home/tmm/VillaAccess/docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion 
+NAME                        IMAGE                           COMMAND                  SERVICE       CREATED          STATUS                    PORTS
+villaaccess-ai-worker-1     villaaccess-ai-worker           "python -u worker.py"    ai-worker     23 seconds ago   Up Less than a second     
+villaaccess-backend-1       villaaccess-backend             "docker-entrypoint.s…"   backend       33 seconds ago   Up 5 seconds (healthy)    8080/tcp
+villaaccess-cloudflared-1   cloudflare/cloudflared:latest   "cloudflared --no-au…"   cloudflared   9 hours ago      Up 9 hours                
+villaaccess-frontend-1      villaaccess-frontend            "/docker-entrypoint.…"   frontend      17 minutes ago   Up 11 minutes             0.0.0.0:3000->80/tcp, [::]:3000->80/tcp
+villaaccess-postgres-1      postgres:16-alpine              "docker-entrypoint.s…"   postgres      33 seconds ago   Up 12 seconds (healthy)   5432/tcp
+WARN[0000] /home/tmm/VillaAccess/docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion 
+migrate-1  | [migrate] ✓ 0000_init.sql (already applied)
+migrate-1  | [migrate] ✓ 0010_add_acs_fields_to_intercoms.sql (already applied)
+migrate-1  | [migrate] ✓ 0011_add_anpr_fields_to_cameras.sql (already applied)
+migrate-1  | [migrate] ✓ 0012_add_partial_match_to_cameras.sql (already applied)
+migrate-1  | [migrate] ✓ 0013_cleanup_anpr_polluted_vehicles.sql (already applied)
+migrate-1  | [migrate] ✓ 0014_drop_legacy_columns.sql (already applied)
+migrate-1  | [migrate] ✓ 0015_add_vehicle_archived_at.sql (already applied)
+migrate-1  | [migrate] ✓ 0016_villa_entrances_join.sql (already applied)
+migrate-1  | [migrate] ✓ 0017_add_smart_locks.sql (already applied)
+migrate-1  | [migrate] ✓ 0018_add_smart_lock_passwords.sql (already applied)
+migrate-1  | [migrate] ✓ 0019_smart_lock_passwords_unique_active.sql (already applied)
+migrate-1  | [migrate] ✓ 0020_standalone_temp_credentials.sql (already applied)
+migrate-1  | [migrate] done — 0 newly applied, 12 already applied, 12 total
+backend-1  | {"level":30,"time":1780756458449,"pid":1,"hostname":"824fb3a66f8c","username":"admin","msg":"Default user already exists; leaving untouched"}
+backend-1  | {"level":30,"time":1780756458451,"pid":1,"hostname":"824fb3a66f8c","username":"operator","msg":"Default user already exists; leaving untouched"}
+backend-1  | {"level":40,"time":1780756458452,"pid":1,"hostname":"824fb3a66f8c","username":"viewer","envVar":"VIEWER_PASSWORD","msg":"Skipping default user creation: env var not set in production (no weak default will be used)"}
+backend-1  | {"level":30,"time":1780756458455,"pid":1,"hostname":"824fb3a66f8c","port":8080,"msg":"Server listening"}
+backend-1  | {"level":30,"time":1780756458455,"pid":1,"hostname":"824fb3a66f8c","msg":"PIN expiry sweep started (every 5 min)"}
+backend-1  | {"level":30,"time":1780756458455,"pid":1,"hostname":"824fb3a66f8c","msg":"Vehicle archive sweep started (every 5 min, LIVE)"}
+backend-1  | {"level":30,"time":1780756458455,"pid":1,"hostname":"824fb3a66f8c","msg":"Snapshot retention sweep started (daily)"}
+backend-1  | {"level":30,"time":1780756462788,"pid":1,"hostname":"824fb3a66f8c","req":{"id":1,"method":"GET","url":"/api/healthz"},"res":{"statusCode":200},"responseTime":8,"msg":"request completed"}
+tmm@tmm:~/VillaAccess$ docker compose up -d
+WARN[0000] /home/tmm/VillaAccess/docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion 
+[+] up 6/6
+ ✔ Container villaaccess-postgres-1    Healthy                              0.5s
+ ✔ Container villaaccess-backend-1     Healthy                              1.8s
+ ✔ Container villaaccess-ai-worker-1   Running                              0.0s
+ ✔ Container villaaccess-frontend-1    Running                              0.0s
+ ✔ Container villaaccess-cloudflared-1 Running                              0.0s
+ ✔ Container villaaccess-migrate-1     Exited                               0.8s
+tmm@tmm:~/VillaAccess$ docker compose ps
+docker compose logs --tail=20 migrate backend
+WARN[0000] /home/tmm/VillaAccess/docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion 
+NAME                        IMAGE                           COMMAND                  SERVICE       CREATED          STATUS                    PORTS
+villaaccess-ai-worker-1     villaaccess-ai-worker           "python -u worker.py"    ai-worker     37 seconds ago   Up 14 seconds             
+villaaccess-backend-1       villaaccess-backend             "docker-entrypoint.s…"   backend       47 seconds ago   Up 20 seconds (healthy)   8080/tcp
+villaaccess-cloudflared-1   cloudflare/cloudflared:latest   "cloudflared --no-au…"   cloudflared   9 hours ago      Up 9 hours                
+villaaccess-frontend-1      villaaccess-frontend            "/docker-entrypoint.…"   frontend      17 minutes ago   Up 11 minutes             0.0.0.0:3000->80/tcp, [::]:3000->80/tcp
+villaaccess-postgres-1      postgres:16-alpine              "docker-entrypoint.s…"   postgres      47 seconds ago   Up 26 seconds (healthy)   5432/tcp
+WARN[0000] /home/tmm/VillaAccess/docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion 
+backend-1  | }
+migrate-1  | [migrate] ✓ 0015_add_vehicle_archived_at.sql (already applied)
+backend-1  | [fetchCamera] digest retry {
+backend-1  |   method: 'GET',
+migrate-1  | [migrate] ✓ 0016_villa_entrances_join.sql (already applied)
+backend-1  |   path: '/ISAPI/Streaming/channels/101/picture',
+backend-1  |   realm: 'IP Camera(GQ271)',
+backend-1  |   qop: 'auth',
+backend-1  |   algorithm: undefined
+backend-1  | }
+backend-1  | [fetchCamera] digest {
+backend-1  |   method: 'GET',
+backend-1  |   path: '/ISAPI/Streaming/channels/101/picture',
+backend-1  |   status: 200
+backend-1  | }
+backend-1  | {"level":30,"time":1780756477303,"pid":1,"hostname":"824fb3a66f8c","req":{"id":16,"method":"GET","url":"/api/anpr/snapshot/11db5e1b-f9df-4d1f-b070-6563ec9cb7f1"},"res":{"statusCode":200},"responseTime":139,"msg":"request completed"}
+backend-1  | [fetchCamera] digest {
+backend-1  |   method: 'GET',
+backend-1  |   path: '/ISAPI/Streaming/channels/101/picture',
+backend-1  |   status: 200
+backend-1  | }
+backend-1  | {"level":30,"time":1780756477384,"pid":1,"hostname":"824fb3a66f8c","req":{"id":17,"method":"GET","url":"/api/anpr/snapshot/35b86338-6a98-4467-83a7-6a16e25514bc"},"res":{"statusCode":200},"responseTime":150,"msg":"request completed"}
+migrate-1  | [migrate] ✓ 0017_add_smart_locks.sql (already applied)
+migrate-1  | [migrate] ✓ 0018_add_smart_lock_passwords.sql (already applied)
+migrate-1  | [migrate] ✓ 0019_smart_lock_passwords_unique_active.sql (already applied)
+migrate-1  | [migrate] ✓ 0020_standalone_temp_credentials.sql (already applied)
+migrate-1  | [migrate] done — 0 newly applied, 12 already applied, 12 total
+migrate-1  | [migrate] ✓ 0000_init.sql (already applied)
+migrate-1  | [migrate] ✓ 0010_add_acs_fields_to_intercoms.sql (already applied)
+migrate-1  | [migrate] ✓ 0011_add_anpr_fields_to_cameras.sql (already applied)
+migrate-1  | [migrate] ✓ 0012_add_partial_match_to_cameras.sql (already applied)
+migrate-1  | [migrate] ✓ 0013_cleanup_anpr_polluted_vehicles.sql (already applied)
+migrate-1  | [migrate] ✓ 0014_drop_legacy_columns.sql (already applied)
+migrate-1  | [migrate] ✓ 0015_add_vehicle_archived_at.sql (already applied)
+migrate-1  | [migrate] ✓ 0016_villa_entrances_join.sql (already applied)
+migrate-1  | [migrate] ✓ 0017_add_smart_locks.sql (already applied)
+migrate-1  | [migrate] ✓ 0018_add_smart_lock_passwords.sql (already applied)
+migrate-1  | [migrate] ✓ 0019_smart_lock_passwords_unique_active.sql (already applied)
+migrate-1  | [migrate] ✓ 0020_standalone_temp_credentials.sql (already applied)
+migrate-1  | [migrate] done — 0 newly applied, 12 already applied, 12 total
+tmm@tmm:~/VillaAccess$ 
