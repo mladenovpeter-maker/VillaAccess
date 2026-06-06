@@ -297,6 +297,8 @@ export const smartLocksApi = {
             api.get<{ records: SmartLockEvent[]; page: number; page_size: number; count: number }>(
               `/locks/${id}/events?page=${page}&page_size=${page_size}`,
             ),
+  passwords: (id: string) =>
+            api.get<SmartLockPasswordsResponse>(`/locks/${id}/passwords`),
 };
 
 export const intercomsApi = {
@@ -443,6 +445,36 @@ export interface SmartLock {
   device_info: Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
+}
+
+/** A temp-password physically present on the lock right now (live from Tuya),
+ *  cross-referenced against our smart_lock_passwords ledger. */
+export interface SmartLockDevicePassword {
+  password_id: string;
+  name: string | null;
+  effective_time: string | null;
+  invalid_time: string | null;
+  status: string | null;
+  /** true when this device PIN matches a ledger row (created by VillaAccess). */
+  managed: boolean;
+  reservation_id: string | null;
+  guest_name: string | null;
+  ledger_status: string | null;
+}
+
+/** A PIN the ledger believes is active but is NOT on the device — guest locked out. */
+export interface SmartLockMissingPassword {
+  provider_password_id: string;
+  reservation_id: string;
+  guest_name: string | null;
+  check_in: string;
+  check_out: string;
+}
+
+export interface SmartLockPasswordsResponse {
+  passwords: SmartLockDevicePassword[];
+  missing: SmartLockMissingPassword[];
+  count: number;
 }
 
 export interface SmartLockEvent {

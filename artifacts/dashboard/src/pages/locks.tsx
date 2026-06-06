@@ -25,6 +25,7 @@ import {
 import {
   Plus, Pencil, Trash2, Loader2, Wifi, WifiOff, AlertCircle,
   Lock, Battery, BatteryLow, BatteryWarning, RefreshCw, History, Radio, Building2,
+  KeyRound, ShieldAlert, CheckCircle2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -240,14 +241,122 @@ function EventsDialog({ lock, onClose }: { lock: SmartLock | null; onClose: () =
   );
 }
 
+// ─── Device PINs dialog (verify temp-passwords on the lock) ───────────────────
+
+function PinStatusBadge({ status, t }: { status: string | null; t: (k: string) => string }) {
+  const s = (status ?? "").toLowerCase();
+  if (s === "normal")
+    return <Badge className="h-4 px-1 text-[10px] bg-emerald-500/10 text-emerald-400 border-emerald-500/30">{t("locks.pinStatusNormal")}</Badge>;
+  if (s === "to_be_activated")
+    return <Badge className="h-4 px-1 text-[10px] bg-amber-500/10 text-amber-400 border-amber-500/30">{t("locks.pinStatusPending")}</Badge>;
+  if (s === "expired")
+    return <Badge variant="outline" className="h-4 px-1 text-[10px] text-zinc-400">{t("locks.pinStatusExpired")}</Badge>;
+  return status ? <Badge variant="outline" className="h-4 px-1 text-[10px]">{status}</Badge> : null;
+}
+
+function PasswordsDialog({ lock, onClose }: { lock: SmartLock | null; onClose: () => void }) {
+  const { t } = useTranslation();
+  const { data, isLoading, error, refetch, isFetching } = useQuery({
+    queryKey: ["lock-passwords", lock?.id],
+    queryFn: () => smartLocksApi.passwords(lock!.id),
+    enabled: !!lock,
+  });
+
+  const passwords = data?.passwords ?? [];
+  const missing = data?.missing ?? [];
+  const fmt = (iso: string | null) => (iso ? new Date(iso).toLocaleString() : "—");
+
+  return (
+    <Dialog open={!!lock} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <KeyRound className="w-4 h-4" />
+            {t("locks.devicePinsTitle", { name: lock?.name ?? "" })}
+          </DialogTitle>
+          <DialogDescription>{t("locks.devicePinsSubtitle")}</DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-3">
+          {isLoading ? (
+            <div className="space-y-2">{[1,2,3].map((i) => <Skeleton key={i} className="h-14 rounded-lg" />)}</div>
+          ) : error ? (
+            <div className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg p-3">
+              {(error as Error).message}
+            </div>
+          ) : (
+            <>
+              {missing.length > 0 && (
+                <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 space-y-2">
+                  <div className="flex items-center gap-2 text-sm font-medium text-red-400">
+                    <ShieldAlert className="w-4 h-4" />{t("locks.pinMissingTitle")}
+                  </div>
+                  <p className="text-[11px] text-red-300/80">{t("locks.pinMissingDesc")}</p>
+                  <div className="space-y-1">
+                    {missing.map((m) => (
+                      <div key={m.provider_password_id} className="text-xs flex items-center justify-between gap-2 bg-red-500/5 rounded px-2 py-1">
+                        <span className="text-foreground">{m.guest_name ?? "—"}</span>
+                        <span className="font-mono text-red-300/70">
+                          {new Date(m.check_in).toLocaleDateString()} → {new Date(m.check_out).toLocaleDateString()}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {passwords.length === 0 ? (
+                <div className="text-center py-8 text-sm text-muted-foreground">{t("locks.noPins")}</div>
+              ) : (
+                <div className="space-y-1.5">
+                  {passwords.map((p) => (
+                    <div key={p.password_id} className="flex items-center justify-between gap-3 bg-muted/30 rounded-lg px-3 py-2">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 text-sm text-foreground">
+                          {p.managed
+                            ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                            : <KeyRound className="w-3.5 h-3.5 text-muted-foreground shrink-0" />}
+                          <span className="truncate">{p.guest_name ?? p.name ?? t("locks.pinUnnamed")}</span>
+                        </div>
+                        <div className="text-[11px] text-muted-foreground font-mono mt-0.5">
+                          {fmt(p.effective_time)} → {fmt(p.invalid_time)}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <Badge variant="outline" className="h-4 px-1 text-[10px]">
+                          {p.managed ? t("locks.pinManaged") : t("locks.pinExternal")}
+                        </Badge>
+                        <PinStatusBadge status={p.status} t={t} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching}>
+            <RefreshCw className={cn("w-3.5 h-3.5 mr-2", isFetching && "animate-spin")} />
+            {t("locks.refresh")}
+          </Button>
+          <Button onClick={onClose}>{t("locks.close")}</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // ─── Lock card ────────────────────────────────────────────────────────────────
 
-function LockCard({ lock, villaName, onEdit, onDelete, onShowEvents }: {
+function LockCard({ lock, villaName, onEdit, onDelete, onShowEvents, onShowPasswords }: {
   lock: SmartLock;
   villaName?: string;
   onEdit: (l: SmartLock) => void;
   onDelete: (l: SmartLock) => void;
   onShowEvents: (l: SmartLock) => void;
+  onShowPasswords: (l: SmartLock) => void;
 }) {
   const qc = useQueryClient();
   const { toast } = useToast();
@@ -345,6 +454,13 @@ function LockCard({ lock, villaName, onEdit, onDelete, onShowEvents }: {
           <History className="w-3.5 h-3.5" />
           {t("locks.recentUnlocks")}
         </Button>
+        <Button
+          variant="outline" size="sm" className="h-8 text-xs gap-1.5"
+          onClick={() => onShowPasswords(lock)}
+        >
+          <KeyRound className="w-3.5 h-3.5" />
+          {t("locks.devicePins")}
+        </Button>
       </div>
     </div>
   );
@@ -360,6 +476,7 @@ export default function LocksPage() {
   const [editTarget, setEditTarget] = useState<SmartLock | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<SmartLock | null>(null);
   const [eventsTarget, setEventsTarget] = useState<SmartLock | null>(null);
+  const [passwordsTarget, setPasswordsTarget] = useState<SmartLock | null>(null);
 
   const { data: locks = [], isLoading } = useQuery<SmartLock[]>({
     queryKey: ["smart-locks"],
@@ -418,6 +535,7 @@ export default function LocksPage() {
                 onEdit={openEdit}
                 onDelete={setDeleteTarget}
                 onShowEvents={setEventsTarget}
+                onShowPasswords={setPasswordsTarget}
               />
             ))}
           </div>
@@ -437,6 +555,10 @@ export default function LocksPage() {
 
       {eventsTarget && (
         <EventsDialog lock={eventsTarget} onClose={() => setEventsTarget(null)} />
+      )}
+
+      {passwordsTarget && (
+        <PasswordsDialog lock={passwordsTarget} onClose={() => setPasswordsTarget(null)} />
       )}
 
       <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>

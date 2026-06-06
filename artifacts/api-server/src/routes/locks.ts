@@ -20,7 +20,12 @@
 
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { smartLocksTable, villasTable } from "@workspace/db";
+import {
+  smartLocksTable,
+  villasTable,
+  smartLockPasswordsTable,
+  reservationsTable,
+} from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { requireAuth, requireWriteAccess, requireRole } from "./auth";
 
@@ -313,6 +318,88 @@ router.get("/:id/events", requireAuth, async (req, res) => {
     const adapter = createLockAdapter(l);
     const records = await adapter.listOpenRecords({ page, page_size });
     res.json({ records, page, page_size, count: records.length });
+  } catch (err) {
+    handleTuyaError(err, res);
+  }
+});
+
+// ─── GET /locks/:id/passwords — LIVE Tuya temp-passwords + ledger cross-ref ───
+//
+// Answers the question "are the guest PINs REALLY on the lock?" by listing the
+// temp-passwords that physically exist on the device right now (live Tuya call)
+// and cross-referencing each against the smart_lock_passwords ledger so the UI
+// can show which PIN belongs to which reservation/guest, and — crucially —
+// surface any PIN our system believes is active but is MISSING from the device
+// (guest would be locked out). Read-only; does not touch lock-sync push/revoke.
+
+router.get("/:id/passwords", requireAuth, async (req, res) => {
+  const l = await loadLock(req.params.id);
+  if (!l) {
+    res.status(404).json({ detail: "Smart lock not found" });
+    return;
+  }
+  if (!isTuyaConfigured()) {
+    res.status(503).json({
+      detail:
+        "Tuya not configured — set TUYA_ACCESS_ID, TUYA_ACCESS_SECRET, TUYA_REGION in .env.docker",
+    });
+    return;
+  }
+
+  try {
+    const adapter = createLockAdapter(l);
+    const devicePasswords = await adapter.listTempPasswords();
+
+    // Ledger rows this lock knows about, enriched with the guest they belong to.
+    const ledger = await db
+      .select({
+        provider_password_id: smartLockPasswordsTable.provider_password_id,
+        ledger_status: smartLockPasswordsTable.status,
+        reservation_id: smartLockPasswordsTable.reservation_id,
+        guest_name: reservationsTable.guest_name,
+        check_in: reservationsTable.check_in,
+        check_out: reservationsTable.check_out,
+      })
+      .from(smartLockPasswordsTable)
+      .innerJoin(
+        reservationsTable,
+        eq(reservationsTable.id, smartLockPasswordsTable.reservation_id),
+      )
+      .where(eq(smartLockPasswordsTable.smart_lock_id, l.id));
+
+    const byPid = new Map(ledger.map((r) => [String(r.provider_password_id), r]));
+
+    const passwords = devicePasswords.map((p) => {
+      const m = byPid.get(String(p.password_id));
+      return {
+        password_id: p.password_id,
+        name: p.name,
+        effective_time: p.effective_time,
+        invalid_time: p.invalid_time,
+        status: p.status,
+        managed: !!m,
+        reservation_id: m?.reservation_id ?? null,
+        guest_name: m?.guest_name ?? null,
+        ledger_status: m?.ledger_status ?? null,
+      };
+    });
+
+    // PINs our system thinks are active but are NOT physically on the device —
+    // these guests would be unable to unlock. The most actionable signal here.
+    const devicePids = new Set(devicePasswords.map((p) => String(p.password_id)));
+    const missing = ledger
+      .filter(
+        (r) => r.ledger_status === "active" && !devicePids.has(String(r.provider_password_id)),
+      )
+      .map((r) => ({
+        provider_password_id: r.provider_password_id,
+        reservation_id: r.reservation_id,
+        guest_name: r.guest_name,
+        check_in: r.check_in,
+        check_out: r.check_out,
+      }));
+
+    res.json({ passwords, missing, count: passwords.length });
   } catch (err) {
     handleTuyaError(err, res);
   }
