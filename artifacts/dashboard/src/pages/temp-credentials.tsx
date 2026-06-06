@@ -21,21 +21,28 @@ import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
 import {
   KeyRound, Plus, Trash2, Loader2, ShieldOff, Clock, CheckCircle2,
-  XCircle, RefreshCw, Building2, CalendarDays,
+  XCircle, RefreshCw, Building2, CalendarDays, User, Infinity as InfinityIcon,
+  CalendarClock, AlertTriangle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // ─── Types ──────────────────────────────────────────────────────────────────────
 
+type CredMode = "reservation" | "standalone";
+type AccessType = "temporary" | "permanent";
+
 interface TempCred {
   id: string;
-  reservation_id: string;
+  reservation_id: string | null;
+  owner_name: string | null;
   pin_code: string;
   label: string | null;
   notes: string | null;
+  access_type: AccessType;
   valid_from: string;
   valid_until: string;
   status: "active" | "expired" | "revoked";
+  sync_status: string | null;
   created_at: string;
   reservation: { id: string; guest_name: string; villa_id: string; pin_code: string | null } | null;
   villa: { id: string; name: string } | null;
@@ -49,7 +56,10 @@ interface Reservation {
 }
 
 interface CredForm {
+  mode: CredMode;
+  access_type: AccessType;
   reservation_id: string;
+  owner_name: string;
   pin_code: string;
   label: string;
   notes: string;
@@ -65,7 +75,7 @@ const defaultForm = (): CredForm => {
   const now = new Date();
   const end = new Date(now);
   end.setDate(end.getDate() + 1);
-  return { reservation_id: "", pin_code: "", label: "", notes: "", valid_from: toInputDateTime(now), valid_until: toInputDateTime(end) };
+  return { mode: "reservation", access_type: "temporary", reservation_id: "", owner_name: "", pin_code: "", label: "", notes: "", valid_from: toInputDateTime(now), valid_until: toInputDateTime(end) };
 };
 
 function generatePin(): string {
@@ -106,15 +116,31 @@ function CreateCredDialog({ open, onClose }: { open: boolean; onClose: () => voi
 
   const set = (k: keyof CredForm, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
+  const isStandalone = form.mode === "standalone";
+  const isPermanent = isStandalone && form.access_type === "permanent";
+  const showDates = !isPermanent;
+
   const mut = useMutation({
-    mutationFn: () => api.post("/temp-credentials", {
-      reservation_id: form.reservation_id,
-      pin_code: form.pin_code || undefined,
-      label: form.label || undefined,
-      notes: form.notes || undefined,
-      valid_from: new Date(form.valid_from).toISOString(),
-      valid_until: new Date(form.valid_until).toISOString(),
-    }),
+    mutationFn: () => {
+      const payload: Record<string, unknown> = {
+        pin_code: form.pin_code || undefined,
+        label: form.label || undefined,
+        notes: form.notes || undefined,
+      };
+      if (isStandalone) {
+        payload.owner_name = form.owner_name || undefined;
+        payload.access_type = form.access_type;
+        if (showDates) {
+          payload.valid_from = new Date(form.valid_from).toISOString();
+          payload.valid_until = new Date(form.valid_until).toISOString();
+        }
+      } else {
+        payload.reservation_id = form.reservation_id;
+        payload.valid_from = new Date(form.valid_from).toISOString();
+        payload.valid_until = new Date(form.valid_until).toISOString();
+      }
+      return api.post("/temp-credentials", payload);
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["temp-credentials"] });
       toast({ title: t("tempCreds.created") });
@@ -123,6 +149,10 @@ function CreateCredDialog({ open, onClose }: { open: boolean; onClose: () => voi
     },
     onError: (e: Error) => toast({ title: t("common.error"), description: e.message, variant: "destructive" }),
   });
+
+  const canSubmit = isStandalone
+    ? !!form.owner_name && (isPermanent || (!!form.valid_from && !!form.valid_until))
+    : !!form.reservation_id && !!form.valid_from && !!form.valid_until;
 
   const allRes = allReservations.data ?? [];
 
@@ -135,21 +165,88 @@ function CreateCredDialog({ open, onClose }: { open: boolean; onClose: () => voi
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-4 py-2">
-          <div className="space-y-1.5">
-            <Label>{t("tempCreds.reservation")} *</Label>
-            <Select value={form.reservation_id} onValueChange={(v) => set("reservation_id", v)}>
-              <SelectTrigger>
-                <SelectValue placeholder={t("tempCreds.selectReservation")} />
-              </SelectTrigger>
-              <SelectContent>
-                {allRes.map((r) => (
-                  <SelectItem key={r.id} value={r.id}>
-                    {r.guest_name} {r.villa ? `· ${(r.villa as any).name ?? ""}` : ""}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          {/* Mode toggle: reservation-linked vs standalone staff PIN */}
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => set("mode", "reservation")}
+              className={cn(
+                "flex items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-medium transition-colors",
+                form.mode === "reservation" ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:bg-muted/50"
+              )}
+            >
+              <CalendarDays className="w-4 h-4" />{t("tempCreds.modeReservation")}
+            </button>
+            <button
+              type="button"
+              onClick={() => set("mode", "standalone")}
+              className={cn(
+                "flex items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-medium transition-colors",
+                form.mode === "standalone" ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:bg-muted/50"
+              )}
+            >
+              <User className="w-4 h-4" />{t("tempCreds.modeStandalone")}
+            </button>
           </div>
+
+          {form.mode === "reservation" ? (
+            <div className="space-y-1.5">
+              <Label>{t("tempCreds.reservation")} *</Label>
+              <Select value={form.reservation_id} onValueChange={(v) => set("reservation_id", v)}>
+                <SelectTrigger>
+                  <SelectValue placeholder={t("tempCreds.selectReservation")} />
+                </SelectTrigger>
+                <SelectContent>
+                  {allRes.map((r) => (
+                    <SelectItem key={r.id} value={r.id}>
+                      {r.guest_name} {r.villa ? `· ${(r.villa as any).name ?? ""}` : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          ) : (
+            <>
+              <div className="space-y-1.5">
+                <Label>{t("tempCreds.ownerName")} *</Label>
+                <Input
+                  placeholder={t("tempCreds.ownerNamePlaceholder")}
+                  value={form.owner_name}
+                  onChange={(e) => set("owner_name", e.target.value)}
+                />
+              </div>
+
+              {/* Access type: temporary (window) vs permanent (no end) */}
+              <div className="space-y-1.5">
+                <Label>{t("tempCreds.accessType")}</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => set("access_type", "temporary")}
+                    className={cn(
+                      "flex items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-medium transition-colors",
+                      form.access_type === "temporary" ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:bg-muted/50"
+                    )}
+                  >
+                    <CalendarClock className="w-4 h-4" />{t("tempCreds.accessTemporary")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => set("access_type", "permanent")}
+                    className={cn(
+                      "flex items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-medium transition-colors",
+                      form.access_type === "permanent" ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:bg-muted/50"
+                    )}
+                  >
+                    <InfinityIcon className="w-4 h-4" />{t("tempCreds.accessPermanent")}
+                  </button>
+                </div>
+                {isPermanent && (
+                  <p className="text-xs text-muted-foreground">{t("tempCreds.permanentHint")}</p>
+                )}
+              </div>
+            </>
+          )}
 
           <div className="space-y-1.5">
             <Label>{t("tempCreds.label")}</Label>
@@ -181,16 +278,18 @@ function CreateCredDialog({ open, onClose }: { open: boolean; onClose: () => voi
             <p className="text-xs text-muted-foreground">{t("tempCreds.pinHint")}</p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label>{t("tempCreds.validFrom")} *</Label>
-              <Input type="datetime-local" value={form.valid_from} onChange={(e) => set("valid_from", e.target.value)} />
+          {showDates && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>{t("tempCreds.validFrom")} *</Label>
+                <Input type="datetime-local" value={form.valid_from} onChange={(e) => set("valid_from", e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>{t("tempCreds.validUntil")} *</Label>
+                <Input type="datetime-local" value={form.valid_until} onChange={(e) => set("valid_until", e.target.value)} />
+              </div>
             </div>
-            <div className="space-y-1.5">
-              <Label>{t("tempCreds.validUntil")} *</Label>
-              <Input type="datetime-local" value={form.valid_until} onChange={(e) => set("valid_until", e.target.value)} />
-            </div>
-          </div>
+          )}
 
           <div className="space-y-1.5">
             <Label>{t("common.notes")}</Label>
@@ -205,7 +304,7 @@ function CreateCredDialog({ open, onClose }: { open: boolean; onClose: () => voi
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>{t("common.cancel")}</Button>
-          <Button onClick={() => mut.mutate()} disabled={!form.reservation_id || !form.valid_from || !form.valid_until || mut.isPending}>
+          <Button onClick={() => mut.mutate()} disabled={!canSubmit || mut.isPending}>
             {mut.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
             {t("tempCreds.generate")}
           </Button>
@@ -342,12 +441,25 @@ export default function TempCredentialsPage() {
                     </div>
                     {cred.label && <div className="text-xs font-medium text-foreground">{cred.label}</div>}
                   </div>
-                  <StatusBadge status={cred.status} />
+                  <div className="flex flex-col items-end gap-1">
+                    <StatusBadge status={cred.status} />
+                    {!cred.reservation_id && cred.access_type === "permanent" && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-violet-500/15 text-violet-400 px-2 py-0.5 text-[10px] font-medium">
+                        <InfinityIcon className="w-3 h-3" />{t("tempCreds.accessPermanent")}
+                      </span>
+                    )}
+                  </div>
                 </div>
 
-                {/* Reservation / Villa */}
-                {(cred.reservation || cred.villa) && (
+                {/* Owner (standalone) / Reservation / Villa */}
+                {(cred.owner_name || cred.reservation || cred.villa) && (
                   <div className="flex flex-col gap-0.5 text-xs text-muted-foreground">
+                    {cred.owner_name && (
+                      <div className="flex items-center gap-1.5">
+                        <User className="w-3.5 h-3.5 shrink-0" />
+                        <span className="truncate">{cred.owner_name}</span>
+                      </div>
+                    )}
                     {cred.reservation && (
                       <div className="flex items-center gap-1.5">
                         <CalendarDays className="w-3.5 h-3.5 shrink-0" />
@@ -369,13 +481,36 @@ export default function TempCredentialsPage() {
                     <span>{t("tempCreds.validFrom")}</span>
                     <span className="font-medium text-foreground">{formatDate(cred.valid_from)}</span>
                   </div>
-                  <div className="flex items-center justify-between text-muted-foreground">
-                    <span>{t("tempCreds.validUntil")}</span>
-                    <span className={cn("font-medium", isExpiringSoon(cred) ? "text-amber-400" : "text-foreground")}>
-                      {formatDate(cred.valid_until)}
-                    </span>
-                  </div>
+                  {!cred.reservation_id && cred.access_type === "permanent" ? (
+                    <div className="flex items-center justify-between text-muted-foreground">
+                      <span>{t("tempCreds.validUntil")}</span>
+                      <span className="font-medium text-violet-400 inline-flex items-center gap-1">
+                        <InfinityIcon className="w-3 h-3" />{t("tempCreds.noExpiry")}
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between text-muted-foreground">
+                      <span>{t("tempCreds.validUntil")}</span>
+                      <span className={cn("font-medium", isExpiringSoon(cred) ? "text-amber-400" : "text-foreground")}>
+                        {formatDate(cred.valid_until)}
+                      </span>
+                    </div>
+                  )}
                 </div>
+
+                {/* Intercom sync status (standalone only) */}
+                {!cred.reservation_id && (cred.sync_status === "synced" || cred.sync_status === "failed" || cred.sync_status === "partial") && (
+                  <div className={cn(
+                    "flex items-center gap-1.5 text-xs",
+                    cred.sync_status === "synced" ? "text-emerald-400" : "text-red-400"
+                  )}>
+                    {cred.sync_status === "synced" ? (
+                      <><CheckCircle2 className="w-3.5 h-3.5 shrink-0" /><span>{t("tempCreds.syncSynced")}</span></>
+                    ) : (
+                      <><AlertTriangle className="w-3.5 h-3.5 shrink-0" /><span>{t("tempCreds.syncFailed")}</span></>
+                    )}
+                  </div>
+                )}
 
                 {cred.notes && (
                   <p className="text-xs text-muted-foreground italic line-clamp-2">{cred.notes}</p>
