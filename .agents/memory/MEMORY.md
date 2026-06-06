@@ -10,3 +10,4 @@
 - [.env.docker required keys & recovery](env-docker-required-keys.md) — self-hosted .env.docker is gitignored, lost before; full key list + symptom→cause (1033, blank DB pw, hidden AI toggle) + no-data-loss recovery
 - [Standalone staff PINs](standalone-staff-pins.md) — non-reservation temp_credentials sync to Hikvision intercoms only via a SEPARATE service; never touch reservation path; permanent uses 2099 sentinel
 - [tsc project-reference noise](tsc-project-reference-noise.md) — standalone `tsc --noEmit` floods false "@workspace/db has no exported member"; trust esbuild dev build + runtime smoke test, not the noise
+- [Self-hosted notifications](self-hosted-notifications.md) — guest email/outbound uses self-hosted SMTP via .env.docker (nodemailer), NOT Replit integrations; app runs on user's Docker, not Replit.

@@ -222,6 +222,9 @@ export const reservationsApi = {
   forceSync:     (id: string) => api.post<Reservation & { sync_result: unknown }>(`/reservations/${id}/force-sync`, {}),
   revokePin:     (id: string) => api.post<Reservation & { sync_result: unknown }>(`/reservations/${id}/revoke-pin`, {}),
   accessWindow:  (id: string) => api.get(`/reservations/${id}/access-window`),
+  emailStatus:   () => api.get<{ configured: boolean }>(`/reservations/email-status`),
+  sendEmail:     (id: string, lang: "bg" | "en") =>
+    api.post<{ ok: boolean; sent_to: string }>(`/reservations/${id}/send-email`, { lang }),
 };
 
 export const vehiclesApi = {

@@ -14,6 +14,7 @@ import {
 import { syncPinToIntercoms, revokePinFromIntercoms } from "../services/pin-sync";
 import { syncPinToLocks, revokePinFromLocks } from "../services/lock-sync";
 import { normaliseLicensePlate } from "./vehicles";
+import { isEmailConfigured, sendReservationEmail } from "../services/email";
 
 const router = Router();
 
@@ -161,6 +162,13 @@ router.get("/", requireAuth, async (req, res) => {
   const synced = await Promise.all(rows.map(syncReservationStatus));
   const result = await Promise.all(synced.map((r) => enrichReservation(r, false)));
   res.json(result);
+});
+
+// ── GET /email-status ──────────────────────────────────────────────────────────
+// Tells the UI whether SMTP is configured (so it can enable/disable the
+// "send to guest" action). Declared before "/:id" so it is not shadowed.
+router.get("/email-status", requireAuth, (_req, res) => {
+  res.json({ configured: isEmailConfigured() });
 });
 
 // ── POST / ───────────────────────────────────────────────────────────────────
@@ -640,6 +648,33 @@ router.post("/:id/revoke-pin", requireAuth, async (req: any, res) => {
     sync_result: syncResult,
     lock_sync_result: lockSyncResult,
   });
+});
+
+// ── POST /:id/send-email ───────────────────────────────────────────────────────
+// Additive notification: emails the guest their reservation details + PIN (+QR).
+// Does not modify the reservation or trigger any device sync.
+router.post("/:id/send-email", requireAuth, async (req: any, res) => {
+  if (!isEmailConfigured()) {
+    res.status(503).json({ detail: "Email is not configured (SMTP_HOST / SMTP_FROM missing)." });
+    return;
+  }
+
+  const rows = await db.select().from(reservationsTable).where(eq(reservationsTable.id, req.params.id)).limit(1);
+  if (!rows[0]) { res.status(404).json({ detail: "Not found" }); return; }
+
+  const enriched = await enrichReservation(rows[0], false);
+  if (!enriched.guest_email) {
+    res.status(400).json({ detail: "Reservation has no guest email." });
+    return;
+  }
+
+  const lang = req.body?.lang === "en" ? "en" : "bg";
+  try {
+    await sendReservationEmail(enriched as any, lang);
+    res.json({ ok: true, sent_to: enriched.guest_email });
+  } catch (e: any) {
+    res.status(502).json({ detail: e?.message ?? "Failed to send email." });
+  }
 });
 
 export { router as reservationsRouter };

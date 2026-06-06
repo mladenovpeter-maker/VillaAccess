@@ -1,4 +1,5 @@
 import { Sidebar } from "./sidebar";
+import { GlobalSearch } from "@/components/global-search";
 import { type ReactNode } from "react";
 
 interface AppLayoutProps {
@@ -11,6 +12,7 @@ interface AppLayoutProps {
 export function AppLayout({ children, title, subtitle, actions }: AppLayoutProps) {
   return (
     <div className="flex h-screen bg-background overflow-hidden">
+      <GlobalSearch />
       <Sidebar />
       <main className="flex-1 md:ml-64 overflow-y-auto flex flex-col">
         {(title || actions) && (

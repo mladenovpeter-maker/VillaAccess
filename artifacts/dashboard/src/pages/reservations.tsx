@@ -11,10 +11,11 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { QrCanvas } from "@/components/qr-canvas";
 import {
   Plus, Pencil, Trash2, CalendarDays, User, Car, Phone, Key,
   RefreshCw, ShieldOff, Wifi, WifiOff, AlertCircle, CheckCircle2,
-  Clock, LogIn, LogOut, XCircle, ChevronRight, X,
+  Clock, LogIn, LogOut, XCircle, ChevronRight, X, Mail, QrCode,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -467,7 +468,19 @@ function ReservationDetail({
   isCheckingIn, isCheckingOut, isCancelling,
   isRegenPin, isForceSync, isRevokePin,
 }: DetailProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const { toast } = useToast();
+  const [showQr, setShowQr] = useState(false);
+  const emailStatus = useQuery({
+    queryKey: ["reservations", "email-status"],
+    queryFn: () => reservationsApi.emailStatus(),
+    staleTime: 60_000,
+  });
+  const sendEmail = useMutation({
+    mutationFn: () => reservationsApi.sendEmail(r.id, i18n.language?.startsWith("en") ? "en" : "bg"),
+    onSuccess: () => toast({ title: t("reservations.emailSent") }),
+    onError: (e: any) => toast({ title: t("reservations.emailFailed"), description: e?.message, variant: "destructive" }),
+  });
   const guestVehicles = vehicles.filter((v) => r.vehicle_ids.includes(v.id));
   const canCheckIn  = ["upcoming"].includes(r.status);
   const canCheckOut = ["active", "upcoming"].includes(r.status);
@@ -586,6 +599,38 @@ function ReservationDetail({
               <ShieldOff className="w-3.5 h-3.5 mr-1.5" />
               {t("reservations.revokePin")}
             </Button>
+          </div>
+        )}
+
+        {/* QR code + email-to-guest (additive — no device sync) */}
+        {r.pin_code && (
+          <div className="mt-3 space-y-3">
+            <div className="flex gap-2 flex-wrap">
+              <Button size="sm" variant="outline" onClick={() => setShowQr((v) => !v)}>
+                <QrCode className="w-3.5 h-3.5 mr-1.5" />{t("reservations.showQr")}
+              </Button>
+              {!readOnly && (
+                <Button
+                  size="sm" variant="outline"
+                  onClick={() => sendEmail.mutate()}
+                  disabled={sendEmail.isPending || !r.guest_email || emailStatus.data?.configured === false}
+                >
+                  <Mail className={cn("w-3.5 h-3.5 mr-1.5", sendEmail.isPending && "animate-pulse")} />
+                  {t("reservations.emailGuest")}
+                </Button>
+              )}
+            </div>
+            {!readOnly && !r.guest_email && (
+              <p className="text-xs text-muted-foreground">{t("reservations.emailNoAddress")}</p>
+            )}
+            {!readOnly && r.guest_email && emailStatus.data?.configured === false && (
+              <p className="text-xs text-muted-foreground">{t("reservations.emailNotConfigured")}</p>
+            )}
+            {showQr && (
+              <div className="flex justify-center rounded-lg bg-white p-4 w-fit mx-auto">
+                <QrCanvas value={r.pin_code} size={160} />
+              </div>
+            )}
           </div>
         )}
       </Section>
