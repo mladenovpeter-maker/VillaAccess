@@ -21,8 +21,19 @@ Known triggers, in rough order of how often they bite here:
 - **(invalid_time - effective_time) < ~24h.** Tuya enforces a 24h minimum
   duration for type=0 temp passwords; <24h → 1109. Bump invalid_time up.
 
-**Timestamp unit:** these locks now want epoch **MILLISECONDS** (helper
-`toEpochSeconds` is misnamed, returns `d.getTime()`). Don't "fix" it to seconds.
+**Timestamp unit is the stubborn one — and it's model-dependent.** After fixing
+the ASCII name + IANA timezone, the villa locks (products `bf2a…`, `bf56a0fe…`)
+STILL returned 1109 with the body otherwise valid (`name:"popo"`,
+`time_zone:"Europe/Sofia"`, future effective, 24h+ duration, 32-hex ticket
+password). The remaining variable is the epoch unit of
+`effective_time`/`invalid_time`: Tuya's documented default is **SECONDS** (10
+digits) but some models were coded for **MILLISECONDS** (13 digits). A wrong unit
+→ the timestamp is read as a far-future/illegal time → 1109. There is no single
+correct answer across models, so `createTempPassword` now **tries seconds first
+and on 1109 retries with milliseconds** (each attempt fetches a FRESH one-shot
+ticket — a ticket cannot be reused). The `[tuya.createTempPassword] unit=… body=…`
+log shows which unit was attempted; check it to learn the model's true unit.
+(Old helper `toEpochSeconds` is dead code now — math is done in ms then divided.)
 
 **Why it passes in dev but fails in prod:** dev test used a Latin name and a
 host with a real IANA tz; the real reservation used a Cyrillic guest name in a

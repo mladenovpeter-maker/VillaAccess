@@ -65,7 +65,7 @@ import type {
   CreateTempPasswordResult,
   TempPasswordSummary,
 } from "../types";
-import { tuyaRequest } from "./client";
+import { tuyaRequest, TuyaApiError } from "./client";
 
 // ────────────────────────────────────────────────────────────────────────────
 // Status / open-records types (Phase 1)
@@ -396,54 +396,74 @@ export class TuyaLockAdapter implements LockAdapter {
   // ── Phase 2 ────────────────────────────────────────────────────────────
 
   async createTempPassword(input: CreateTempPasswordInput): Promise<CreateTempPasswordResult> {
-    // Step 1 — fetch a one-shot encryption ticket for this device.
-    // Note: Tuya requires POST (not GET) on this endpoint as of 2025; GET returns
-    // "uri path invalid" (code 1108).
-    const ticket = await tuyaRequest<TuyaPasswordTicket>({
-      method: "POST",
-      path: `/v1.0/devices/${encodeURIComponent(this.deviceId)}/door-lock/password-ticket`,
-    });
-    if (!ticket?.ticket_id || !ticket?.ticket_key) {
-      throw new Error(`Tuya password-ticket response missing ticket_id/ticket_key for device ${this.deviceId}`);
-    }
-
-    // Step 2/3 — decrypt the session key, then encrypt the PIN.
-    const sessionKey = decryptTicketKey(ticket.ticket_key);
-    const encryptedPin = encryptPin(input.pin, sessionKey);
-
-    // Step 4 — create the temp password on the device.
-    // Tuya constraints discovered empirically for product bxq2o60gxhh2ben6
-    // (type=0 temp password):
+    // Compute the validity window in MILLISECONDS once.
+    // Tuya constraints discovered empirically (type=0 temp password):
     //   1. effective_time must be strictly in the future (now+0 → 1109)
-    //   2. (invalid_time - effective_time) must be >= ~24h
-    //      (6h / 12h → 1109; 24h+ → ok)
-    // When a reservation's window violates either, bump it minimally so
-    // the API accepts the request. The PIN is still revoked by lock-sync
-    // when the reservation ends, so over-extending invalid_time is safe.
-    const TUYA_MIN_FUTURE_MS    = 60 * 1000;
-    const TUYA_MIN_DURATION_MS  = 24 * 60 * 60 * 1000;
-    const earliest = Date.now() + TUYA_MIN_FUTURE_MS;
-    const effective = Math.max(toEpochSeconds(input.valid_from), earliest);
-    const invalid   = Math.max(toEpochSeconds(input.valid_to), effective + TUYA_MIN_DURATION_MS);
+    //   2. (invalid_time - effective_time) must be >= ~24h (6h/12h → 1109; 24h+ → ok)
+    // When a reservation's window violates either, bump it minimally so the API
+    // accepts the request. The PIN is still revoked by lock-sync when the
+    // reservation ends, so over-extending invalid_time is safe.
+    const TUYA_MIN_FUTURE_MS   = 60 * 1000;
+    const TUYA_MIN_DURATION_MS = 24 * 60 * 60 * 1000;
+    const earliest     = Date.now() + TUYA_MIN_FUTURE_MS;
+    const effectiveMs  = Math.max(input.valid_from.getTime(), earliest);
+    const invalidMs    = Math.max(input.valid_to.getTime(), effectiveMs + TUYA_MIN_DURATION_MS);
 
-    const body = {
-      password:        encryptedPin,
-      password_type:   "ticket",
-      ticket_id:       ticket.ticket_id,
-      effective_time:  effective,
-      invalid_time:    invalid,
-      name:            asciiSafeName(input.name), // Tuya rejects non-ASCII / >32 chars (1109)
-      type:            0,                       // temporary (single-period)
-      phone:           "",
-      time_zone:       localTimeZoneOffset(),
+    // Tuya temp-password time unit is ambiguous across lock models: some accept
+    // epoch SECONDS (the documented default), others epoch MILLISECONDS. A wrong
+    // unit is rejected with code 1109 "param is illegal". Try seconds first, then
+    // fall back to milliseconds — each attempt needs a FRESH one-shot ticket.
+    const attempt = async (unit: "s" | "ms"): Promise<TuyaCreateTempPasswordResponse> => {
+      // Step 1 — fetch a one-shot encryption ticket for this device.
+      // Note: Tuya requires POST (not GET) on this endpoint as of 2025; GET
+      // returns "uri path invalid" (code 1108).
+      const ticket = await tuyaRequest<TuyaPasswordTicket>({
+        method: "POST",
+        path: `/v1.0/devices/${encodeURIComponent(this.deviceId)}/door-lock/password-ticket`,
+      });
+      if (!ticket?.ticket_id || !ticket?.ticket_key) {
+        throw new Error(`Tuya password-ticket response missing ticket_id/ticket_key for device ${this.deviceId}`);
+      }
+
+      // Step 2/3 — decrypt the session key, then encrypt the PIN.
+      const sessionKey = decryptTicketKey(ticket.ticket_key);
+      const encryptedPin = encryptPin(input.pin, sessionKey);
+
+      const div = unit === "s" ? 1000 : 1;
+      const body = {
+        password:        encryptedPin,
+        password_type:   "ticket",
+        ticket_id:       ticket.ticket_id,
+        effective_time:  Math.floor(effectiveMs / div),
+        invalid_time:    Math.floor(invalidMs / div),
+        name:            asciiSafeName(input.name), // Tuya rejects non-ASCII / >32 chars (1109)
+        type:            0,                          // temporary (single-period)
+        phone:           "",
+        time_zone:       localTimeZoneOffset(),
+      };
+
+      console.log(`[tuya.createTempPassword] device=${this.deviceId} unit=${unit} body=${JSON.stringify({...body, password: `<${body.password.length}hex>`})}`);
+      return tuyaRequest<TuyaCreateTempPasswordResponse>({
+        method: "POST",
+        path: `/v1.0/devices/${encodeURIComponent(this.deviceId)}/door-lock/temp-password`,
+        body,
+      });
     };
 
-    console.log(`[tuya.createTempPassword] device=${this.deviceId} body=${JSON.stringify({...body, password: `<${body.password.length}hex>`})}`);
-    const resp = await tuyaRequest<TuyaCreateTempPasswordResponse>({
-      method: "POST",
-      path: `/v1.0/devices/${encodeURIComponent(this.deviceId)}/door-lock/temp-password`,
-      body,
-    });
+    let resp: TuyaCreateTempPasswordResponse;
+    try {
+      resp = await attempt("s");
+    } catch (err) {
+      const isIllegalParam =
+        (err instanceof TuyaApiError && err.code === 1109) ||
+        /\b1109\b/.test(String((err as Error)?.message ?? err));
+      if (isIllegalParam) {
+        console.warn(`[tuya.createTempPassword] seconds rejected (1109); retrying with milliseconds`);
+        resp = await attempt("ms");
+      } else {
+        throw err;
+      }
+    }
 
     if (resp?.id == null) {
       throw new Error(`Tuya temp-password response missing id for device ${this.deviceId}`);
