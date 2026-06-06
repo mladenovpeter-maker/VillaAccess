@@ -406,6 +406,8 @@ const en = {
     title: "Temp Access",
     subtitle: "Generate temporary PIN codes for contractors, cleaners and one-time guests",
     generateAccess: "Generate Access PIN",
+    editAccess: "Edit access",
+    updated: "Access updated",
     generate: "Generate",
     reservation: "Reservation",
     selectReservation: "Select reservation…",

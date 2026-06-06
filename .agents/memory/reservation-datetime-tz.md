@@ -24,3 +24,11 @@ SAME timezone (local), or near-midnight values split across days.
 `toInputDate`/`toInputTime` on local getters (getFullYear/getMonth/getDate,
 getHours/getMinutes). Rows created before this fix keep their old shifted
 instant until manually re-saved once; they no longer drift further.
+
+**Same trap elsewhere:** any `<input type="datetime-local">` helper in the
+dashboard must format from local components, never `toISOString().slice(0,16)`
+(UTC). The temp-credentials page (`toInputDateTime`) had this bug — editing
+label/notes silently shifted the validity window on save because the form
+re-initialized from a UTC wall-clock string. Fixed to local components; the
+edit submit only sends valid_from/valid_until when the instant actually
+changed, so unrelated edits don't rewrite the window or re-sync the device.
