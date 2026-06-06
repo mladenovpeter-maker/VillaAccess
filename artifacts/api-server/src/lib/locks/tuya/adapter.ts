@@ -256,13 +256,53 @@ function encryptPin(pin: string, sessionKey: Buffer): string {
 }
 
 /** Local IANA time-zone name, e.g. "Europe/Sofia". Tuya rejects offset format
- * ("+02:00") with code 1109 "param is illegal"; only IANA names are accepted. */
+ * ("+02:00") with code 1109 "param is illegal"; only IANA names are accepted.
+ * In a Docker/UTC container Intl resolves to "UTC"/"Etc/UTC", which some lock
+ * models also reject with 1109 — fall back to a real regional zone in that case. */
 function localTimeZoneOffset(): string {
+  let tz = "";
   try {
-    return Intl.DateTimeFormat().resolvedOptions().timeZone || "Europe/Sofia";
+    tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
   } catch {
+    tz = "";
+  }
+  if (!tz || tz === "UTC" || tz === "Etc/UTC" || tz === "Etc/Universal") {
     return "Europe/Sofia";
   }
+  return tz;
+}
+
+// Bulgarian/Cyrillic → Latin transliteration map for the Tuya temp-password
+// `name` field. Tuya only accepts ASCII letters/digits/spaces here; Cyrillic or
+// special chars are rejected with code 1109 "param is illegal".
+const CYRILLIC_TO_LATIN: Record<string, string> = {
+  а: "a", б: "b", в: "v", г: "g", д: "d", е: "e", ж: "zh", з: "z", и: "i",
+  й: "y", к: "k", л: "l", м: "m", н: "n", о: "o", п: "p", р: "r", с: "s",
+  т: "t", у: "u", ф: "f", х: "h", ц: "ts", ч: "ch", ш: "sh", щ: "sht",
+  ъ: "a", ь: "y", ю: "yu", я: "ya",
+};
+
+/** Make a name safe for Tuya's temp-password `name` field: transliterate
+ * Cyrillic to Latin, drop any remaining non-ASCII / special chars (keep
+ * letters, digits, spaces), collapse whitespace, cap at 32 chars. Falls back
+ * to "Guest" if nothing usable remains. */
+function asciiSafeName(raw: string): string {
+  const translit = Array.from(raw ?? "")
+    .map((ch) => {
+      const lower = ch.toLowerCase();
+      const mapped = CYRILLIC_TO_LATIN[lower];
+      if (mapped == null) return ch;
+      // Preserve original case for single-letter mappings.
+      return ch === lower ? mapped : mapped.charAt(0).toUpperCase() + mapped.slice(1);
+    })
+    .join("");
+  const cleaned = translit
+    .replace(/[^A-Za-z0-9 ]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 32)
+    .trim();
+  return cleaned.length > 0 ? cleaned : "Guest";
 }
 
 function toEpochSeconds(d: Date): number {
@@ -392,7 +432,7 @@ export class TuyaLockAdapter implements LockAdapter {
       ticket_id:       ticket.ticket_id,
       effective_time:  effective,
       invalid_time:    invalid,
-      name:            input.name.slice(0, 32), // Tuya caps name length
+      name:            asciiSafeName(input.name), // Tuya rejects non-ASCII / >32 chars (1109)
       type:            0,                       // temporary (single-period)
       phone:           "",
       time_zone:       localTimeZoneOffset(),
