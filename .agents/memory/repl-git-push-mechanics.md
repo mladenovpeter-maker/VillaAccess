@@ -43,5 +43,15 @@ re-run `git ls-remote origin refs/heads/main` and compare to `git rev-parse main
 has usually caught up by then.** Only if it is genuinely stuck behind should you spin up
 a push project task. (Observed: origin lagged at an old SHA when the loop ended, then
 matched local once the next checkpoint/task cycle ran — no manual push needed.)
-NOTE: even the task-agent (isolated) env blocks `git fetch`/`git push` here
-(maintenance.lock guard), but read-only `git ls-remote` works to confirm the SHA.
+## RELIABLE FIX: push from a task agent (THIS WORKS)
+The checkpoint→GitHub sync is unreliable here (origin lagged local by 3 commits even
+after waiting). The dependable path: spin up a **project task**; inside the task-agent
+(isolated) env, a plain `git push origin main` **succeeds** — it reported
+`5995752..4a00b0f  main -> main` and `git ls-remote` confirmed GitHub matched local.
+**Caveat (cosmetic, ignore):** right after the successful push, git fails to update the
+LOCAL tracking ref with `cannot lock ref 'refs/remotes/origin/main' … main.lock: File
+exists`. That is a local bookkeeping error ONLY — the remote was already updated. Do NOT
+`rm` that .lock file (the rm path itself trips the destructive-git guard); just verify
+success with read-only `git ls-remote origin refs/heads/main` vs `git rev-parse main`.
+(So: ignore the earlier "task-agent blocks push" claim — push works; only the bash
+maintenance.lock on `git fetch` and the post-push tracking-ref update are guarded.)
