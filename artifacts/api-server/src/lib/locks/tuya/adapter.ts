@@ -85,18 +85,54 @@ interface TuyaDeviceInfo {
   [k: string]: unknown;
 }
 
-interface TuyaOpenRecord {
-  time?: number; // epoch ms
-  unlock_method?: string;
-  user_name?: string | null;
-  user_id?: string | null;
+// Device-log entry returned by /v1.0/devices/{id}/logs (type=7 data report).
+// Unlock events surface here as DP reports (code = unlock_fingerprint/password/…,
+// value = the credential index used). This is the reliable source for the
+// "opening journal" — the higher-level door-lock/open-records endpoint is empty
+// for many lock models (incl. the units in this deployment).
+interface TuyaDeviceLog {
+  event_time?: number; // epoch ms
+  event_id?: number;   // event type (7 = data report)
+  code?: string;       // DP code, e.g. "unlock_fingerprint"
+  value?: string | number | boolean;
+  status?: string;
+  event_from?: string;
   [k: string]: unknown;
 }
 
-interface TuyaOpenRecordsPage {
-  logs?: TuyaOpenRecord[];
-  total?: number;
-  has_more?: boolean;
+interface TuyaDeviceLogsPage {
+  logs?: TuyaDeviceLog[];
+  has_next?: boolean;
+  current_row_key?: string;
+  next_row_key?: string;
+}
+
+// DP codes that represent an actual door opening, mapped to a stable method
+// token the dashboard translates (locks.method.*).
+const UNLOCK_LOG_CODES: Record<string, string> = {
+  unlock_fingerprint: "fingerprint",
+  unlock_password:    "password",
+  unlock_card:        "card",
+  unlock_face:        "face",
+  unlock_key:         "key",
+  unlock_app:         "app",
+  unlock_temporary:   "temporary",
+  unlock_dynamic:     "dynamic",
+  unlock_phone_remote:"remote",
+  unlock_voice_remote:"remote",
+  unlock_request:     "request",
+  unlock_hand:        "hand",
+  unlock_eye:         "eye",
+  unlock_finger_vein: "finger_vein",
+};
+
+function parseUnlockIndex(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string") {
+    const n = Number(value);
+    if (Number.isFinite(n)) return n;
+  }
+  return null;
 }
 
 const BATTERY_CODES = new Set([
@@ -262,34 +298,59 @@ export class TuyaLockAdapter implements LockAdapter {
       method: "GET",
       path: `/v1.0/iot-03/devices/${encodeURIComponent(this.deviceId)}`,
     });
+    // The device-detail call doesn't always include the live DP `status` array,
+    // so battery (residual_electricity) can come back null. Fetch the latest
+    // status separately when needed — read-only, best-effort.
+    let statusArr = info.status;
+    if (!statusArr || extractBattery(statusArr) == null) {
+      try {
+        const fresh = await tuyaRequest<TuyaStatusItem[]>({
+          method: "GET",
+          path: `/v1.0/devices/${encodeURIComponent(this.deviceId)}/status`,
+        });
+        if (Array.isArray(fresh) && fresh.length > 0) statusArr = fresh;
+      } catch {
+        /* keep info.status fallback */
+      }
+    }
     return {
       online: extractOnline(info),
-      battery_pct: extractBattery(info.status),
+      battery_pct: extractBattery(statusArr),
       last_seen_at: extractLastSeen(info),
-      raw: info,
+      raw: { ...info, status: statusArr },
     };
   }
 
   async listOpenRecords(opts: ListOpenRecordsOptions = {}): Promise<LockOpenRecord[]> {
-    const page_no = Math.max(1, opts.page ?? 1);
     const page_size = Math.max(1, Math.min(100, opts.page_size ?? 20));
-    const query: Record<string, string | number | undefined> = { page_no, page_size };
-    if (opts.start_time) query.start_time = opts.start_time;
-    if (opts.end_time) query.end_time = opts.end_time;
+    const end_time = opts.end_time ?? Date.now();
+    const start_time = opts.start_time ?? end_time - 30 * 24 * 60 * 60 * 1000; // 30d window
+    // Over-fetch type-7 (data report) logs then keep only opening events — other
+    // DP reports (online, battery, …) share the same log stream.
+    const fetchSize = Math.min(100, Math.max(page_size * 3, 50));
 
-    const page = await tuyaRequest<TuyaOpenRecordsPage>({
+    const page = await tuyaRequest<TuyaDeviceLogsPage>({
       method: "GET",
-      path: `/v1.0/devices/${encodeURIComponent(this.deviceId)}/door-lock/open-records`,
-      query,
+      path: `/v1.0/devices/${encodeURIComponent(this.deviceId)}/logs`,
+      query: { type: 7, start_time, end_time, size: fetchSize },
     });
 
     const logs = page?.logs ?? [];
-    return logs.map((r) => ({
-      at: typeof r.time === "number" ? new Date(r.time).toISOString() : new Date(0).toISOString(),
-      method: r.unlock_method ?? "unknown",
-      user: r.user_name ?? r.user_id ?? null,
-      raw: r,
-    }));
+    const records: LockOpenRecord[] = [];
+    for (const log of logs) {
+      const method = log.code ? UNLOCK_LOG_CODES[log.code] : undefined;
+      if (!method) continue;
+      records.push({
+        at: typeof log.event_time === "number"
+          ? new Date(log.event_time).toISOString()
+          : new Date(0).toISOString(),
+        method,
+        index: parseUnlockIndex(log.value),
+        user: null,
+        raw: log,
+      });
+    }
+    return records.slice(0, page_size);
   }
 
   // ── Phase 2 ────────────────────────────────────────────────────────────

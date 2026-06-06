@@ -7,6 +7,7 @@
 - [ANPR OCR camera quality](anpr-ocr-camera-quality.md) — bad OCR on one camera = physical/config not code: full-width top box=OSD overlay misread; near-square REJECTED boxes=oblique angle; Tesseract conf always 0
 - [SSE auth gotcha](sse-auth-gotcha.md) — never put an SSE/EventSource route behind header-based requireAuth; it can't send headers, self-auths via ?token=; blanket auth = stuck "connecting"
 - [ANPR fuzzy gates](anpr-fuzzy-gates.md) — partial-match needs 3 gates; Tesseract conf~0 means partial_min_confidence>0 disables fuzzy; min_matching_digits=4 blocks any 1-digit misread
+- [Tuya lock journal & battery](tuya-lock-journal-battery.md) — unlock history = device-logs type=7 DP reports (not door-lock/open-records, empty); battery needs separate /status fetch; logs paging is cursor not page-number
 - [Repl git push mechanics](repl-git-push-mechanics.md) — code_execution has NO secrets ($GITHUB_TOKEN empty); bash has it but blocks git writes; checkpoint flow advances origin/main, not manual agent push
 - [Docker esbuild external deps](docker-esbuild-external-deps.md) — backend Docker runner ships dist only (no node_modules); any api-server dep in esbuild `external` crashes container at startup though Replit boots fine
 - [.env.docker required keys & recovery](env-docker-required-keys.md) — self-hosted .env.docker is gitignored, lost before; full key list + symptom→cause (1033, blank DB pw, hidden AI toggle) + no-data-loss recovery

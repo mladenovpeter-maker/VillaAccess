@@ -218,8 +218,8 @@ function EventsDialog({ lock, onClose }: { lock: SmartLock | null; onClose: () =
                       {ts ? ts.toLocaleString() : "—"}
                     </div>
                     <div className="flex items-center gap-2 text-muted-foreground">
-                      {r.event_type && <span>{r.event_type}</span>}
-                      {r.event_id != null && <Badge variant="outline" className="h-4 px-1 text-[10px]">eid:{r.event_id}</Badge>}
+                      {r.event_type && <span className="text-foreground">{t(`locks.method.${r.event_type}`, { defaultValue: r.event_type as string })}</span>}
+                      {r.event_id != null && <Badge variant="outline" className="h-4 px-1 text-[10px]">#{r.event_id}</Badge>}
                       {r.user_name && <span className="text-foreground">· {r.user_name}</span>}
                     </div>
                   </div>

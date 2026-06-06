@@ -28,7 +28,9 @@ export interface LockStatusResult {
 
 export interface LockOpenRecord {
   at: string; // ISO timestamp
-  method: string; // 'password' | 'fingerprint' | 'card' | 'app' | 'temporary_password' | ...
+  method: string; // 'password' | 'fingerprint' | 'card' | 'app' | 'temporary' | ...
+  /** Credential slot/index used (Tuya DP value), when reported. */
+  index?: number | null;
   user: string | null;
   raw: unknown;
 }

@@ -10,7 +10,7 @@
  *   GET    /api/locks/:id/status      — LIVE Tuya status (online/battery/last_seen)
  *                                       + persists to DB row for System Health
  *   GET    /api/locks/:id/events?page=&page_size=
- *                                     — LIVE Tuya open-records (recent unlocks)
+ *                                     — LIVE Tuya device-logs opening journal
  *
  * No writes to the lock itself — that's Phase 2 (PINs) and beyond.
  *
@@ -287,7 +287,7 @@ router.get("/:id/status", requireAuth, async (req, res) => {
   }
 });
 
-// ─── GET /locks/:id/events — LIVE Tuya open-records ──────────────────────────
+// ─── GET /locks/:id/events — LIVE Tuya device-logs opening journal ───────────
 
 router.get("/:id/events", requireAuth, async (req, res) => {
   const l = await loadLock(req.params.id);
@@ -316,8 +316,19 @@ router.get("/:id/events", requireAuth, async (req, res) => {
 
   try {
     const adapter = createLockAdapter(l);
-    const records = await adapter.listOpenRecords({ page, page_size });
-    res.json({ records, page, page_size, count: records.length });
+    // Tuya device-logs use cursor (row-key) paging, not page numbers, and the
+    // journal UI only shows the most-recent window. Serve page 1 as that window
+    // and report no further pages for page>1 (avoids duplicate rows).
+    const records = page === 1 ? await adapter.listOpenRecords({ page, page_size }) : [];
+    // Shape to what the dashboard journal expects (event_time/event_type/…).
+    const mapped = records.map((r, i) => ({
+      id: i,
+      event_time: r.at,
+      event_type: r.method,
+      event_id: r.index ?? undefined,
+      user_name: r.user,
+    }));
+    res.json({ records: mapped, page, page_size, count: mapped.length });
   } catch (err) {
     handleTuyaError(err, res);
   }
