@@ -79,6 +79,21 @@ function notApplicable(): LockSyncSummary {
   return { total: 0, succeeded: 0, failed: 0, results: [], overall_status: "not_applicable" };
 }
 
+/**
+ * Derive the Tuya smart-lock PIN from the 4-digit reservation PIN.
+ *
+ * Tuya Wi-Fi door locks using the ticket-based temp-password API require a
+ * password of EXACTLY 7 digits — a 4-digit PIN is rejected with error 2314
+ * ("password length incorrect"). Intercoms stay on 4 digits, so the lock gets
+ * a SEPARATE 7-digit code derived deterministically from the 4-digit PIN by
+ * repeating its digits (e.g. "1212" → "1212121"). Memorable for the guest,
+ * deterministic so the dashboard can display the same value, and revoke /
+ * device cross-reference stay keyed by provider_password_id (unaffected).
+ */
+export function deriveLockPin(pin4: string): string {
+  return pin4.repeat(2).slice(0, 7);
+}
+
 // ─── Public API ──────────────────────────────────────────────────────────────
 
 /**
@@ -125,14 +140,17 @@ export async function syncPinToLocks(
   const validFrom = reservation.pin_valid_from ?? reservation.check_in;
   const validTo   = reservation.pin_valid_to   ?? reservation.check_out;
 
+  // The intercom keeps the 4-digit PIN; the Tuya lock needs a 7-digit code
+  // (see deriveLockPin). This is the value actually pushed to the device.
+  const lockPin = deriveLockPin(reservation.pin_code);
+
   // Note: PIN is masked in logs — it's an access credential and must
   // not leak into long-lived log storage. Full PIN is only visible in
   // the dashboard / encrypted ledger.
-  const pinLen = reservation.pin_code.length;
   console.log(`[lock-sync] ──────────────────────────────────────────────────`);
   console.log(`[lock-sync] reservation=${reservation.id}  guest="${reservation.guest_name}"`);
   console.log(`[lock-sync] lock=${lock.name} (${lock.id})  protocol=${lock.protocol}`);
-  console.log(`[lock-sync] pin=******(len=${pinLen})  ${validFrom.toISOString()} → ${validTo.toISOString()}`);
+  console.log(`[lock-sync] pin=******(len=${lockPin.length})  ${validFrom.toISOString()} → ${validTo.toISOString()}`);
 
   // Defensive: revoke any prior active password for this reservation on
   // this lock — handles re-sync after PIN regen or date change.
@@ -142,7 +160,7 @@ export async function syncPinToLocks(
   try {
     const adapter = createLockAdapter(lock);
     const created = await adapter.createTempPassword({
-      pin:        reservation.pin_code,
+      pin:        lockPin,
       name:       reservation.guest_name,
       valid_from: validFrom,
       valid_to:   validTo,

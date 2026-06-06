@@ -261,7 +261,15 @@ export default function ReservationsPage() {
               <Card
                 key={r.id}
                 className="hover:border-primary/40 transition-colors cursor-pointer"
-                onClick={() => setSelectedRes(r)}
+                onClick={() => {
+                  // Show list data immediately, then hydrate with the detail
+                  // response which carries detail-only fields (access_window,
+                  // lock_pin_code). Guard against the user switching rows mid-fetch.
+                  setSelectedRes(r);
+                  qc.fetchQuery({ queryKey: ["reservation", r.id], queryFn: () => reservationsApi.get(r.id) })
+                    .then((full) => setSelectedRes((cur) => (cur?.id === full.id ? full : cur)))
+                    .catch(() => {});
+                }}
               >
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -561,6 +569,15 @@ function ReservationDetail({
             <div className="text-3xl font-mono font-bold tracking-[0.3em] text-foreground">{r.pin_code}</div>
           ) : (
             <div className="text-sm text-muted-foreground italic">{t("reservations.noPinSet")}</div>
+          )}
+          {r.lock_pin_code && (
+            <div className="rounded-md bg-background/60 border border-border px-3 py-2">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t("reservations.lockPinCode")}</span>
+                <span className="text-2xl font-mono font-bold tracking-[0.2em] text-foreground">{r.lock_pin_code}</span>
+              </div>
+              <div className="text-xs text-muted-foreground mt-1">{t("reservations.lockPinCodeHint")}</div>
+            </div>
           )}
           <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
             <div>

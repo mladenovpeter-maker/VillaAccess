@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { reservationsTable, reservationVehiclesTable, villasTable, vehiclesTable, intercomsTable } from "@workspace/db";
+import { reservationsTable, reservationVehiclesTable, villasTable, vehiclesTable, intercomsTable, smartLocksTable } from "@workspace/db";
 import { eq, and, inArray, desc } from "drizzle-orm";
 import { requireAuth } from "./auth";
 import { z } from "zod";
@@ -12,7 +12,7 @@ import {
   syncReservationStatus,
 } from "../lib/validation/reservation-validator";
 import { syncPinToIntercoms, revokePinFromIntercoms } from "../services/pin-sync";
-import { syncPinToLocks, revokePinFromLocks } from "../services/lock-sync";
+import { syncPinToLocks, revokePinFromLocks, deriveLockPin } from "../services/lock-sync";
 import { normaliseLicensePlate } from "./vehicles";
 import { isEmailConfigured, sendReservationEmail } from "../services/email";
 
@@ -71,6 +71,20 @@ async function enrichReservation(r: DbReservation, includeWindow = false) {
 
   const villa = villaRows[0] ?? null;
 
+  // Smart-lock code: the Tuya lock uses a 7-digit code derived from the
+  // 4-digit PIN (intercoms keep the 4-digit one). Only surfaced on the
+  // detail view (includeWindow) and only when the villa actually has a
+  // lock, so the operator can hand the guest the correct lock code.
+  let lockPinCode: string | null = null;
+  if (includeWindow && r.pin_code && /^\d{4}$/.test(r.pin_code)) {
+    const lockRows = await db
+      .select({ id: smartLocksTable.id })
+      .from(smartLocksTable)
+      .where(eq(smartLocksTable.villa_id, r.villa_id))
+      .limit(1);
+    if (lockRows[0]) lockPinCode = deriveLockPin(r.pin_code);
+  }
+
   return {
     id:              r.id,
     guest_name:      r.guest_name,
@@ -101,7 +115,7 @@ async function enrichReservation(r: DbReservation, includeWindow = false) {
       last_seen: v.last_seen, total_visits: v.total_visits, notes: v.notes,
     })),
     assigned_intercoms: intercoms,
-    ...(includeWindow ? { access_window: computeAccessWindow(r) } : {}),
+    ...(includeWindow ? { access_window: computeAccessWindow(r), lock_pin_code: lockPinCode } : {}),
   };
 }
 

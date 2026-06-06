@@ -158,6 +158,8 @@ const en = {
     guestDetail: "Guest Detail",
     accessCredentials: "Access Credentials",
     pinCode: "PIN Code",
+    lockPinCode: "Smart lock code",
+    lockPinCodeHint: "7-digit code for the villa's Tuya lock",
     validFrom: "Valid From",
     validTo: "Valid To",
     syncStatus: "Sync Status",

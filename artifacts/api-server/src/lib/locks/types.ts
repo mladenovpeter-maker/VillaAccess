@@ -43,7 +43,8 @@ export interface ListOpenRecordsOptions {
 }
 
 export interface CreateTempPasswordInput {
-  /** PIN as a numeric string. Tuya door locks accept 4 digits. */
+  /** PIN as a numeric string. Tuya Wi-Fi locks (ticket API) require exactly
+   *  7 digits — lock-sync derives this from the reservation's 4-digit PIN. */
   pin: string;
   /** Human-readable label shown in the Smart Life app. */
   name: string;

@@ -393,6 +393,7 @@ export interface Reservation {
   vehicles: Vehicle[];
   notes: string | null;
   pin_code: string | null;
+  lock_pin_code?: string | null;
   pin_valid_from: string | null;
   pin_valid_to: string | null;
   pin_sync_status: "pending" | "synced" | "failed" | "revoked" | "not_applicable";

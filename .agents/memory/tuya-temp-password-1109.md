@@ -64,3 +64,19 @@ UTC Docker container. Same code, different inputs.
 `[tuya.createTempPassword] device=… body=…` (password redacted). grep that line
 in `backend` logs right after a failed reservation; if it scrolled off, redo the
 reservation with `docker compose logs -f backend | grep -E "tuya.createTempPassword|lock-sync"`.
+
+## After 1109 is fixed: code 2314 "password length incorrect" → PIN must be 7 digits
+Once the AES-256 ticket-key crypto was correct, the SAME 4-digit reservation PIN
+flipped the error from 1109 → **2314 "password length incorrect"**. Tuya Wi-Fi
+door locks via the ticket-based temp-password API require the PIN to be **EXACTLY
+7 digits** (confirmed via 2 web searches; every official example is 7 digits,
+e.g. "1234567"; 4 and 8 both fail). The system generates 4-digit PINs everywhere
+(intercoms need 4).
+**Resolution (user-approved):** intercom keeps its 4-digit PIN; the Tuya lock
+gets a SEPARATE derived 7-digit code. `deriveLockPin(pin4) = pin4.repeat(2).slice(0,7)`
+("1212"→"1212121") — deterministic, injective over 4-digit inputs (output prefix =
+original 4 digits, so no collisions), preserves leading zeros. Only the value
+PUSHED to Tuya changes; revoke/cross-ref stay keyed by `provider_password_id`,
+not the PIN. The derived code is surfaced to operators on the reservation DETAIL
+view only (`lock_pin_code`, gated on villa having a smart lock). User said "8
+digits" but that's wrong for Tuya — it's 7.

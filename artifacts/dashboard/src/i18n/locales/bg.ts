@@ -158,6 +158,8 @@ const bg = {
     guestDetail: "Детайли за госта",
     accessCredentials: "Достъп с ПИН",
     pinCode: "ПИН код",
+    lockPinCode: "Код за умна ключалка",
+    lockPinCodeHint: "7-цифрен код за Tuya ключалката на вилата",
     validFrom: "Валиден от",
     validTo: "Валиден до",
     syncStatus: "Статус на синхронизация",
