@@ -130,8 +130,30 @@ workersRouter.put("/:id", async (req, res) => {
 });
 
 // ─── DELETE /workers/:id ──────────────────────────────────────────────────────
+// Soft-delete: sets active=false. Preserves audit trail and linked vehicles/rules.
+// Hard delete is available via DELETE /workers/:id/hard for explicit admin action.
 
 workersRouter.delete("/:id", async (req, res) => {
+  try {
+    const [row] = await db
+      .update(workersTable)
+      .set({ active: false, updated_at: new Date() })
+      .where(eq(workersTable.id, req.params.id))
+      .returning();
+
+    if (!row) return res.status(404).json({ detail: "Worker not found" });
+    res.status(204).send();
+  } catch (err) {
+    console.error("[workers] DELETE /:id", err);
+    res.status(500).json({ detail: "Failed to deactivate worker" });
+  }
+});
+
+// ─── DELETE /workers/:id/hard ─────────────────────────────────────────────────
+// Hard-delete: permanently removes the worker and all linked records (cascade).
+// Requires explicit admin intent. Use only for data correction, not deactivation.
+
+workersRouter.delete("/:id/hard", async (req, res) => {
   try {
     const [row] = await db
       .delete(workersTable)
@@ -141,7 +163,7 @@ workersRouter.delete("/:id", async (req, res) => {
     if (!row) return res.status(404).json({ detail: "Worker not found" });
     res.status(204).send();
   } catch (err) {
-    console.error("[workers] DELETE /:id", err);
+    console.error("[workers] DELETE /:id/hard", err);
     res.status(500).json({ detail: "Failed to delete worker" });
   }
 });

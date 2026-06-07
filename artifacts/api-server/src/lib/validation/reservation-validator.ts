@@ -15,8 +15,9 @@ import {
   workerVehiclesTable,
   accessRulesTable,
   shiftsTable,
+  workersTable,
 } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm";
 
 // ─── Shared types ─────────────────────────────────────────────────────────────
 
@@ -107,9 +108,9 @@ export async function validateVehicleAccess(
   }
 
   // 3. Worker-based access
-  // Find all workers this vehicle is linked to
+  // Find all vehicle→worker links
   const workerLinks = await db
-    .select()
+    .select({ worker_id: workerVehiclesTable.worker_id })
     .from(workerVehiclesTable)
     .where(eq(workerVehiclesTable.vehicle_id, vehicleId));
 
@@ -121,21 +122,40 @@ export async function validateVehicleAccess(
     };
   }
 
-  const workerIds = workerLinks.map((l) => l.worker_id);
+  const allWorkerIds = workerLinks.map((l) => l.worker_id);
+
+  // Require at least one ACTIVE worker — deactivated workers are denied
+  const activeWorkers = await db
+    .select({ id: workersTable.id })
+    .from(workersTable)
+    .where(and(inArray(workersTable.id, allWorkerIds), eq(workersTable.active, true)));
+
+  if (activeWorkers.length === 0) {
+    return {
+      allowed: false,
+      reason: "All linked workers are deactivated",
+      denial_code: "WORKER_INACTIVE",
+    };
+  }
+
+  const activeWorkerIds = activeWorkers.map((w) => w.id);
 
   // If no entrance context → grant (manual/dashboard check)
   if (!entranceId) {
     return { allowed: true, reason: "Worker vehicle (no entrance scope)" };
   }
 
-  // Check access rules for any of the linked workers at this entrance
-  const allRules = await db
+  // Check access rules for active workers at this entrance (SQL-filtered)
+  const matchingRules = await db
     .select()
-    .from(accessRulesTable);
-
-  const matchingRules = allRules.filter(
-    (r) => workerIds.includes(r.worker_id) && r.entrance_id === entranceId && r.active,
-  );
+    .from(accessRulesTable)
+    .where(
+      and(
+        inArray(accessRulesTable.worker_id, activeWorkerIds),
+        eq(accessRulesTable.entrance_id, entranceId),
+        eq(accessRulesTable.active, true),
+      ),
+    );
 
   if (matchingRules.length === 0) {
     return {
@@ -153,11 +173,10 @@ export async function validateVehicleAccess(
 
   // All matching rules have a shift — check if ANY shift is currently active
   const shiftIds = [...new Set(matchingRules.map((r) => r.shift_id!))];
-  const shifts = await db
+  const matchingShifts = await db
     .select()
-    .from(shiftsTable);
-
-  const matchingShifts = shifts.filter((s) => shiftIds.includes(s.id) && s.active);
+    .from(shiftsTable)
+    .where(and(inArray(shiftsTable.id, shiftIds), eq(shiftsTable.active, true)));
 
   for (const shift of matchingShifts) {
     if (isWithinShift(shift as any)) {
