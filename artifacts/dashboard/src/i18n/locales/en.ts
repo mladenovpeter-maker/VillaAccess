@@ -556,6 +556,8 @@ const en = {
     firstName: "First Name",
     lastName: "Last Name",
     employeeNumber: "Employee #",
+    badgeNo: "Badge Number",
+    photoUrl: "Photo URL",
     department: "Department",
     position: "Position",
     phone: "Phone",

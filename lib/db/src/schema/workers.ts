@@ -18,6 +18,8 @@ export const workersTable = pgTable(
       .$defaultFn(() => crypto.randomUUID()),
 
     employee_number: text("employee_number").unique(),
+    badge_no: text("badge_no").unique(),
+    photo_url: text("photo_url"),
     first_name: text("first_name").notNull(),
     last_name: text("last_name").notNull(),
     position: text("position"),
@@ -75,6 +77,7 @@ export const accessRulesTable = pgTable(
     worker_id: text("worker_id").notNull(),
     entrance_id: text("entrance_id").notNull(),
     shift_id: text("shift_id"),               // FK → shifts.id (nullable = 24/7)
+    active: boolean("active").notNull().default(true),
 
     created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   },

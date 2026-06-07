@@ -48,18 +48,24 @@ function timeToMinutes(hhmm: string): number {
 function isWithinShift(shift: { start_time: string; end_time: string; days_of_week: number[] }): boolean {
   const now = new Date();
   const day = now.getDay(); // 0=Sunday
+  const prevDay = (day + 6) % 7; // yesterday
   const currentMinutes = now.getHours() * 60 + now.getMinutes();
-
-  if (!shift.days_of_week.includes(day)) return false;
 
   const start = timeToMinutes(shift.start_time);
   const end = timeToMinutes(shift.end_time);
 
-  // Handle overnight shifts (e.g. 22:00 – 06:00)
   if (end < start) {
-    return currentMinutes >= start || currentMinutes < end;
+    // Overnight shift (e.g. Mon 22:00 – Tue 06:00):
+    //   before midnight → current day must be in days_of_week AND time >= start
+    //   after midnight  → PREVIOUS day must be in days_of_week AND time < end
+    return (
+      (shift.days_of_week.includes(day) && currentMinutes >= start) ||
+      (shift.days_of_week.includes(prevDay) && currentMinutes < end)
+    );
   }
-  return currentMinutes >= start && currentMinutes < end;
+
+  // Normal shift: today must be listed AND time is within window
+  return shift.days_of_week.includes(day) && currentMinutes >= start && currentMinutes < end;
 }
 
 // ─── Core access validator ────────────────────────────────────────────────────
@@ -128,7 +134,7 @@ export async function validateVehicleAccess(
     .from(accessRulesTable);
 
   const matchingRules = allRules.filter(
-    (r) => workerIds.includes(r.worker_id) && r.entrance_id === entranceId,
+    (r) => workerIds.includes(r.worker_id) && r.entrance_id === entranceId && r.active,
   );
 
   if (matchingRules.length === 0) {

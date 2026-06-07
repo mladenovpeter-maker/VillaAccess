@@ -73,10 +73,10 @@ accessRulesRouter.post("/", async (req, res) => {
 
     const [row] = await db
       .insert(accessRulesTable)
-      .values({ worker_id, entrance_id, shift_id: shift_id ?? null })
+      .values({ worker_id, entrance_id, shift_id: shift_id ?? null, active: true })
       .onConflictDoUpdate({
         target: [accessRulesTable.worker_id, accessRulesTable.entrance_id],
-        set: { shift_id: shift_id ?? null },
+        set: { shift_id: shift_id ?? null, active: true },
       })
       .returning();
 
@@ -84,6 +84,41 @@ accessRulesRouter.post("/", async (req, res) => {
   } catch (err) {
     console.error("[access-rules] POST /", err);
     res.status(500).json({ detail: "Failed to create access rule" });
+  }
+});
+
+// ─── PATCH /access-rules/:id ──────────────────────────────────────────────────
+// Toggle or update fields on an existing rule (e.g. active=false to disable).
+
+const patchSchema = z.object({
+  active: z.boolean().optional(),
+  shift_id: z.string().nullable().optional(),
+});
+
+accessRulesRouter.patch("/:id", async (req, res) => {
+  try {
+    const parse = patchSchema.safeParse(req.body);
+    if (!parse.success) return res.status(400).json({ detail: parse.error.issues[0]?.message });
+
+    const updates: Record<string, unknown> = {};
+    if (parse.data.active !== undefined) updates["active"] = parse.data.active;
+    if (parse.data.shift_id !== undefined) updates["shift_id"] = parse.data.shift_id;
+
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({ detail: "No fields to update" });
+    }
+
+    const [row] = await db
+      .update(accessRulesTable)
+      .set(updates as any)
+      .where(eq(accessRulesTable.id, req.params.id))
+      .returning();
+
+    if (!row) return res.status(404).json({ detail: "Access rule not found" });
+    res.json(row);
+  } catch (err) {
+    console.error("[access-rules] PATCH /:id", err);
+    res.status(500).json({ detail: "Failed to update access rule" });
   }
 });
 

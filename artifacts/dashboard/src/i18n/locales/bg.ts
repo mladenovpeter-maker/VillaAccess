@@ -556,6 +556,8 @@ const bg = {
     firstName: "Собствено Име",
     lastName: "Фамилия",
     employeeNumber: "Служебен №",
+    badgeNo: "Номер на значка",
+    photoUrl: "Снимка (URL)",
     department: "Отдел",
     position: "Длъжност",
     phone: "Телефон",

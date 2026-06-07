@@ -39,6 +39,7 @@ interface AccessRule {
   worker_id: string;
   entrance_id: string;
   shift_id: string | null;
+  active: boolean;
   worker?: Worker;
   shift?: Shift | null;
 }
@@ -65,7 +66,7 @@ function MatrixCell({
   loading: boolean;
 }) {
   const { t } = useTranslation();
-  const hasAccess = !!rule;
+  const hasAccess = !!rule && rule.active;
 
   return (
     <td className="px-2 py-2 text-center align-middle">
@@ -176,7 +177,8 @@ export default function AccessMatrixPage() {
     setLoading(key, true);
     try {
       if (existing) {
-        await api.delete(`/access-rules/by-pair/${workerId}/${entranceId}`);
+        // Non-destructive: flip active flag instead of deleting the rule
+        await api.patch(`/access-rules/${existing.id}`, { active: !existing.active });
       } else {
         await api.post("/access-rules", { worker_id: workerId, entrance_id: entranceId, shift_id: null });
       }

@@ -15,6 +15,8 @@ export const workersRouter = Router();
 
 const workerBodySchema = z.object({
   employee_number: z.string().optional().nullable(),
+  badge_no: z.string().optional().nullable(),
+  photo_url: z.string().optional().nullable(),
   first_name: z.string().min(1),
   last_name: z.string().min(1),
   position: z.string().optional().nullable(),

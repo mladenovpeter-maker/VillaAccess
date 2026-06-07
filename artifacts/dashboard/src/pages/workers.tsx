@@ -31,6 +31,8 @@ import type { Vehicle } from "@/lib/api";
 interface Worker {
   id: string;
   employee_number: string | null;
+  badge_no: string | null;
+  photo_url: string | null;
   first_name: string;
   last_name: string;
   position: string | null;
@@ -45,6 +47,8 @@ interface Worker {
 
 interface WorkerForm {
   employee_number: string;
+  badge_no: string;
+  photo_url: string;
   first_name: string;
   last_name: string;
   position: string;
@@ -56,7 +60,8 @@ interface WorkerForm {
 }
 
 const defaultForm: WorkerForm = {
-  employee_number: "", first_name: "", last_name: "",
+  employee_number: "", badge_no: "", photo_url: "",
+  first_name: "", last_name: "",
   position: "", department: "", phone: "", email: "",
   active: true, notes: "",
 };
@@ -75,6 +80,8 @@ function WorkerDialog({ open, onClose, worker }: { open: boolean; onClose: () =>
     if (!open) return;
     setForm(worker ? {
       employee_number: worker.employee_number ?? "",
+      badge_no: worker.badge_no ?? "",
+      photo_url: worker.photo_url ?? "",
       first_name: worker.first_name,
       last_name: worker.last_name,
       position: worker.position ?? "",
@@ -92,6 +99,8 @@ function WorkerDialog({ open, onClose, worker }: { open: boolean; onClose: () =>
     mutationFn: async () => {
       const body = {
         employee_number: form.employee_number || null,
+        badge_no: form.badge_no || null,
+        photo_url: form.photo_url || null,
         first_name: form.first_name,
         last_name: form.last_name,
         position: form.position || null,
@@ -137,23 +146,33 @@ function WorkerDialog({ open, onClose, worker }: { open: boolean; onClose: () =>
               <Input value={form.employee_number} onChange={(e) => set("employee_number", e.target.value)} />
             </div>
             <div className="space-y-1.5">
-              <Label>{t("workers.department")}</Label>
-              <Input value={form.department} onChange={(e) => set("department", e.target.value)} />
+              <Label>{t("workers.badgeNo")}</Label>
+              <Input value={form.badge_no} onChange={(e) => set("badge_no", e.target.value)} />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
+              <Label>{t("workers.department")}</Label>
+              <Input value={form.department} onChange={(e) => set("department", e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
               <Label>{t("workers.position")}</Label>
               <Input value={form.position} onChange={(e) => set("position", e.target.value)} />
             </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label>{t("workers.phone")}</Label>
               <Input value={form.phone} onChange={(e) => set("phone", e.target.value)} />
             </div>
+            <div className="space-y-1.5">
+              <Label>{t("workers.email")}</Label>
+              <Input type="email" value={form.email} onChange={(e) => set("email", e.target.value)} />
+            </div>
           </div>
           <div className="space-y-1.5">
-            <Label>{t("workers.email")}</Label>
-            <Input type="email" value={form.email} onChange={(e) => set("email", e.target.value)} />
+            <Label>{t("workers.photoUrl")}</Label>
+            <Input value={form.photo_url} placeholder="https://…" onChange={(e) => set("photo_url", e.target.value)} />
           </div>
           <div className="space-y-1.5">
             <Label>{t("common.notes")}</Label>
@@ -303,6 +322,7 @@ function WorkerDetailDialog({ worker, onClose }: { worker: Worker | null; onClos
               <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
                 {[
                   [t("workers.employeeNumber"), worker.employee_number],
+                  [t("workers.badgeNo"), worker.badge_no],
                   [t("workers.department"), worker.department],
                   [t("workers.position"), worker.position],
                   [t("workers.phone"), worker.phone],
