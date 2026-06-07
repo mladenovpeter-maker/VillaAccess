@@ -80,3 +80,9 @@ PUSHED to Tuya changes; revoke/cross-ref stay keyed by `provider_password_id`,
 not the PIN. The derived code is surfaced to operators on the reservation DETAIL
 view only (`lock_pin_code`, gated on villa having a smart lock). User said "8
 digits" but that's wrong for Tuya — it's 7.
+**CONFIRMED working in prod** (lock `bf56a0fe51239d19aeelmi`, guest "popo"):
+`createTempPassword` succeeded on the FIRST try with `unit=s` (epoch seconds, no
+ms retry needed for this model) and returned a `provider_password_id` — i.e. Tuya
+accepted the 7-digit code. So for these villa locks the timestamp unit is SECONDS.
+Remaining unverified: that the code physically opens the door during the window
+(API-accept ≠ physical unlock), but the long 1109/2314 saga is resolved.
