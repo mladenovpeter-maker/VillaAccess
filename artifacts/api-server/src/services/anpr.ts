@@ -428,8 +428,9 @@ export async function handleAnprDetection(
   let vehicle_id: string | null = existing[0]?.id ?? null;
 
   // ── 4. Validate via single source of truth ───────────────────────────────
+  const entranceCtx = camera.entrance_id ? [camera.entrance_id] : [];
   let decision = vehicle_id
-    ? await validateVehicleAccessMulti(vehicle_id)
+    ? await validateVehicleAccessMulti(vehicle_id, entranceCtx)
     : {
         allowed: false,
         reason: "No reservation found for this vehicle",
@@ -503,7 +504,7 @@ export async function handleAnprDetection(
     }
 
     if (best) {
-      const partialDecision = await validateVehicleAccessMulti(best.id);
+      const partialDecision = await validateVehicleAccessMulti(best.id, entranceCtx);
       if (partialDecision.allowed) {
         decision = partialDecision;
         vehicle_id = best.id;
