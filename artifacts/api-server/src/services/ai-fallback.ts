@@ -698,7 +698,10 @@ async function runAiFallback(
     if (!vehicle_id) {
       outcome = "denied_unknown_vehicle";
     } else {
-      const decision = await validateVehicleAccessMulti(vehicle_id);
+      const decision = await validateVehicleAccessMulti(
+        vehicle_id,
+        camera.entrance_id ? [camera.entrance_id] : [],
+      );
       decision_reason = decision.reason ?? null;
       if (!decision.allowed) {
         outcome = "denied_no_reservation";
