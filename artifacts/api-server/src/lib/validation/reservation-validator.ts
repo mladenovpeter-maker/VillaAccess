@@ -1,21 +1,24 @@
 /**
- * Vehicle access validator — MakmetalAccess (Phase 1).
+ * Vehicle access validator — MakmetalAccess (Phase 2).
  *
- * Reservations and villas have been removed. Access policy is now:
- *   - Blacklisted vehicles → always denied.
- *   - Permanent-access vehicles (staff/worker) → always allowed.
- *   - All other vehicles → denied (NO_REGISTRATION).
- *
- * Phase 2 will introduce role-based access matrix keyed on entrance
- * access_level. The exported function signatures are intentionally
- * kept compatible so callers (anpr.ts, ai-fallback.ts) need no changes.
+ * Access policy (in priority order):
+ *   1. Blacklisted vehicles → always denied.
+ *   2. Permanent-access vehicles (staff/owner) → always allowed.
+ *   3. Vehicle linked to a worker → check access_rules for this worker+entrance.
+ *      If a shift is attached to the rule, verify current time/day.
+ *   4. All other vehicles → denied (NO_REGISTRATION).
  */
 
 import { db } from "@workspace/db";
-import { vehiclesTable } from "@workspace/db";
+import {
+  vehiclesTable,
+  workerVehiclesTable,
+  accessRulesTable,
+  shiftsTable,
+} from "@workspace/db";
 import { eq } from "drizzle-orm";
 
-// ─── Shared types (kept compatible with previous callers) ─────────────────────
+// ─── Shared types ─────────────────────────────────────────────────────────────
 
 export interface ValidationError {
   field: string;
@@ -35,16 +38,35 @@ export interface AccessDecision {
   denial_code?: string;
 }
 
+// ─── Shift helpers ────────────────────────────────────────────────────────────
+
+function timeToMinutes(hhmm: string): number {
+  const [h, m] = hhmm.split(":").map(Number);
+  return (h ?? 0) * 60 + (m ?? 0);
+}
+
+function isWithinShift(shift: { start_time: string; end_time: string; days_of_week: number[] }): boolean {
+  const now = new Date();
+  const day = now.getDay(); // 0=Sunday
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+  if (!shift.days_of_week.includes(day)) return false;
+
+  const start = timeToMinutes(shift.start_time);
+  const end = timeToMinutes(shift.end_time);
+
+  // Handle overnight shifts (e.g. 22:00 – 06:00)
+  if (end < start) {
+    return currentMinutes >= start || currentMinutes < end;
+  }
+  return currentMinutes >= start && currentMinutes < end;
+}
+
 // ─── Core access validator ────────────────────────────────────────────────────
 
-/**
- * Decide whether a vehicle may pass through.
- * villaId / villaIds parameters are accepted for call-site compatibility
- * but are not used in Phase 1 (no reservation scope).
- */
 export async function validateVehicleAccess(
   vehicleId: string,
-  _villaId?: string,
+  entranceId?: string,
 ): Promise<AccessDecision> {
   const rows = await db
     .select()
@@ -61,6 +83,7 @@ export async function validateVehicleAccess(
     };
   }
 
+  // 1. Blacklist check
   if (vehicle.status === "blacklisted") {
     return {
       allowed: false,
@@ -69,6 +92,7 @@ export async function validateVehicleAccess(
     };
   }
 
+  // 2. Permanent-access bypass
   if ((vehicle as any).access_type === "permanent") {
     return {
       allowed: true,
@@ -76,28 +100,86 @@ export async function validateVehicleAccess(
     };
   }
 
+  // 3. Worker-based access
+  // Find all workers this vehicle is linked to
+  const workerLinks = await db
+    .select()
+    .from(workerVehiclesTable)
+    .where(eq(workerVehiclesTable.vehicle_id, vehicleId));
+
+  if (workerLinks.length === 0) {
+    return {
+      allowed: false,
+      reason: "Vehicle is not registered for access",
+      denial_code: "NO_REGISTRATION",
+    };
+  }
+
+  const workerIds = workerLinks.map((l) => l.worker_id);
+
+  // If no entrance context → grant (manual/dashboard check)
+  if (!entranceId) {
+    return { allowed: true, reason: "Worker vehicle (no entrance scope)" };
+  }
+
+  // Check access rules for any of the linked workers at this entrance
+  const allRules = await db
+    .select()
+    .from(accessRulesTable);
+
+  const matchingRules = allRules.filter(
+    (r) => workerIds.includes(r.worker_id) && r.entrance_id === entranceId,
+  );
+
+  if (matchingRules.length === 0) {
+    return {
+      allowed: false,
+      reason: "No access rule for this worker at this entrance",
+      denial_code: "NO_ACCESS_RULE",
+    };
+  }
+
+  // Any rule without a shift = 24/7 access → immediate allow
+  const unrestricted = matchingRules.find((r) => !r.shift_id);
+  if (unrestricted) {
+    return { allowed: true, reason: "Worker access — unrestricted" };
+  }
+
+  // All matching rules have a shift — check if ANY shift is currently active
+  const shiftIds = [...new Set(matchingRules.map((r) => r.shift_id!))];
+  const shifts = await db
+    .select()
+    .from(shiftsTable);
+
+  const matchingShifts = shifts.filter((s) => shiftIds.includes(s.id) && s.active);
+
+  for (const shift of matchingShifts) {
+    if (isWithinShift(shift as any)) {
+      return { allowed: true, reason: `Worker access — shift: ${shift.name}` };
+    }
+  }
+
   return {
     allowed: false,
-    reason: "Vehicle is not registered for access",
-    denial_code: "NO_REGISTRATION",
+    reason: "Outside of allowed shift hours",
+    denial_code: "OUTSIDE_SHIFT",
   };
 }
 
 /**
- * Multi-villa variant — kept for ANPR / AI-fallback compatibility.
- * In Phase 1 the villaIds array is ignored; access is determined solely by
- * vehicle status (blacklist / permanent).
+ * Multi-entrance variant — kept for ANPR / AI-fallback compatibility.
+ * Passes the first entrance ID if provided.
  */
 export async function validateVehicleAccessMulti(
   vehicleId: string,
-  _villaIds: string[] = [],
+  entranceIds: string[] = [],
 ): Promise<AccessDecision & { matched_villa_id?: string | null }> {
-  const decision = await validateVehicleAccess(vehicleId);
+  const entranceId = entranceIds[0];
+  const decision = await validateVehicleAccess(vehicleId, entranceId);
   return { ...decision, matched_villa_id: null };
 }
 
 // ─── Stub validators kept for import compatibility ────────────────────────────
-// (reservation routes are gone but other files may import these names)
 
 export async function validateVehicles(
   vehicleIds: string[],
@@ -107,9 +189,7 @@ export async function validateVehicles(
   const errors: ValidationError[] = [];
   const warnings: string[] = [];
 
-  const vehicles = await db
-    .select()
-    .from(vehiclesTable);
+  const vehicles = await db.select().from(vehiclesTable);
 
   const found = new Set(vehicles.map((v) => v.id));
   for (const id of vehicleIds) {

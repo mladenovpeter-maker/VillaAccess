@@ -536,6 +536,81 @@ export interface PaginatedDomainEvents {
   page_size: number;
 }
 
+// ─── Workers API ──────────────────────────────────────────────────────────────
+
+export interface Worker {
+  id: string;
+  employee_number: string | null;
+  first_name: string;
+  last_name: string;
+  position: string | null;
+  department: string | null;
+  phone: string | null;
+  email: string | null;
+  active: boolean;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Shift {
+  id: string;
+  name: string;
+  start_time: string;
+  end_time: string;
+  days_of_week: number[];
+  active: boolean;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AccessRule {
+  id: string;
+  worker_id: string;
+  entrance_id: string;
+  shift_id: string | null;
+  worker?: Worker;
+  shift?: Shift | null;
+  created_at: string;
+}
+
+export const workersApi = {
+  list: (params?: { search?: string; active?: boolean }) => {
+    const q = new URLSearchParams(params as Record<string, string>).toString();
+    return api.get<Worker[]>(`/workers${q ? "?" + q : ""}`);
+  },
+  get: (id: string) => api.get<Worker>(`/workers/${id}`),
+  create: (body: Partial<Worker>) => api.post<Worker>("/workers", body),
+  update: (id: string, body: Partial<Worker>) => api.put<Worker>(`/workers/${id}`, body),
+  delete: (id: string) => api.delete(`/workers/${id}`),
+  vehicles: (id: string) => api.get<Vehicle[]>(`/workers/${id}/vehicles`),
+  linkVehicle: (id: string, vehicle_id: string) => api.post(`/workers/${id}/vehicles`, { vehicle_id }),
+  unlinkVehicle: (id: string, vehicleId: string) => api.delete(`/workers/${id}/vehicles/${vehicleId}`),
+  accessRules: (id: string) => api.get<AccessRule[]>(`/workers/${id}/access-rules`),
+};
+
+export const shiftsApi = {
+  list: () => api.get<Shift[]>("/shifts"),
+  get: (id: string) => api.get<Shift>(`/shifts/${id}`),
+  create: (body: Partial<Shift>) => api.post<Shift>("/shifts", body),
+  update: (id: string, body: Partial<Shift>) => api.put<Shift>(`/shifts/${id}`, body),
+  delete: (id: string) => api.delete(`/shifts/${id}`),
+};
+
+export const accessRulesApi = {
+  list: (params?: { worker_id?: string; entrance_id?: string }) => {
+    const q = new URLSearchParams(params as Record<string, string>).toString();
+    return api.get<AccessRule[]>(`/access-rules${q ? "?" + q : ""}`);
+  },
+  matrix: () => api.get<AccessRule[]>("/access-rules/matrix"),
+  create: (body: { worker_id: string; entrance_id: string; shift_id?: string | null }) =>
+    api.post<AccessRule>("/access-rules", body),
+  delete: (id: string) => api.delete(`/access-rules/${id}`),
+  deleteByPair: (workerId: string, entranceId: string) =>
+    api.delete(`/access-rules/by-pair/${workerId}/${entranceId}`),
+};
+
 export const eventsApi = {
   streamUrl: (token: string, category?: string): string => {
     const base = import.meta.env.BASE_URL.replace(/\/$/, "") + "/api";

@@ -20,6 +20,10 @@ DROP TABLE IF EXISTS temp_credentials;
 -- 6. reservations references villas
 DROP TABLE IF EXISTS reservations;
 
+-- 6b. Drop the entrances.villa_id FK column BEFORE dropping villas
+--     (entrances has a FK constraint to villas that must go first)
+ALTER TABLE IF EXISTS entrances DROP COLUMN IF EXISTS villa_id;
+
 -- 7. villas — nothing left references it
 DROP TABLE IF EXISTS villas;
 

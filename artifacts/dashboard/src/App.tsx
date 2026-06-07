@@ -23,6 +23,9 @@ import TimelinePage from "@/pages/timeline";
 import ExportPage from "@/pages/export";
 import UsersPage from "@/pages/users";
 import AiUsagePage from "@/pages/ai-usage";
+import WorkersPage from "@/pages/workers";
+import ShiftsPage from "@/pages/shifts";
+import AccessMatrixPage from "@/pages/access-matrix";
 
 type Role = "admin" | "operator" | "viewer";
 
@@ -85,6 +88,9 @@ function Router() {
       <Route path="/export"         component={() => <ProtectedRoute component={ExportPage}         roles={adminOnly} />} />
       <Route path="/settings"       component={() => <ProtectedRoute component={SettingsPage}       roles={adminOnly} />} />
       <Route path="/users"          component={() => <ProtectedRoute component={UsersPage}          roles={adminOnly} />} />
+      <Route path="/workers"        component={() => <ProtectedRoute component={WorkersPage}        roles={opOrAbove} />} />
+      <Route path="/shifts"         component={() => <ProtectedRoute component={ShiftsPage}         roles={adminOnly} />} />
+      <Route path="/access-matrix"  component={() => <ProtectedRoute component={AccessMatrixPage}   roles={adminOnly} />} />
       <Route path="/ai-usage"       component={() => <ProtectedRoute component={AiUsagePage}        roles={adminOnly} />} />
       <Route path="/mock"           component={() => <ProtectedRoute component={MockPage}           roles={adminOnly} />} />
 

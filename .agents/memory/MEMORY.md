@@ -15,3 +15,5 @@
 - [tsc project-reference noise](tsc-project-reference-noise.md) — standalone `tsc --noEmit` floods false "@workspace/db has no exported member"; trust esbuild dev build + runtime smoke test, not the noise
 - [Self-hosted notifications](self-hosted-notifications.md) — guest email/outbound uses self-hosted SMTP via .env.docker (nodemailer), NOT Replit integrations; app runs on user's Docker, not Replit.
 - [Tuya PIN verification](tuya-pin-verification.md) — reconcile adapter.listTempPasswords() (device) vs smart_lock_passwords ledger; active-in-ledger-but-absent-on-device = guest locked out.
+- [Phase 2 worker access schema](phase2-worker-access.md) — workers/shifts/access_rules/worker_vehicles tables added in migration 0022; "reservation" access_type = worker-based (check access_rules), "permanent" = bypass; shift check handles overnight.
+- [Migration FK ordering](migration-fk-ordering.md) — always drop FK columns on referencing tables BEFORE dropping the referenced table; 0021 had villas dropped before entrances.villa_id → fixed by adding ALTER TABLE DROP COLUMN before DROP TABLE.
