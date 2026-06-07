@@ -39,12 +39,9 @@ import { db } from "@workspace/db";
 import {
   vehiclesTable,
   accessEventsTable,
-  villaEntrancesTable,
-  reservationsTable,
-  reservationVehiclesTable,
   camerasTable,
 } from "@workspace/db";
-import { eq, and, inArray, lte, gte, ne } from "drizzle-orm";
+import { eq, and, ne } from "drizzle-orm";
 import { validateVehicleAccessMulti } from "../lib/validation/reservation-validator";
 import { createAdapter, type CameraRow } from "../lib/cameras/factory";
 import { eventBus } from "../lib/events";
@@ -494,31 +491,12 @@ function plateSimilarityPct(a: string, b: string): number {
 }
 
 async function getExpectedPlatesForCamera(
-  camera: AiFallbackCamera,
+  _camera: AiFallbackCamera,
 ): Promise<string[]> {
-  // Resolve villa scope from the camera's entrance.
-  let entranceId = camera.entrance_id;
-  if (!entranceId) {
-    const rows = await db
-      .select({ entrance_id: camerasTable.entrance_id })
-      .from(camerasTable)
-      .where(eq(camerasTable.id, camera.id))
-      .limit(1);
-    entranceId = rows[0]?.entrance_id ?? null;
-  }
-  let villaIds: string[] = [];
-  if (entranceId) {
-    const rows = await db
-      .select({ villa_id: villaEntrancesTable.villa_id })
-      .from(villaEntrancesTable)
-      .where(eq(villaEntrancesTable.entrance_id, entranceId));
-    villaIds = rows.map((r) => r.villa_id);
-  }
-
+  // Phase 1: no reservations. Only permanent-access vehicles are expected.
+  // The similarity gate compares OCR reads against this list to avoid
+  // wasting OpenAI tokens on unknown vehicles passing by.
   const plates = new Set<string>();
-
-  // Permanent-access vehicles (staff/owner/maintenance) — global scope,
-  // always allowed regardless of camera/villa.
   const permRows = await db
     .select({ plate: vehiclesTable.license_plate })
     .from(vehiclesTable)
@@ -529,40 +507,6 @@ async function getExpectedPlatesForCamera(
       ),
     );
   for (const r of permRows) if (r.plate) plates.add(r.plate);
-
-  // Vehicles tied to a reservation whose access window contains "now",
-  // scoped to the camera's villa(s). Window is [check_in − 1h, check_out +
-  // 1h] to match the validator's grace period (CHECKIN_GRACE_MS /
-  // CHECKOUT_GRACE_MS in reservation-validator.ts). Status must be active
-  // OR upcoming (upcoming reservations enter their grace before the start
-  // status flip; cancelled/completed are excluded).
-  if (villaIds.length > 0) {
-    const GRACE_MS = 60 * 60 * 1000; // 1h, mirrors validator
-    const checkInBoundary = new Date(Date.now() + GRACE_MS);   // check_in <= now + 1h
-    const checkOutBoundary = new Date(Date.now() - GRACE_MS);  // check_out >= now - 1h
-    const resRows = await db
-      .select({ plate: vehiclesTable.license_plate })
-      .from(reservationVehiclesTable)
-      .innerJoin(
-        reservationsTable,
-        eq(reservationVehiclesTable.reservation_id, reservationsTable.id),
-      )
-      .innerJoin(
-        vehiclesTable,
-        eq(reservationVehiclesTable.vehicle_id, vehiclesTable.id),
-      )
-      .where(
-        and(
-          inArray(reservationsTable.villa_id, villaIds),
-          ne(vehiclesTable.status, "blacklisted"),
-          inArray(reservationsTable.status, ["active", "upcoming"]),
-          lte(reservationsTable.check_in, checkInBoundary),
-          gte(reservationsTable.check_out, checkOutBoundary),
-        ),
-      );
-    for (const r of resRows) if (r.plate) plates.add(r.plate);
-  }
-
   return [...plates];
 }
 
@@ -693,21 +637,10 @@ async function runAiFallback(
     JSON.stringify(verdict),
   );
 
-  // Resolve villa scope for this camera's entrance.
-  let villa_ids: string[] = [];
-  if (camera.entrance_id) {
-    const rows = await db
-      .select({ villa_id: villaEntrancesTable.villa_id })
-      .from(villaEntrancesTable)
-      .where(eq(villaEntrancesTable.entrance_id, camera.entrance_id));
-    villa_ids = rows.map((r) => r.villa_id);
-  }
-
   type Outcome =
     | "no_plate"
     | "ignored_low_confidence"
     | "denied_unknown_vehicle"
-    | "denied_no_villa_scope"
     | "denied_no_reservation"
     | "allowed_relay_ok"
     | "allowed_relay_failed";
@@ -723,8 +656,6 @@ async function runAiFallback(
     outcome = "no_plate";
   } else if (verdict.confidence < AI_CONFIDENCE_MIN) {
     outcome = "ignored_low_confidence";
-  } else if (villa_ids.length === 0) {
-    outcome = "denied_no_villa_scope";
   } else {
     // Look up vehicle by AI plate (NO auto-create — same policy as anpr.ts).
     const existing = await db
@@ -735,10 +666,7 @@ async function runAiFallback(
     vehicle_id = existing[0]?.id ?? null;
 
     // Fuzzy fallback: OpenAI can drop/add 1 char. If exact lookup failed,
-    // compare verdict.plate against the same expected-plates list used by
-    // the similarity gate, and adopt the best match if it clears the
-    // high-confidence fuzzy threshold. This is scoped to the camera's
-    // villas, so it cannot match an unrelated plate.
+    // compare verdict.plate against the same expected-plates list.
     if (!vehicle_id && AI_PLATE_FUZZY_MIN > 0) {
       const expected = await getExpectedPlatesForCamera(camera);
       let bestPlate: string | null = null;
@@ -770,7 +698,7 @@ async function runAiFallback(
     if (!vehicle_id) {
       outcome = "denied_unknown_vehicle";
     } else {
-      const decision = await validateVehicleAccessMulti(vehicle_id, villa_ids);
+      const decision = await validateVehicleAccessMulti(vehicle_id);
       decision_reason = decision.reason ?? null;
       if (!decision.allowed) {
         outcome = "denied_no_reservation";

@@ -93,7 +93,6 @@ async function request<T>(
 ): Promise<T> {
   let token = tokenStore.getAccess();
 
-  // Proactively refresh if token is expiring within 60 seconds
   if (token && isTokenExpiredOrSoon(token)) {
     token = await refreshAccessToken();
   }
@@ -112,7 +111,6 @@ async function request<T>(
     },
   });
 
-  // 401 → try refresh once, then give up
   if (res.status === 401 && _retry && path !== "/auth/refresh") {
     const newToken = await refreshAccessToken();
     if (newToken) return request<T>(path, options, false);
@@ -194,39 +192,6 @@ export const dashboardApi = {
   },
 };
 
-export const villasApi = {
-  list: () => api.get<Villa[]>("/villas"),
-  get: (id: string) => api.get<Villa>(`/villas/${id}`),
-  create: (body: Partial<Villa>) => api.post<Villa>("/villas", body),
-  update: (id: string, body: Partial<Villa>) =>
-    api.put<Villa>(`/villas/${id}`, body),
-};
-
-export const reservationsApi = {
-  list: (params?: { status?: string; villa_id?: string }) => {
-    const q = new URLSearchParams(
-      params as Record<string, string>
-    ).toString();
-    return api.get<Reservation[]>(`/reservations${q ? "?" + q : ""}`);
-  },
-  get: (id: string) => api.get<Reservation>(`/reservations/${id}`),
-  create: (body: Partial<Reservation>) =>
-    api.post<Reservation>("/reservations", body),
-  update: (id: string, body: Partial<Reservation>) =>
-    api.put<Reservation>(`/reservations/${id}`, body),
-  delete: (id: string) => api.delete(`/reservations/${id}`),
-  checkIn:  (id: string) => api.post<Reservation>(`/reservations/${id}/check-in`, {}),
-  checkOut: (id: string) => api.post<Reservation>(`/reservations/${id}/check-out`, {}),
-  cancel:   (id: string, reason?: string) => api.post<Reservation>(`/reservations/${id}/cancel`, { reason }),
-  regeneratePin: (id: string) => api.post<Reservation & { sync_result: unknown }>(`/reservations/${id}/regenerate-pin`, {}),
-  forceSync:     (id: string) => api.post<Reservation & { sync_result: unknown }>(`/reservations/${id}/force-sync`, {}),
-  revokePin:     (id: string) => api.post<Reservation & { sync_result: unknown }>(`/reservations/${id}/revoke-pin`, {}),
-  accessWindow:  (id: string) => api.get(`/reservations/${id}/access-window`),
-  emailStatus:   () => api.get<{ configured: boolean }>(`/reservations/email-status`),
-  sendEmail:     (id: string, lang: "bg" | "en") =>
-    api.post<{ ok: boolean; sent_to: string }>(`/reservations/${id}/send-email`, { lang }),
-};
-
 export const vehiclesApi = {
   list: (params?: { status?: string; search?: string }) => {
     const q = new URLSearchParams(
@@ -283,24 +248,6 @@ export const entrancesApi = {
   delete: (id: string) => api.delete(`/entrances/${id}`),
 };
 
-export const smartLocksApi = {
-  list:   () => api.get<SmartLock[]>("/locks"),
-  get:    (id: string) => api.get<SmartLock>(`/locks/${id}`),
-  create: (body: Partial<SmartLock> & { name: string; tuya_device_id?: string | null; villa_id?: string | null; protocol?: "tuya" }) =>
-            api.post<SmartLock>("/locks", body),
-  update: (id: string, body: Partial<Pick<SmartLock, "name" | "villa_id" | "tuya_device_id">>) =>
-            api.patch<SmartLock>(`/locks/${id}`, body),
-  delete: (id: string) => api.delete(`/locks/${id}`),
-  status: (id: string) =>
-            api.get<{ online: boolean; battery_pct: number | null; last_seen_at: string | null; latency_ms: number }>(`/locks/${id}/status`),
-  events: (id: string, page = 1, page_size = 20) =>
-            api.get<{ records: SmartLockEvent[]; page: number; page_size: number; count: number }>(
-              `/locks/${id}/events?page=${page}&page_size=${page_size}`,
-            ),
-  passwords: (id: string) =>
-            api.get<SmartLockPasswordsResponse>(`/locks/${id}/passwords`),
-};
-
 export const intercomsApi = {
   list: () => api.get<Intercom[]>("/intercoms"),
   get: (id: string) => api.get<Intercom>(`/intercoms/${id}`),
@@ -320,7 +267,6 @@ export const camerasApi = {
   update: (id: string, data: Partial<Camera>) =>
     api.patch<Camera>(`/cameras/${id}`, data),
   delete: (id: string) => api.delete(`/cameras/${id}`),
-  // Live camera actions — delegate to the adapter layer
   snapshot: (id: string) => api.get<CameraActionResult>(`/cameras/${id}/snapshot`),
   status: (id: string) => api.get<CameraStatusResult>(`/cameras/${id}/status`),
   gate: (id: string) => api.post<CameraActionResult>(`/cameras/${id}/gate`, {}),
@@ -329,7 +275,6 @@ export const camerasApi = {
 export const logsApi = {
   list: (params?: {
     log_type?: string;
-    villa_id?: string;
     page?: number;
     page_size?: number;
   }) => {
@@ -350,8 +295,7 @@ export interface User {
 }
 
 export interface DashboardStats {
-  total_villas: number;
-  active_reservations: number;
+  active_entrances: number;
   total_vehicles: number;
   events_today: number;
   gates_online: number;
@@ -360,137 +304,16 @@ export interface DashboardStats {
   auto_opens_today: number;
 }
 
-export interface Villa {
+export interface Entrance {
   id: string;
   name: string;
-  status: string;
-  active_reservations?: number;
-}
-
-export interface AssignedIntercom {
-  id: string;
-  name: string;
-  ip_address: string;
-  protocol: string;
-  pin_sync_enabled: boolean;
-  last_sync_status: string | null;
-  last_sync_at: string | null;
-  status: string;
-  entrance_id: string | null;
-}
-
-export interface Reservation {
-  id: string;
-  guest_name: string;
-  guest_phone: string | null;
-  guest_email: string | null;
-  villa_id: string;
-  villa: Villa | null;
-  check_in: string;
-  check_out: string;
-  status: string;
-  vehicle_ids: string[];
-  vehicles: Vehicle[];
-  notes: string | null;
-  pin_code: string | null;
-  lock_pin_code?: string | null;
-  pin_valid_from: string | null;
-  pin_valid_to: string | null;
-  pin_sync_status: "pending" | "synced" | "failed" | "revoked" | "not_applicable";
-  pin_last_synced_at: string | null;
-  assigned_intercoms: AssignedIntercom[];
-  actual_check_in: string | null;
-  actual_check_out: string | null;
-  cancelled_at: string | null;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface Intercom {
-  id: string;
-  name: string;
-  entrance_id: string | null;
-  ip_address: string;
-  http_port: number;
-  username: string;
-  protocol: "hikvision" | "dahua" | "sip" | "generic";
-  device_type: string | null;
-  relay_no: number;
-  door_count: number;
-  lock_type: string | null;
-  pin_support: boolean;
-  schedule_support: boolean;
-  pin_sync_enabled: boolean;
-  last_sync_status: string | null;
-  last_sync_at: string | null;
-  status: "online" | "offline" | "error";
-  last_status_check: string | null;
-  last_status_latency_ms: number | null;
-  device_info: Record<string, unknown> | null;
-  notes: string | null;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface SmartLock {
-  id: string;
-  name: string;
-  villa_id: string | null;
-  protocol: "tuya";
-  tuya_device_id: string | null;
-  status: "online" | "offline" | "error" | "unknown";
-  battery_pct: number | null;
-  last_seen: string | null;
-  last_status_check: string | null;
-  last_status_latency_ms: number | null;
-  device_info: Record<string, unknown> | null;
-  created_at: string;
-  updated_at: string;
-}
-
-/** A temp-password physically present on the lock right now (live from Tuya),
- *  cross-referenced against our smart_lock_passwords ledger. */
-export interface SmartLockDevicePassword {
-  password_id: string;
-  name: string | null;
-  effective_time: string | null;
-  invalid_time: string | null;
-  status: string | null;
-  /** true when this device PIN matches a ledger row (created by VillaAccess). */
-  managed: boolean;
-  reservation_id: string | null;
-  guest_name: string | null;
-  ledger_status: string | null;
-}
-
-/** A PIN the ledger believes is active but is NOT on the device — guest locked out. */
-export interface SmartLockMissingPassword {
-  provider_password_id: string;
-  reservation_id: string;
-  guest_name: string | null;
-  check_in: string;
-  check_out: string;
-}
-
-export interface SmartLockPasswordsResponse {
-  passwords: SmartLockDevicePassword[];
-  missing: SmartLockMissingPassword[];
-  count: number;
-}
-
-export interface SmartLockEvent {
-  /** Tuya record id when available */
-  id?: string | number;
-  /** Event time in ms since epoch (Tuya `event_time`) or ISO string */
-  event_time?: number | string;
-  /** Tuya numeric event_id (1=fingerprint, 2=password, 6=app, etc.) */
-  event_id?: number;
-  /** Friendly description if backend enriches it */
-  event_type?: string;
-  user_name?: string | null;
-  operator?: string | null;
-  source?: string | null;
-  [k: string]: unknown;
+  access_level: "public" | "restricted" | "admin_only";
+  description: string | null;
+  active: boolean;
+  camera_count?: number;
+  intercom_count?: number;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface AiFingerprint {
@@ -551,21 +374,6 @@ export interface PaginatedSnapshots {
   page_size: number;
 }
 
-export interface Entrance {
-  id: string;
-  name: string;
-  /** Legacy: mirrors villa_ids[0] for back-compat. Prefer villa_ids[]. */
-  villa_id: string | null;
-  /** M:N source of truth (Phase A.2). One row per villa allowed at this entrance. */
-  villa_ids: string[];
-  description: string | null;
-  active: boolean;
-  camera_count?: number;
-  intercom_count?: number;
-  created_at?: string;
-  updated_at?: string;
-}
-
 export interface AccessEvent {
   id: string;
   timestamp: string;
@@ -582,6 +390,32 @@ export interface AccessEvent {
   entrance: Entrance | null;
 }
 
+export interface Intercom {
+  id: string;
+  name: string;
+  entrance_id: string | null;
+  ip_address: string;
+  http_port: number;
+  username: string;
+  protocol: "hikvision" | "dahua" | "sip" | "generic";
+  device_type: string | null;
+  relay_no: number;
+  door_count: number;
+  lock_type: string | null;
+  pin_support: boolean;
+  schedule_support: boolean;
+  pin_sync_enabled: boolean;
+  last_sync_status: string | null;
+  last_sync_at: string | null;
+  status: "online" | "offline" | "error";
+  last_status_check: string | null;
+  last_status_latency_ms: number | null;
+  device_info: Record<string, unknown> | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Camera {
   id: string;
   name: string;
@@ -589,27 +423,23 @@ export interface Camera {
   rtsp_url: string | null;
   entrance_id: string | null;
   model: string | null;
-  // Integration
   protocol: "hikvision" | "dahua" | "onvif" | "rtsp";
   http_port: number;
   username: string;
   channel_no: number;
   gate_no: number;
-  // Runtime state
   status: "online" | "offline" | "error";
   last_snapshot: string | null;
   snapshot_url: string | null;
   last_status_check: string | null;
   last_status_latency_ms: number | null;
   device_info: CameraDeviceInfo | null;
-  // ANPR / OCR (V1)
   ocr_enabled: boolean;
   polling_interval_ms: number;
   ocr_min_confidence: number;
   anpr_cooldown_seconds: number;
   last_anpr_plate: string | null;
   last_anpr_at: string | null;
-  // Fuzzy / partial plate matching (additive, default OFF)
   allow_partial_match: boolean;
   partial_match_threshold: number;
   partial_min_confidence: number;
@@ -633,7 +463,6 @@ export interface CameraActionResult {
   camera_name: string;
   success: boolean;
   snapshot_url?: string;
-  /** Inline data URL ("data:image/jpeg;base64,..."); preferred over snapshot_url for live preview. */
   snapshot_base64?: string;
   action?: string;
   command?: string;
@@ -676,77 +505,47 @@ export interface LogEntry {
   log_type: string;
   message: string;
   vehicle_id: string | null;
-  villa_id: string | null;
   operator_id: string | null;
   snapshot_url: string | null;
   confidence_score: number | null;
 }
 
-// ─── Domain Events ────────────────────────────────────────────────────────────
+// ─── Domain events (SSE + history) ───────────────────────────────────────────
 
 export interface DomainEvent {
   id: string;
   event_type: string;
-  category: "vehicle" | "gate" | "access" | "ai" | "reservation";
+  category: string;
   severity: "info" | "warning" | "error" | "critical";
-  payload: Record<string, unknown> | null;
-  vehicle_id: string | null;
-  entrance_id: string | null;
-  camera_id: string | null;
-  reservation_id: string | null;
-  operator_id: string | null;
+  timestamp: string;
   source: string;
-  created_at: string;
+  payload: Record<string, unknown> | null;
 }
 
-export interface PaginatedEvents {
+export interface EventStats {
+  total: number;
+  by_category: Record<string, number>;
+  last_24h: number;
+  per_day: number;
+}
+
+export interface PaginatedDomainEvents {
   items: DomainEvent[];
   total: number;
   page: number;
   page_size: number;
 }
 
-export interface EventStats {
-  period: string;
-  total: number;
-  by_category: Record<string, number>;
-  by_severity: Record<string, number>;
-  sse_clients: number;
-}
-
-// Events endpoints reuse the shared `request` helper (bearer auth + 401 refresh).
-function authedFetch<T>(path: string): Promise<T> {
-  return request<T>(path);
-}
-
 export const eventsApi = {
-  list: (params?: {
-    category?: string;
-    event_type?: string;
-    severity?: string;
-    vehicle_id?: string;
-    entrance_id?: string;
-    camera_id?: string;
-    source?: string;
-    since?: string;
-    until?: string;
-    page?: number;
-    page_size?: number;
-  }) => {
-    const entries = Object.entries(params ?? {}).filter(
-      ([, v]) => v !== undefined && v !== "" && v !== null,
-    );
-    const qs = entries.length
-      ? `?${new URLSearchParams(entries as [string, string][]).toString()}`
-      : "";
-    return authedFetch<PaginatedEvents>(`/events${qs}`);
-  },
-
-  stats: () => authedFetch<EventStats>("/events/stats"),
-
   streamUrl: (token: string, category?: string): string => {
+    const base = import.meta.env.BASE_URL.replace(/\/$/, "") + "/api";
     const params = new URLSearchParams({ token });
-    if (category && category !== "all") params.set("category", category);
-    return `${BASE}/events/stream?${params.toString()}`;
+    if (category) params.set("category", category);
+    return `${base}/events/stream?${params.toString()}`;
+  },
+  stats: () => api.get<EventStats>("/events/stats"),
+  list: (params?: { category?: string; page?: number; page_size?: number }) => {
+    const q = new URLSearchParams(params as Record<string, string>).toString();
+    return api.get<PaginatedDomainEvents>(`/events${q ? "?" + q : ""}`);
   },
 };

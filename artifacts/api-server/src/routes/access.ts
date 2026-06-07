@@ -1,11 +1,10 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { accessEventsTable, gateActionsTable, tempCredentialsTable, entrancesTable } from "@workspace/db";
+import { accessEventsTable, gateActionsTable, entrancesTable } from "@workspace/db";
 import { eq, and, sql } from "drizzle-orm";
 import { requireAuth } from "./auth";
 import { z } from "zod";
 import { eventBus } from "../lib/events";
-import { validateVehicleAccess } from "../lib/validation/reservation-validator";
 
 const router = Router();
 
@@ -150,53 +149,6 @@ router.post("/open-door", requireAuth, async (req: any, res) => {
     timestamp: action.timestamp,
     success: action.success,
     notes: action.notes,
-  });
-});
-
-router.get("/temp-credentials", requireAuth, async (req, res) => {
-  const { reservation_id } = req.query;
-
-  const rows = reservation_id
-    ? await db.select().from(tempCredentialsTable).where(eq(tempCredentialsTable.reservation_id, reservation_id as string))
-    : await db.select().from(tempCredentialsTable);
-
-  res.json(rows.map((c) => ({
-    id: c.id,
-    reservation_id: c.reservation_id,
-    pin_code: c.pin_code,
-    valid_from: c.valid_from,
-    valid_until: c.valid_until,
-    status: c.status,
-  })));
-});
-
-router.post("/temp-credentials", requireAuth, async (req, res) => {
-  const schema = z.object({
-    reservation_id: z.string(),
-    duration_hours: z.number().optional(),
-  });
-  const body = schema.safeParse(req.body);
-  if (!body.success) { res.status(400).json({ detail: "Invalid request" }); return; }
-
-  const pinCode = Math.floor(1000 + Math.random() * 9000).toString();
-  const validFrom = new Date();
-  const validUntil = new Date(validFrom.getTime() + (body.data.duration_hours ?? 24) * 60 * 60 * 1000);
-
-  const [credential] = await db.insert(tempCredentialsTable).values({
-    reservation_id: body.data.reservation_id,
-    pin_code: pinCode,
-    valid_from: validFrom,
-    valid_until: validUntil,
-    status: "active",
-  }).returning();
-
-  res.status(201).json({
-    id: credential.id,
-    reservation_id: credential.reservation_id,
-    pin_code: credential.pin_code,
-    valid_from: credential.valid_from,
-    valid_until: credential.valid_until,
-    status: credential.status,
   });
 });
 

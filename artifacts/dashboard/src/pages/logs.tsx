@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { logsApi, villasApi } from "@/lib/api";
+import { logsApi } from "@/lib/api";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -22,23 +22,19 @@ export default function LogsPage() {
   const { t } = useTranslation();
   const [page, setPage] = useState(1);
   const [typeFilter, setTypeFilter] = useState("all");
-  const [villaFilter, setVillaFilter] = useState("all");
 
   const { data: logsData, isLoading } = useQuery({
-    queryKey: ["logs", page, typeFilter, villaFilter],
+    queryKey: ["logs", page, typeFilter],
     queryFn: () => logsApi.list({
       page,
       page_size: 50,
       ...(typeFilter !== "all" ? { log_type: typeFilter } : {}),
-      ...(villaFilter !== "all" ? { villa_id: villaFilter } : {}),
     }),
     refetchInterval: 20000,
   });
-  const { data: villas = [] } = useQuery({ queryKey: ["villas"], queryFn: () => import("@/lib/api").then(m => m.villasApi.list()) });
 
   const total = logsData?.total ?? 0;
   const totalPages = Math.ceil(total / 50);
-  const villaMap = Object.fromEntries(villas.map((v) => [v.id, v.name]));
 
   return (
     <AppLayout title={t("logs.title")} subtitle={t("logs.subtitle")}>
@@ -54,13 +50,6 @@ export default function LogsPage() {
               <SelectItem value="override">{t("logs.types.override")}</SelectItem>
               <SelectItem value="system">{t("logs.types.system")}</SelectItem>
               <SelectItem value="ai">{t("logs.types.ai")}</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={villaFilter} onValueChange={(v) => { setVillaFilter(v); setPage(1); }}>
-            <SelectTrigger className="w-44"><SelectValue placeholder={t("logs.allVillas")} /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">{t("logs.allVillas")}</SelectItem>
-              {villas.map((v) => <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>)}
             </SelectContent>
           </Select>
           <span className="text-sm text-muted-foreground ml-auto">{total.toLocaleString()} {t("logs.logEntries")}</span>
@@ -90,9 +79,6 @@ export default function LogsPage() {
                         [{log.log_type.toUpperCase()}]
                       </span>
                       <span className="flex-1 text-foreground/90 break-all">{log.message}</span>
-                      {log.villa_id && (
-                        <span className="text-muted-foreground shrink-0 hidden sm:block">{villaMap[log.villa_id] ?? log.villa_id}</span>
-                      )}
                       {log.confidence_score != null && (
                         <span className="text-muted-foreground shrink-0">{Math.round(log.confidence_score * 100)}%</span>
                       )}

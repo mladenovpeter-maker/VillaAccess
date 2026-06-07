@@ -1,8 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import {
-  reservationsTable, vehiclesTable, logsTable, accessEventsTable,
-  villasTable, entrancesTable,
+  vehiclesTable, logsTable, accessEventsTable, entrancesTable,
 } from "@workspace/db";
 import { eq, and, gte, lte, sql } from "drizzle-orm";
 import { requireAuth } from "./auth";
@@ -31,54 +30,6 @@ function parseDate(s: string | undefined): Date | undefined {
   const d = new Date(s);
   return isNaN(d.getTime()) ? undefined : d;
 }
-
-// ─── GET /export/reservations ─────────────────────────────────────────────────
-
-router.get("/reservations", requireAuth, async (req, res) => {
-  const { format = "json", status, from, to } = req.query as Record<string, string>;
-
-  const conditions: any[] = [];
-  if (status) conditions.push(eq(reservationsTable.status, status as any));
-  const fromDate = parseDate(from);
-  const toDate   = parseDate(to);
-  if (fromDate) conditions.push(gte(reservationsTable.check_in, fromDate));
-  if (toDate)   conditions.push(lte(reservationsTable.check_out, toDate));
-
-  const rows = await db
-    .select({
-      id: reservationsTable.id,
-      guest_name: reservationsTable.guest_name,
-      guest_phone: reservationsTable.guest_phone,
-      guest_email: reservationsTable.guest_email,
-      villa: villasTable.name,
-      check_in: reservationsTable.check_in,
-      check_out: reservationsTable.check_out,
-      status: reservationsTable.status,
-      pin_code: reservationsTable.pin_code,
-      notes: reservationsTable.notes,
-      created_at: reservationsTable.created_at,
-    })
-    .from(reservationsTable)
-    .leftJoin(villasTable, eq(reservationsTable.villa_id, villasTable.id))
-    .where(conditions.length ? and(...conditions) : undefined)
-    .orderBy(reservationsTable.check_in);
-
-  const data = rows.map((r) => ({
-    ...r,
-    check_in: r.check_in?.toISOString() ?? "",
-    check_out: r.check_out?.toISOString() ?? "",
-    created_at: r.created_at?.toISOString() ?? "",
-  }));
-
-  if (format === "csv") {
-    res.setHeader("Content-Type", "text/csv");
-    res.setHeader("Content-Disposition", 'attachment; filename="reservations.csv"');
-    res.send(toCSV(data));
-  } else {
-    res.setHeader("Content-Disposition", 'attachment; filename="reservations.json"');
-    res.json({ count: data.length, exported_at: new Date().toISOString(), data });
-  }
-});
 
 // ─── GET /export/vehicles ─────────────────────────────────────────────────────
 

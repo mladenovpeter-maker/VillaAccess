@@ -4,12 +4,9 @@ import { authRouter, requireAuth, requireRole, requireWriteAccess } from "./auth
 import { dashboardRouter } from "./dashboard";
 import { entrancesRouter } from "./entrances";
 import { intercomsRouter } from "./intercoms";
-import { villasRouter } from "./villas";
-import { reservationsRouter } from "./reservations";
 import { vehiclesRouter } from "./vehicles";
 import { accessRouter } from "./access";
 import { camerasRouter } from "./cameras";
-import { locksRouter } from "./locks";
 import { anprRouter } from "./anpr";
 import { logsRouter } from "./logs";
 import { snapshotsRouter } from "./snapshots";
@@ -19,7 +16,6 @@ import { settingsRouter } from "./settings";
 import { diagnosticsRouter } from "./diagnostics";
 import { exportRouter } from "./export";
 import { usersRouter } from "./users";
-import { tempCredentialsRouter } from "./temp-credentials";
 import { aiUsageRouter } from "./ai-usage";
 
 const router: IRouter = Router();
@@ -44,26 +40,22 @@ router.use("/logs",          requireAuth,                  logsRouter);
 router.use("/snapshots",     requireAuth,                  snapshotsRouter);
 
 // All authenticated — viewer read-only (GET allowed, writes blocked)
-router.use("/villas",        requireAuth,  writeAccess,    villasRouter);
-router.use("/reservations",  requireAuth,  writeAccess,    reservationsRouter);
 router.use("/vehicles",      requireAuth,  writeAccess,    vehiclesRouter);
 
 // Admin only
 router.use("/entrances",        requireAuth, adminOnly, entrancesRouter);
-// Intercoms / cameras / locks: list+status readable to all authed users
+// Intercoms / cameras: list+status readable to all authed users
 // (Quick Controls page needs them); write/test routes are admin-guarded
 // per-route inside each router, and the trigger actions
 // (POST /intercoms/:id/open, POST /cameras/:id/gate) are intentionally
 // open to operator + admin.
 router.use("/intercoms",        requireAuth, intercomsRouter);
 router.use("/cameras",          requireAuth, camerasRouter);
-router.use("/locks",            requireAuth, locksRouter);
 router.use("/diagnostics",      requireAuth, adminOnly, diagnosticsRouter);
 router.use("/settings",         requireAuth, adminOnly, settingsRouter);
 router.use("/export",           requireAuth, adminOnly, exportRouter);
 router.use("/users",            requireAuth, adminOnly, usersRouter);
 router.use("/ai-usage",         requireAuth, adminOnly, aiUsageRouter);
-router.use("/temp-credentials", requireAuth, writeAccess, tempCredentialsRouter);
 router.use("/mock",             requireAuth, adminOnly, mockRouter);
 
 // ANPR — worker-token-authed (no user session). Mounted last to avoid

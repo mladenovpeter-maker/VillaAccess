@@ -1,8 +1,6 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import {
-  villasTable,
-  reservationsTable,
   vehiclesTable,
   accessEventsTable,
   camerasTable,
@@ -17,9 +15,7 @@ router.get("/stats", requireAuth, async (_req, res) => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  const [villas, reservations, vehicles, eventsToday, cameras, entrances] = await Promise.all([
-    db.select({ count: sql<number>`count(*)::int` }).from(villasTable),
-    db.select({ count: sql<number>`count(*)::int` }).from(reservationsTable).where(eq(reservationsTable.status, "active")),
+  const [vehicles, eventsToday, cameras, entrances] = await Promise.all([
     db.select({ count: sql<number>`count(*)::int` }).from(vehiclesTable).where(isNull(vehiclesTable.archived_at)),
     db.select({ count: sql<number>`count(*)::int`, status: accessEventsTable.status })
       .from(accessEventsTable)
@@ -39,8 +35,7 @@ router.get("/stats", requireAuth, async (_req, res) => {
   const camerasOnline = cameras.find((r) => r.status === "online")?.count ?? 0;
 
   res.json({
-    total_villas: villas[0]?.count ?? 0,
-    active_reservations: reservations[0]?.count ?? 0,
+    active_entrances: entrances[0]?.count ?? 0,
     total_vehicles: vehicles[0]?.count ?? 0,
     events_today: totalEvents,
     gates_online: entrances[0]?.count ?? 0,
@@ -53,11 +48,6 @@ router.get("/stats", requireAuth, async (_req, res) => {
 router.get("/recent-events", requireAuth, async (req, res) => {
   const limit = Math.min(parseInt(req.query.limit as string) || 20, 100);
 
-  // Optional server-side filters so a denied flood (e.g. a heavily occluded
-  // plate emitting many denied reads) can NOT starve a status-scoped feed.
-  // The dashboard "Recent events" panel requests status=allowed&event_type=entry
-  // so it always shows real access activity regardless of denied volume.
-  // When omitted, behaviour is unchanged: latest N events of any kind.
   const status =
     typeof req.query.status === "string" && req.query.status.length > 0
       ? req.query.status

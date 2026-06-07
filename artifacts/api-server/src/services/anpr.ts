@@ -27,7 +27,6 @@ import { db } from "@workspace/db";
 import {
   vehiclesTable,
   camerasTable,
-  villaEntrancesTable,
   accessEventsTable,
 } from "@workspace/db";
 import { and, eq, isNull, isNotNull, lt, or, sql } from "drizzle-orm";
@@ -386,26 +385,6 @@ export async function handleAnprDetection(
     };
   }
 
-  // Derive the set of villas this entrance serves from the M:N join table
-  // (villa_entrances). This is the source of truth as of Phase A.1.
-  // entrances.villa_id remains in the schema for backward-compat reads but
-  // is no longer consulted by the ANPR validator.
-  let villa_ids: string[] = [];
-  if (camera.entrance_id) {
-    const rows = await db
-      .select({ villa_id: villaEntrancesTable.villa_id })
-      .from(villaEntrancesTable)
-      .where(eq(villaEntrancesTable.entrance_id, camera.entrance_id));
-    villa_ids = rows.map((r) => r.villa_id);
-  }
-  if (villa_ids.length === 0) {
-    return {
-      action: "skipped_no_villa",
-      plate,
-      reason: "Camera's entrance has no villas wired (configure in Entrances → Allowed Villas)",
-    };
-  }
-
   // ── 2. Atomic cooldown claim ───────────────────────────────────────────────
   // Conditional UPDATE: succeeds only if this (camera, plate) is NOT in
   // cooldown. Two concurrent detections for the same plate will race here
@@ -448,9 +427,9 @@ export async function handleAnprDetection(
     .limit(1);
   let vehicle_id: string | null = existing[0]?.id ?? null;
 
-  // ── 4. Validate via single source of truth (M:N villa scope) ─────────────
+  // ── 4. Validate via single source of truth ───────────────────────────────
   let decision = vehicle_id
-    ? await validateVehicleAccessMulti(vehicle_id, villa_ids)
+    ? await validateVehicleAccessMulti(vehicle_id)
     : {
         allowed: false,
         reason: "No reservation found for this vehicle",
@@ -524,7 +503,7 @@ export async function handleAnprDetection(
     }
 
     if (best) {
-      const partialDecision = await validateVehicleAccessMulti(best.id, villa_ids);
+      const partialDecision = await validateVehicleAccessMulti(best.id);
       if (partialDecision.allowed) {
         decision = partialDecision;
         vehicle_id = best.id;

@@ -1,9 +1,6 @@
 import app from "./app";
 import { logger } from "./lib/logger";
 import { seedDefaultUsers } from "./lib/seed";
-import { startExpirySweep } from "./services/pin-sync";
-import { startLockExpirySweep } from "./services/lock-sync";
-import { startStaffPinExpirySweep } from "./services/staff-pin-sync";
 import { startVehicleArchiveSweep } from "./services/vehicle-archive";
 import { startSnapshotRetentionSweep } from "./services/snapshot-retention";
 
@@ -28,12 +25,6 @@ seedDefaultUsers()
         process.exit(1);
       }
       logger.info({ port }, "Server listening");
-      // Housekeeping: revoke expired/orphaned PIN records from Hikvision
-      // terminals every 5 minutes. See sweepExpiredPins for rationale.
-      startExpirySweep();
-      startLockExpirySweep();
-      startStaffPinExpirySweep();
-      logger.info("PIN expiry sweep started (every 5 min)");
       // Phase 2 live: archive temporary reservation vehicles whose access
       // window (check_out + 1h grace) has fully closed by setting archived_at.
       // See services/vehicle-archive.ts.

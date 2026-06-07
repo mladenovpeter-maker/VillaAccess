@@ -4,8 +4,7 @@ import { AppLayout } from "@/components/layout/app-layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  Building2,
-  CalendarDays,
+  DoorOpen,
   Car,
   Camera,
   ShieldCheck,
@@ -106,11 +105,6 @@ function EventRow({ event }: { event: AccessEvent }) {
 export default function DashboardPage() {
   const { t } = useTranslation();
   const statsQ = useQuery({ queryKey: ["dashboard-stats"], queryFn: dashboardApi.stats, refetchInterval: 30000 });
-  // Ask the server for allowed entries directly so a denied flood (e.g. a
-  // heavily occluded plate emitting many denied reads) can never push the real
-  // access activity out of the window and blank this panel. Denied events
-  // remain available on the full Events page and in audit logs — the dashboard
-  // feed is intentionally limited to allowed entries.
   const eventsQ = useQuery({
     queryKey: ["dashboard-events"],
     queryFn: () =>
@@ -126,15 +120,14 @@ export default function DashboardPage() {
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Stats grid */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard title={t("dashboard.activeVillas")} value={s?.total_villas ?? 0} icon={Building2} loading={statsQ.isLoading} />
-          <StatCard title={t("dashboard.reservations")} value={s?.active_reservations ?? 0} icon={CalendarDays} color="amber" loading={statsQ.isLoading} />
+          <StatCard title={t("dashboard.activeEntrances")} value={s?.active_entrances ?? 0} icon={DoorOpen} loading={statsQ.isLoading} />
           <StatCard title={t("dashboard.camerasOnline")} value={s?.cameras_online ?? 0} icon={Camera} color="green" loading={statsQ.isLoading} />
           <StatCard title={t("dashboard.vehicles")} value={s?.total_vehicles ?? 0} icon={Car} loading={statsQ.isLoading} />
+          <StatCard title={t("dashboard.eventsToday")} value={s?.events_today ?? 0} icon={Activity} color="amber" loading={statsQ.isLoading} />
         </div>
 
         {/* Second row */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard title={t("dashboard.eventsToday")} value={s?.events_today ?? 0} icon={Activity} loading={statsQ.isLoading} />
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
           <StatCard title={t("dashboard.autoOpens")} value={s?.auto_opens_today ?? 0} icon={Zap} color="green" loading={statsQ.isLoading} />
           <StatCard title={t("dashboard.deniedToday")} value={s?.denied_attempts_today ?? 0} icon={ShieldX} color="red" loading={statsQ.isLoading} />
           <StatCard title={t("dashboard.gatesOnline")} value={s?.gates_online ?? 0} icon={ShieldCheck} color="amber" loading={statsQ.isLoading} />

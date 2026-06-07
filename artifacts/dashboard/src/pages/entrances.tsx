@@ -19,13 +19,13 @@ import { useToast } from "@/hooks/use-toast";
 import { entrancesApi, type Entrance, api } from "@/lib/api";
 import {
   DoorOpen, Plus, Camera, Phone, Pencil, Trash2,
-  CheckCircle2, XCircle, Loader2, Zap, Activity, Building2,
+  CheckCircle2, XCircle, Loader2, Zap, Activity, ShieldCheck,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-interface Villa { id: string; name: string }
+type AccessLevel = "public" | "restricted" | "admin_only";
 
 interface EntranceCamera {
   id: string; name: string; ip_address: string; protocol: string;
@@ -34,7 +34,7 @@ interface EntranceCamera {
 
 interface EntranceIntercom {
   id: string; name: string; ip_address: string; protocol: string;
-  pin_sync_enabled: boolean; status: "online" | "offline" | "error";
+  status: "online" | "offline" | "error";
 }
 
 interface EntranceEvent {
@@ -44,13 +44,13 @@ interface EntranceEvent {
 
 interface EntranceForm {
   name: string;
-  villa_ids: string[];
+  access_level: AccessLevel;
   description: string;
   active: boolean;
 }
 
 const defaultForm: EntranceForm = {
-  name: "", villa_ids: [], description: "", active: true,
+  name: "", access_level: "public", description: "", active: true,
 };
 
 // ─── Status badges ────────────────────────────────────────────────────────────
@@ -63,6 +63,20 @@ function StatusBadge({ active }: { active: boolean }) {
   ) : (
     <Badge className="bg-zinc-500/15 text-zinc-400 border-zinc-500/20 hover:bg-zinc-500/15">
       <XCircle className="w-3 h-3 mr-1" />Inactive
+    </Badge>
+  );
+}
+
+function AccessLevelBadge({ level }: { level: AccessLevel }) {
+  const map: Record<AccessLevel, { label: string; cls: string }> = {
+    public:     { label: "Public",     cls: "bg-sky-500/15 text-sky-400 border-sky-500/20 hover:bg-sky-500/15" },
+    restricted: { label: "Restricted", cls: "bg-amber-500/15 text-amber-400 border-amber-500/20 hover:bg-amber-500/15" },
+    admin_only: { label: "Admin Only", cls: "bg-red-500/15 text-red-400 border-red-500/20 hover:bg-red-500/15" },
+  };
+  const { label, cls } = map[level] ?? map.public;
+  return (
+    <Badge className={`text-xs ${cls}`}>
+      <ShieldCheck className="w-3 h-3 mr-1" />{label}
     </Badge>
   );
 }
@@ -81,52 +95,34 @@ function EventStatusBadge({ status }: { status: string }) {
 
 // ─── Entrance Form Dialog ─────────────────────────────────────────────────────
 
-function EntranceDialog({ open, onClose, entrance, villas }: {
-  open: boolean; onClose: () => void;
-  entrance: Entrance | null; villas: Villa[];
+function EntranceDialog({ open, onClose, entrance }: {
+  open: boolean; onClose: () => void; entrance: Entrance | null;
 }) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { t } = useTranslation();
   const [form, setForm] = useState<EntranceForm>(defaultForm);
 
-  // Sync form whenever the dialog opens or the target entrance changes.
-  // The dialog component is always mounted, so useState's initializer only
-  // runs once — without this effect, opening the edit modal for a real
-  // entrance keeps the previous form state (empty defaults from the last
-  // create attempt), making the form look like a fresh "Add entrance".
   useEffect(() => {
     if (!open) return;
     setForm(entrance ? {
-      name:        entrance.name,
-      villa_ids:   entrance.villa_ids ?? (entrance.villa_id ? [entrance.villa_id] : []),
-      description: entrance.description ?? "",
-      active:      entrance.active,
+      name:         entrance.name,
+      access_level: entrance.access_level ?? "public",
+      description:  entrance.description ?? "",
+      active:       entrance.active,
     } : defaultForm);
   }, [open, entrance]);
 
   const set = <K extends keyof EntranceForm>(k: K, v: EntranceForm[K]) =>
     setForm((f) => ({ ...f, [k]: v }));
 
-  function toggleVilla(villaId: string, checked: boolean) {
-    setForm((f) => {
-      const next = new Set(f.villa_ids);
-      if (checked) next.add(villaId);
-      else next.delete(villaId);
-      return { ...f, villa_ids: Array.from(next) };
-    });
-  }
-
-  function selectAll() { set("villa_ids", villas.map((v) => v.id)); }
-  function clearAll()  { set("villa_ids", []); }
-
   const mutation = useMutation({
     mutationFn: async () => {
       const body = {
-        name:        form.name,
-        villa_ids:   form.villa_ids,
-        description: form.description || null,
-        active:      form.active,
+        name:         form.name,
+        access_level: form.access_level,
+        description:  form.description || null,
+        active:       form.active,
       };
       return entrance
         ? entrancesApi.update(entrance.id, body as any)
@@ -140,8 +136,11 @@ function EntranceDialog({ open, onClose, entrance, villas }: {
     onError: (e: Error) => toast({ title: t("common.error"), description: e.message, variant: "destructive" }),
   });
 
-  const selectedCount = form.villa_ids.length;
-  const totalVillas = villas.length;
+  const accessLevelOptions: { value: AccessLevel; label: string }[] = [
+    { value: "public",     label: t("entrances.accessLevelPublic") },
+    { value: "restricted", label: t("entrances.accessLevelRestricted") },
+    { value: "admin_only", label: t("entrances.accessLevelAdminOnly") },
+  ];
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
@@ -156,48 +155,32 @@ function EntranceDialog({ open, onClose, entrance, villas }: {
           </div>
 
           <div className="space-y-1.5">
-            <div className="flex items-baseline justify-between gap-3">
-              <Label>{t("entrances.allowedVillas")}</Label>
-              <span className="text-xs text-muted-foreground">
-                {t("entrances.villasSelected", { count: selectedCount, total: totalVillas })}
-              </span>
-            </div>
-            <div className="rounded-lg border border-border bg-muted/20 p-3 space-y-2">
-              {totalVillas === 0 ? (
-                <p className="text-xs text-muted-foreground py-2 text-center">{t("entrances.noVillasWired")}</p>
-              ) : (
-                <>
-                  <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 max-h-56 overflow-y-auto pr-1">
-                    {villas.map((v) => {
-                      const checked = form.villa_ids.includes(v.id);
-                      return (
-                        <label
-                          key={v.id}
-                          className="flex items-center gap-2 cursor-pointer text-sm py-1 px-1.5 rounded hover:bg-muted/40 select-none"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={checked}
-                            onChange={(e) => toggleVilla(v.id, e.target.checked)}
-                            className="accent-primary shrink-0"
-                          />
-                          <span className="truncate">{v.name}</span>
-                        </label>
-                      );
-                    })}
+            <Label>{t("entrances.accessLevel")}</Label>
+            <div className="flex flex-col gap-2">
+              {accessLevelOptions.map((opt) => (
+                <label
+                  key={opt.value}
+                  className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                    form.access_level === opt.value
+                      ? "border-primary bg-primary/10"
+                      : "border-border hover:bg-muted/40"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="access_level"
+                    value={opt.value}
+                    checked={form.access_level === opt.value}
+                    onChange={() => set("access_level", opt.value)}
+                    className="accent-primary"
+                  />
+                  <div>
+                    <AccessLevelBadge level={opt.value} />
                   </div>
-                  <div className="flex items-center gap-2 pt-2 border-t border-border/60">
-                    <Button type="button" variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={selectAll}>
-                      {t("entrances.selectAll")}
-                    </Button>
-                    <Button type="button" variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={clearAll}>
-                      {t("entrances.clearAll")}
-                    </Button>
-                  </div>
-                </>
-              )}
+                </label>
+              ))}
             </div>
-            <p className="text-xs text-muted-foreground">{t("entrances.allowedVillasHint")}</p>
+            <p className="text-xs text-muted-foreground">{t("entrances.accessLevelHint")}</p>
           </div>
 
           <div className="space-y-1.5">
@@ -233,8 +216,8 @@ function EntranceDialog({ open, onClose, entrance, villas }: {
 
 // ─── Entrance Detail Sheet ────────────────────────────────────────────────────
 
-function EntranceDetailSheet({ entrance, villas, onClose, onEdit }: {
-  entrance: Entrance | null; villas: Villa[];
+function EntranceDetailSheet({ entrance, onClose, onEdit }: {
+  entrance: Entrance | null;
   onClose: () => void; onEdit: (e: Entrance) => void;
 }) {
   const { toast } = useToast();
@@ -274,8 +257,6 @@ function EntranceDetailSheet({ entrance, villas, onClose, onEdit }: {
   }
 
   if (!entrance) return null;
-  const wiredVillaIds = entrance.villa_ids ?? (entrance.villa_id ? [entrance.villa_id] : []);
-  const wiredVillas = villas.filter((v) => wiredVillaIds.includes(v.id));
 
   return (
     <Sheet open={!!entrance} onOpenChange={(o) => !o && onClose()}>
@@ -288,15 +269,8 @@ function EntranceDetailSheet({ entrance, villas, onClose, onEdit }: {
               </div>
               <div className="min-w-0">
                 <SheetTitle className="text-base">{entrance.name}</SheetTitle>
-                <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
-                  <Building2 className="w-3 h-3 shrink-0" />
-                  <span className="truncate">
-                    {wiredVillas.length === 0
-                      ? t("entrances.noVillasWired")
-                      : wiredVillas.length <= 2
-                        ? wiredVillas.map((v) => v.name).join(", ")
-                        : `${wiredVillas.slice(0, 2).map((v) => v.name).join(", ")} +${wiredVillas.length - 2}`}
-                  </span>
+                <div className="flex items-center gap-2 mt-1">
+                  <AccessLevelBadge level={entrance.access_level ?? "public"} />
                 </div>
               </div>
             </div>
@@ -373,7 +347,7 @@ function EntranceDetailSheet({ entrance, villas, onClose, onEdit }: {
             {intLoading ? (
               <div className="space-y-2"><Skeleton className="h-12 rounded-lg" /></div>
             ) : intercoms.length === 0 ? (
-              <p className="text-xs text-muted-foreground py-3 text-center">No intercoms assigned to this entrance</p>
+              <p className="text-xs text-muted-foreground py-3 text-center">No controllers assigned to this entrance</p>
             ) : (
               <div className="space-y-2">
                 {intercoms.map((ic) => (
@@ -385,12 +359,7 @@ function EntranceDetailSheet({ entrance, villas, onClose, onEdit }: {
                         <div className="text-xs text-muted-foreground font-mono">{ic.ip_address}</div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      {ic.pin_sync_enabled && (
-                        <Badge className="text-xs bg-primary/10 text-primary border-primary/20 hover:bg-primary/10">PIN Sync</Badge>
-                      )}
-                      <Badge className="text-xs bg-muted text-muted-foreground border-border hover:bg-muted">{ic.protocol}</Badge>
-                    </div>
+                    <Badge className="text-xs bg-muted text-muted-foreground border-border hover:bg-muted">{ic.protocol}</Badge>
                   </div>
                 ))}
               </div>
@@ -453,11 +422,6 @@ export default function EntrancesPage() {
     refetchInterval: 30_000,
   });
 
-  const { data: villas = [] } = useQuery<Villa[]>({
-    queryKey: ["villas-min"],
-    queryFn: () => api.get<Villa[]>("/villas"),
-  });
-
   const deleteMutation = useMutation({
     mutationFn: (id: string) => entrancesApi.delete(id),
     onSuccess: () => {
@@ -514,54 +478,39 @@ export default function EntrancesPage() {
           </div>
         ) : (
           <div className="space-y-2">
-            {entrances.map((e) => {
-              const wiredVillaIds = e.villa_ids ?? (e.villa_id ? [e.villa_id] : []);
-              const wiredVillas = villas.filter((v) => wiredVillaIds.includes(v.id));
-              const villaLabel =
-                wiredVillas.length === 0
-                  ? t("entrances.noVillasWired")
-                  : wiredVillas.length === 1
-                    ? wiredVillas[0].name
-                    : wiredVillas.length <= 3
-                      ? wiredVillas.map((v) => v.name).join(", ")
-                      : `${wiredVillas.slice(0, 2).map((v) => v.name).join(", ")} +${wiredVillas.length - 2}`;
-              return (
-                <div
-                  key={e.id}
-                  onClick={() => setDetailEntrance(e)}
-                  className="bg-card border border-border rounded-xl p-4 hover:border-primary/40 transition-colors cursor-pointer flex items-center gap-4"
-                >
-                  <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                    <DoorOpen className="w-5 h-5 text-primary" />
+            {entrances.map((e) => (
+              <div
+                key={e.id}
+                onClick={() => setDetailEntrance(e)}
+                className="bg-card border border-border rounded-xl p-4 hover:border-primary/40 transition-colors cursor-pointer flex items-center gap-4"
+              >
+                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                  <DoorOpen className="w-5 h-5 text-primary" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <div className="font-medium text-foreground truncate">{e.name}</div>
+                    <StatusBadge active={e.active} />
+                    <AccessLevelBadge level={e.access_level ?? "public"} />
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <div className="font-medium text-foreground truncate">{e.name}</div>
-                      <StatusBadge active={e.active} />
-                      <Badge className="text-xs bg-muted text-muted-foreground border-border hover:bg-muted">
-                        {t("entrances.villasCount", { count: wiredVillas.length })}
-                      </Badge>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground mt-0.5">
-                      <span className="flex items-center gap-1 min-w-0 max-w-full">
-                        <Building2 className="w-3 h-3 shrink-0" />
-                        <span className="truncate">{villaLabel}</span>
-                      </span>
-                      <span className="flex items-center gap-1"><Camera className="w-3 h-3" />{e.camera_count ?? 0}</span>
-                      <span className="flex items-center gap-1"><Phone className="w-3 h-3" />{e.intercom_count ?? 0}</span>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1 shrink-0" onClick={(ev) => ev.stopPropagation()}>
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(e)}>
-                      <Pencil className="w-4 h-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 hover:text-red-400" onClick={() => setDeleteTarget(e)}>
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground mt-0.5">
+                    <span className="flex items-center gap-1"><Camera className="w-3 h-3" />{e.camera_count ?? 0}</span>
+                    <span className="flex items-center gap-1"><Phone className="w-3 h-3" />{e.intercom_count ?? 0}</span>
+                    {e.description && (
+                      <span className="truncate max-w-xs">{e.description}</span>
+                    )}
                   </div>
                 </div>
-              );
-            })}
+                <div className="flex items-center gap-1 shrink-0" onClick={(ev) => ev.stopPropagation()}>
+                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(e)}>
+                    <Pencil className="w-4 h-4" />
+                  </Button>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 hover:text-red-400" onClick={() => setDeleteTarget(e)}>
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>
@@ -571,13 +520,11 @@ export default function EntrancesPage() {
           open={dialogOpen}
           onClose={() => { setDialogOpen(false); setEditTarget(null); }}
           entrance={editTarget}
-          villas={villas}
         />
       )}
 
       <EntranceDetailSheet
         entrance={detailEntrance}
-        villas={villas}
         onClose={() => setDetailEntrance(null)}
         onEdit={openEdit}
       />
@@ -587,15 +534,17 @@ export default function EntrancesPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>{t("entrances.deleteTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
-              <span className="font-medium text-foreground">{deleteTarget?.name}</span> {t("entrances.deleteDesc")}
+              <strong>{deleteTarget?.name}</strong> {t("entrances.deleteDesc")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
             <AlertDialogAction
+              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
               onClick={() => deleteTarget && deleteMutation.mutate(deleteTarget.id)}
-              className="bg-red-600 hover:bg-red-700"
+              disabled={deleteMutation.isPending}
             >
+              {deleteMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               {t("common.delete")}
             </AlertDialogAction>
           </AlertDialogFooter>
