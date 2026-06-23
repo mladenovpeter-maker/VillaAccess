@@ -10,8 +10,13 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useTranslation } from "react-i18next";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { api } from "@/lib/api";
+import { useToast } from "@/hooks/use-toast";
 
 type Role = "admin" | "operator";
 
@@ -26,7 +31,38 @@ export function Sidebar() {
   const [location] = useLocation();
   const { user, logout } = useAuth();
   const [open, setOpen] = useState(false);
+  const [pwOpen, setPwOpen] = useState(false);
+  const [pwForm, setPwForm] = useState({ current: "", next: "", confirm: "" });
+  const [pwLoading, setPwLoading] = useState(false);
   const { t } = useTranslation();
+  const { toast } = useToast();
+
+  async function handleChangePassword(e: React.FormEvent) {
+    e.preventDefault();
+    if (pwForm.next !== pwForm.confirm) {
+      toast({ variant: "destructive", title: "Паролите не съвпадат" });
+      return;
+    }
+    if (pwForm.next.length < 8) {
+      toast({ variant: "destructive", title: "Паролата трябва да е поне 8 символа" });
+      return;
+    }
+    setPwLoading(true);
+    try {
+      await api.post("/auth/change-password", {
+        current_password: pwForm.current,
+        new_password: pwForm.next,
+      });
+      toast({ title: "Паролата е сменена успешно" });
+      setPwOpen(false);
+      setPwForm({ current: "", next: "", confirm: "" });
+    } catch (err: any) {
+      const msg = err?.detail ?? err?.message ?? "Грешка при смяна на парола";
+      toast({ variant: "destructive", title: msg });
+    } finally {
+      setPwLoading(false);
+    }
+  }
 
   const role = (user?.role ?? "operator") as Role;
 
@@ -155,6 +191,15 @@ export function Sidebar() {
           <Button
             variant="ghost"
             size="sm"
+            className="w-full justify-start text-muted-foreground hover:text-foreground"
+            onClick={() => setPwOpen(true)}
+          >
+            <KeyRound className="w-4 h-4 mr-2" />
+            Смяна на парола
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
             className="w-full justify-start text-muted-foreground hover:text-destructive"
             onClick={() => void logout()}
           >
@@ -163,6 +208,54 @@ export function Sidebar() {
           </Button>
         </div>
       </aside>
+
+      {/* Change password dialog */}
+      <Dialog open={pwOpen} onOpenChange={(v) => { setPwOpen(v); if (!v) setPwForm({ current: "", next: "", confirm: "" }); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Смяна на парола</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleChangePassword} className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label>Текуща парола</Label>
+              <Input
+                type="password"
+                autoComplete="current-password"
+                value={pwForm.current}
+                onChange={(e) => setPwForm((f) => ({ ...f, current: e.target.value }))}
+                required
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Нова парола</Label>
+              <Input
+                type="password"
+                autoComplete="new-password"
+                placeholder="Минимум 8 символа"
+                value={pwForm.next}
+                onChange={(e) => setPwForm((f) => ({ ...f, next: e.target.value }))}
+                required
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Потвърди нова парола</Label>
+              <Input
+                type="password"
+                autoComplete="new-password"
+                value={pwForm.confirm}
+                onChange={(e) => setPwForm((f) => ({ ...f, confirm: e.target.value }))}
+                required
+              />
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setPwOpen(false)}>Отказ</Button>
+              <Button type="submit" disabled={pwLoading}>
+                {pwLoading ? "Запазване..." : "Запази"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

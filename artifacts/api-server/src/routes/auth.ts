@@ -222,6 +222,37 @@ router.get("/me", requireAuth, async (req: any, res) => {
   });
 });
 
+// POST /auth/change-password
+router.post("/change-password", requireAuth, async (req: any, res) => {
+  const schema = z.object({
+    current_password: z.string().min(1),
+    new_password: z.string().min(8, "Паролата трябва да е поне 8 символа"),
+  });
+  const body = schema.safeParse(req.body);
+  if (!body.success) {
+    res.status(400).json({ detail: body.error.issues[0]?.message ?? "Invalid request" });
+    return;
+  }
+
+  const user = req.user;
+  if (user.password_hash !== hashPassword(body.data.current_password)) {
+    res.status(401).json({ detail: "Грешна текуща парола" });
+    return;
+  }
+
+  if (body.data.current_password === body.data.new_password) {
+    res.status(400).json({ detail: "Новата парола трябва да е различна от текущата" });
+    return;
+  }
+
+  await db
+    .update(usersTable)
+    .set({ password_hash: hashPassword(body.data.new_password), updated_at: new Date() })
+    .where(eq(usersTable.id, user.id));
+
+  res.json({ message: "Паролата е сменена успешно" });
+});
+
 // POST /auth/logout
 router.post("/logout", requireAuth, async (req: any, res) => {
   const schema = z.object({ refresh_token: z.string().optional() });
