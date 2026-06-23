@@ -5,15 +5,21 @@ import { AppLayout } from "@/components/layout/app-layout";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
+  DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
 import {
   Grid3X3, Loader2, Check, X, Clock, Search,
-  CheckSquare, XSquare, Upload, AlertCircle, ShieldCheck, ShieldOff,
+  CheckSquare, XSquare, Upload, AlertCircle, ShieldCheck, ShieldOff, Shield,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Entrance } from "@/lib/api";
+
+type APMode = "double" | "single" | "none";
 
 interface ACSDeviceStatus {
   id: string;
@@ -137,8 +143,8 @@ export default function AccessMatrixPage() {
   const [loadingCols, setLoadingCols] = useState<Set<string>>(new Set());
   const [loadingRows, setLoadingRows] = useState<Set<string>>(new Set());
   const [syncing, setSyncing] = useState(false);
-  // anti-passback: null=unknown, true=enabled, false=disabled
-  const [apState, setApState] = useState<Record<string, boolean>>({});
+  // anti-passback mode per entrance: undefined=unknown, "double"|"single"|"none"
+  const [apMode, setApMode] = useState<Record<string, APMode>>({});
   const [apLoading, setApLoading] = useState<Set<string>>(new Set());
 
   const { data: workers = [], isLoading: loadingWorkers } = useQuery<Worker[]>({
@@ -323,15 +329,22 @@ export default function AccessMatrixPage() {
     }
   }
 
-  async function handleAntiPassback(entranceId: string) {
-    const enable = !(apState[entranceId] ?? false);
+  async function handleAntiPassback(entranceId: string, mode: APMode) {
     setApLoading((prev) => new Set(prev).add(entranceId));
     try {
-      await api.post("/acs/anti-passback", { entrance_id: entranceId, enable, mode: "double" });
-      setApState((prev) => ({ ...prev, [entranceId]: enable }));
+      await api.post("/acs/anti-passback", {
+        entrance_id: entranceId,
+        enable: mode !== "none",
+        mode,
+      });
+      setApMode((prev) => ({ ...prev, [entranceId]: mode }));
       toast({
-        title: enable ? t("matrix.antiPassbackEnabled") : t("matrix.antiPassbackDisabled"),
-        description: t("matrix.antiPassbackHint"),
+        title: mode !== "none" ? t("matrix.antiPassbackEnabled") : t("matrix.antiPassbackDisabled"),
+        description: mode === "double"
+          ? t("matrix.antiPassbackDoubleHint")
+          : mode === "single"
+            ? t("matrix.antiPassbackSingleHint")
+            : t("matrix.antiPassbackHint"),
       });
     } catch (e: any) {
       toast({ title: t("common.error"), description: e.message, variant: "destructive" });
@@ -502,26 +515,69 @@ export default function AccessMatrixPage() {
                           >
                             <XSquare className="w-3.5 h-3.5" />
                           </button>
-                          {/* Anti-passback toggle */}
-                          <button
-                            onClick={() => handleAntiPassback(e.id)}
-                            disabled={apLoading.has(e.id)}
-                            title={apState[e.id]
-                              ? t("matrix.antiPassbackDisable")
-                              : t("matrix.antiPassbackEnable")}
-                            className={cn(
-                              "p-0.5 rounded transition-colors",
-                              apState[e.id]
-                                ? "text-blue-400 hover:text-blue-300 hover:bg-blue-500/10"
-                                : "text-muted-foreground/40 hover:text-blue-400 hover:bg-blue-500/10"
-                            )}
-                          >
-                            {apLoading.has(e.id)
-                              ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                              : apState[e.id]
-                                ? <ShieldCheck className="w-3.5 h-3.5" />
-                                : <ShieldOff className="w-3.5 h-3.5" />}
-                          </button>
+                          {/* Anti-passback dropdown */}
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <button
+                                disabled={apLoading.has(e.id)}
+                                title={t("matrix.antiPassbackMenu")}
+                                className={cn(
+                                  "p-0.5 rounded transition-colors",
+                                  apMode[e.id] === "double"
+                                    ? "text-blue-400 hover:text-blue-300 hover:bg-blue-500/10"
+                                    : apMode[e.id] === "single"
+                                      ? "text-yellow-400 hover:text-yellow-300 hover:bg-yellow-500/10"
+                                      : "text-muted-foreground/40 hover:text-blue-400 hover:bg-blue-500/10"
+                                )}
+                              >
+                                {apLoading.has(e.id)
+                                  ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                  : apMode[e.id] === "double"
+                                    ? <ShieldCheck className="w-3.5 h-3.5" />
+                                    : apMode[e.id] === "single"
+                                      ? <Shield className="w-3.5 h-3.5" />
+                                      : <ShieldOff className="w-3.5 h-3.5" />}
+                              </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="center" className="w-72">
+                              <DropdownMenuLabel className="text-xs font-semibold">
+                                {t("matrix.antiPassbackMenu")} — {e.name}
+                              </DropdownMenuLabel>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                onClick={() => handleAntiPassback(e.id, "double")}
+                                className={cn("flex flex-col items-start gap-0.5 cursor-pointer", apMode[e.id] === "double" && "bg-blue-500/10")}
+                              >
+                                <div className="flex items-center gap-2 font-medium">
+                                  <ShieldCheck className="w-4 h-4 text-blue-400 shrink-0" />
+                                  {t("matrix.antiPassbackDouble")}
+                                </div>
+                                <span className="text-[11px] text-muted-foreground ml-6">
+                                  {t("matrix.antiPassbackDoubleHint")}
+                                </span>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => handleAntiPassback(e.id, "single")}
+                                className={cn("flex flex-col items-start gap-0.5 cursor-pointer", apMode[e.id] === "single" && "bg-yellow-500/10")}
+                              >
+                                <div className="flex items-center gap-2 font-medium">
+                                  <Shield className="w-4 h-4 text-yellow-400 shrink-0" />
+                                  {t("matrix.antiPassbackSingle")}
+                                </div>
+                                <span className="text-[11px] text-muted-foreground ml-6">
+                                  {t("matrix.antiPassbackSingleHint")}
+                                </span>
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                onClick={() => handleAntiPassback(e.id, "none")}
+                                className={cn("cursor-pointer", apMode[e.id] === "none" && "text-muted-foreground")}
+                              >
+                                <ShieldOff className="w-4 h-4 mr-2 text-muted-foreground" />
+                                {t("matrix.antiPassbackOff")}
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
                       </th>
                     );
