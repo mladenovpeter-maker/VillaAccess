@@ -7,6 +7,7 @@ import {
   integer,
   index,
   unique,
+  pgEnum,
 } from "drizzle-orm/pg-core";
 // ─── Departments ──────────────────────────────────────────────────────────────
 // Each department can have a default shift that auto-fills access rules.
@@ -131,3 +132,31 @@ export const workerVehiclesTable = pgTable(
 );
 
 export type WorkerVehicle = typeof workerVehiclesTable.$inferSelect;
+
+// ─── Leaves (отпуски / болнични) ─────────────────────────────────────────────
+
+export const leaveTypeEnum = pgEnum("leave_type", [
+  "vacation",       // Платен отпуск
+  "sick",           // Болничен
+  "business_trip",  // Командировка
+  "other",          // Друго
+]);
+
+export const leavesTable = pgTable(
+  "leaves",
+  {
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    worker_id: text("worker_id").notNull(),
+    type: leaveTypeEnum("type").notNull().default("vacation"),
+    start_date: text("start_date").notNull(),  // ISO "YYYY-MM-DD"
+    end_date: text("end_date").notNull(),       // ISO "YYYY-MM-DD"
+    note: text("note"),
+    created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [
+    index("leaves_worker_idx").on(t.worker_id),
+    index("leaves_dates_idx").on(t.start_date, t.end_date),
+  ]
+);
+
+export type Leave = typeof leavesTable.$inferSelect;
