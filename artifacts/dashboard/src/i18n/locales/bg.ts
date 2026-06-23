@@ -16,6 +16,7 @@ const bg = {
     departments: "Отдели",
     shifts: "Смени",
     leaves: "Отпуски",
+    aiAttendance: "AI Асистент",
     accessMatrix: "Матрица на достъпа",
     tools: "Инструменти",
     diagnostics: "Диагностика на камери",
@@ -426,6 +427,15 @@ const bg = {
     firing: "…",
     customConfidence: "Персонализирано съвпадение",
     denyReason: "Причина за отказ",
+  },
+  aiAttendance: {
+    title: "AI Асистент за присъствие",
+    subtitle: "Задавайте въпроси за работници, отпуски и достъп",
+    welcome: "Здравейте! Как мога да помогна?",
+    welcomeDesc: "Мога да отговарям на въпроси за присъствие, отпуски и достъп на работниците.",
+    placeholder: "Напишете въпрос… (Enter за изпращане)",
+    newChat: "Нов чат",
+    disclaimer: "AI асистентът работи с текущите данни от системата.",
   },
   aiUsage: {
     title: "AI разход",

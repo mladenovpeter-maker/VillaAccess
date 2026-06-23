@@ -6,7 +6,7 @@ import {
   Activity, LogOut, Menu, X, DoorOpen, FlaskConical,
   Stethoscope, Settings2, HeartPulse, GitCommitHorizontal,
   Download, Users, KeyRound, Phone, Zap, Sparkles,
-  Factory, HardHat, Clock, Grid3X3, Building2, CalendarDays,
+  Factory, HardHat, Clock, Grid3X3, Building2, CalendarDays, BrainCircuit,
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -45,7 +45,8 @@ export function Sidebar() {
     { href: "/workers",        label: t("nav.workers"),      icon: HardHat,   roles: ["admin", "operator"] },
     { href: "/departments",    label: t("nav.departments"),  icon: Building2,    roles: ["admin"] },
     { href: "/shifts",         label: t("nav.shifts"),       icon: Clock,        roles: ["admin"] },
-    { href: "/leaves",         label: t("nav.leaves"),       icon: CalendarDays, roles: ["admin"] },
+    { href: "/leaves",         label: t("nav.leaves"),       icon: CalendarDays,  roles: ["admin"] },
+    { href: "/ai-attendance",  label: t("nav.aiAttendance"), icon: BrainCircuit,  roles: ["admin"] },
     { href: "/access-matrix",  label: t("nav.accessMatrix"), icon: Grid3X3,  roles: ["admin"] },
   ];
 

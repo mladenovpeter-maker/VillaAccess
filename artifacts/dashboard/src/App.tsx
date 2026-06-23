@@ -28,6 +28,7 @@ import DepartmentsPage from "@/pages/departments";
 import ShiftsPage from "@/pages/shifts";
 import AccessMatrixPage from "@/pages/access-matrix";
 import LeavesPage from "@/pages/leaves";
+import AiAttendancePage from "@/pages/ai-attendance";
 
 type Role = "admin" | "operator" | "viewer";
 
@@ -95,6 +96,7 @@ function Router() {
       <Route path="/shifts"         component={() => <ProtectedRoute component={ShiftsPage}         roles={adminOnly} />} />
       <Route path="/access-matrix"  component={() => <ProtectedRoute component={AccessMatrixPage}   roles={adminOnly} />} />
       <Route path="/leaves"         component={() => <ProtectedRoute component={LeavesPage}          roles={adminOnly} />} />
+      <Route path="/ai-attendance"  component={() => <ProtectedRoute component={AiAttendancePage}    roles={adminOnly} />} />
       <Route path="/ai-usage"       component={() => <ProtectedRoute component={AiUsagePage}        roles={adminOnly} />} />
       <Route path="/mock"           component={() => <ProtectedRoute component={MockPage}           roles={adminOnly} />} />
 

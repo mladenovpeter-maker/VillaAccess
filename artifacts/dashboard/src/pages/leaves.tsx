@@ -15,10 +15,16 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import {
+  Popover, PopoverContent, PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList,
+} from "@/components/ui/command";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
 import {
-  CalendarDays, Plus, Pencil, Trash2, Loader2, Search,
+  CalendarDays, Plus, Pencil, Trash2, Loader2, Search, Check, ChevronsUpDown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -97,6 +103,82 @@ function workerFullName(w: Worker | null) {
   return `${w.last_name} ${w.first_name}`;
 }
 
+// ─── Searchable Worker Combobox ────────────────────────────────────────────────
+
+function WorkerCombobox({
+  workers,
+  value,
+  onChange,
+  placeholder = "— изберете работник —",
+  className,
+}: {
+  workers: Worker[];
+  value: string;
+  onChange: (id: string) => void;
+  placeholder?: string;
+  className?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const selected = workers.find(w => w.id === value) ?? null;
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          className={cn("w-full justify-between font-normal", className)}
+        >
+          <span className="truncate">
+            {selected ? (
+              <span>
+                {workerFullName(selected)}
+                {selected.department && (
+                  <span className="text-muted-foreground ml-1.5 text-xs">({selected.department})</span>
+                )}
+              </span>
+            ) : (
+              <span className="text-muted-foreground">{placeholder}</span>
+            )}
+          </span>
+          <ChevronsUpDown className="ml-2 w-4 h-4 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[340px] p-0" align="start">
+        <Command>
+          <CommandInput placeholder="Търси по име или отдел…" />
+          <CommandList className="max-h-60">
+            <CommandEmpty>Няма намерени работници</CommandEmpty>
+            <CommandGroup>
+              {workers
+                .sort((a, b) => workerFullName(a).localeCompare(workerFullName(b)))
+                .map((w) => (
+                  <CommandItem
+                    key={w.id}
+                    value={`${workerFullName(w)} ${w.department ?? ""} ${w.employee_number ?? ""}`}
+                    onSelect={() => { onChange(w.id); setOpen(false); }}
+                  >
+                    <Check className={cn("mr-2 w-4 h-4 shrink-0", value === w.id ? "opacity-100" : "opacity-0")} />
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-sm">{workerFullName(w)}</div>
+                      {w.department && (
+                        <div className="text-xs text-muted-foreground">{w.department}</div>
+                      )}
+                    </div>
+                    {w.employee_number && (
+                      <span className="text-xs text-muted-foreground font-mono ml-2">{w.employee_number}</span>
+                    )}
+                  </CommandItem>
+                ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 // ─── Leave Dialog ─────────────────────────────────────────────────────────────
 
 function LeaveDialog({ open, onClose, leave, workers }: {
@@ -112,20 +194,15 @@ function LeaveDialog({ open, onClose, leave, workers }: {
     setForm((f) => ({ ...f, [k]: v }));
 
   const resetForm = () => {
-    if (leave) {
-      setForm({
-        worker_id: leave.worker_id,
-        type:      leave.type,
-        start_date: leave.start_date,
-        end_date:   leave.end_date,
-        note:       leave.note ?? "",
-      });
-    } else {
-      setForm(defaultForm());
-    }
+    setForm(leave ? {
+      worker_id: leave.worker_id,
+      type:      leave.type,
+      start_date: leave.start_date,
+      end_date:   leave.end_date,
+      note:       leave.note ?? "",
+    } : defaultForm());
   };
 
-  // Reset form when dialog opens
   useEffect(() => { if (open) resetForm(); }, [open]);
 
   const mutation = useMutation({
@@ -150,6 +227,7 @@ function LeaveDialog({ open, onClose, leave, workers }: {
   });
 
   const valid = form.worker_id && form.start_date && form.end_date && form.end_date >= form.start_date;
+  const activeWorkers = workers.filter(w => w.active);
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); else resetForm(); }}>
@@ -161,22 +239,14 @@ function LeaveDialog({ open, onClose, leave, workers }: {
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-4 py-1">
-          {/* Worker */}
+          {/* Worker — searchable combobox */}
           <div className="space-y-1.5">
             <Label>{t("leaves.worker")}</Label>
-            <Select value={form.worker_id} onValueChange={(v) => set("worker_id", v)}>
-              <SelectTrigger>
-                <SelectValue placeholder="— изберете работник —" />
-              </SelectTrigger>
-              <SelectContent>
-                {workers.filter(w => w.active).sort((a, b) => workerFullName(a).localeCompare(workerFullName(b))).map((w) => (
-                  <SelectItem key={w.id} value={w.id}>
-                    {workerFullName(w)}
-                    {w.department && <span className="text-muted-foreground ml-1 text-xs">({w.department})</span>}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <WorkerCombobox
+              workers={activeWorkers}
+              value={form.worker_id}
+              onChange={(id) => set("worker_id", id)}
+            />
           </div>
 
           {/* Type */}
@@ -286,7 +356,6 @@ export default function LeavesPage() {
     return true;
   });
 
-  // Today's on-leave workers
   const onLeaveToday = leaves.filter(isActiveNow);
 
   function openAdd() { setEditing(null); setDialogOpen(true); }
@@ -346,6 +415,7 @@ export default function LeavesPage() {
 
         {/* Filters */}
         <div className="flex flex-wrap gap-3 items-center">
+          {/* Free-text search */}
           <div className="relative">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
             <Input
@@ -356,20 +426,22 @@ export default function LeavesPage() {
             />
           </div>
 
-          {/* Worker filter */}
-          <Select value={filterWorker} onValueChange={setFilterWorker}>
-            <SelectTrigger className="h-8 w-48 text-sm">
-              <SelectValue placeholder={t("leaves.filterWorker")} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">{t("leaves.filterWorker")}</SelectItem>
-              {workers.filter(w => w.active)
-                .sort((a, b) => workerFullName(a).localeCompare(workerFullName(b)))
-                .map((w) => (
-                  <SelectItem key={w.id} value={w.id}>{workerFullName(w)}</SelectItem>
-                ))}
-            </SelectContent>
-          </Select>
+          {/* Worker filter — searchable combobox */}
+          <WorkerCombobox
+            workers={workers.filter(w => w.active)}
+            value={filterWorker === "all" ? "" : filterWorker}
+            onChange={(id) => setFilterWorker(id || "all")}
+            placeholder={t("leaves.filterWorker")}
+            className="h-8 w-52 text-sm"
+          />
+          {filterWorker !== "all" && (
+            <button
+              onClick={() => setFilterWorker("all")}
+              className="text-xs text-muted-foreground hover:text-foreground underline"
+            >
+              ✕ изчисти
+            </button>
+          )}
 
           {/* Type filter */}
           <Select value={filterType} onValueChange={(v) => setFilterType(v as LeaveType | "all")}>

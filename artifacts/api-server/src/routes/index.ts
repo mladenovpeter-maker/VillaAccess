@@ -23,6 +23,7 @@ import { accessRulesRouter } from "./access-rules";
 import { acsRouter } from "./acs";
 import { departmentsRouter } from "./departments";
 import { leavesRouter } from "./leaves";
+import { aiAttendanceRouter } from "./ai-attendance";
 
 const router: IRouter = Router();
 
@@ -69,6 +70,7 @@ router.use("/access-rules",     requireAuth, adminOnly,   accessRulesRouter);
 router.use("/acs",              requireAuth, adminOnly,   acsRouter);
 router.use("/departments",      requireAuth, adminOnly,   departmentsRouter);
 router.use("/leaves",           requireAuth, adminOnly,   leavesRouter);
+router.use("/ai-attendance",    requireAuth, adminOnly,   aiAttendanceRouter);
 
 // ANPR — worker-token-authed (no user session). Mounted last to avoid
 // any accidental requireAuth middleware inheritance.
