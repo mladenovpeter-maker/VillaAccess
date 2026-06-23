@@ -92,11 +92,11 @@ function Router() {
       <Route path="/settings"       component={() => <ProtectedRoute component={SettingsPage}       roles={adminOnly} />} />
       <Route path="/users"          component={() => <ProtectedRoute component={UsersPage}          roles={adminOnly} />} />
       <Route path="/workers"        component={() => <ProtectedRoute component={WorkersPage}        roles={opOrAbove} />} />
-      <Route path="/departments"    component={() => <ProtectedRoute component={DepartmentsPage}    roles={adminOnly} />} />
-      <Route path="/shifts"         component={() => <ProtectedRoute component={ShiftsPage}         roles={adminOnly} />} />
-      <Route path="/access-matrix"  component={() => <ProtectedRoute component={AccessMatrixPage}   roles={adminOnly} />} />
-      <Route path="/leaves"         component={() => <ProtectedRoute component={LeavesPage}          roles={adminOnly} />} />
-      <Route path="/ai-attendance"  component={() => <ProtectedRoute component={AiAttendancePage}    roles={adminOnly} />} />
+      <Route path="/departments"    component={() => <ProtectedRoute component={DepartmentsPage}    roles={opOrAbove} />} />
+      <Route path="/shifts"         component={() => <ProtectedRoute component={ShiftsPage}         roles={opOrAbove} />} />
+      <Route path="/access-matrix"  component={() => <ProtectedRoute component={AccessMatrixPage}   roles={opOrAbove} />} />
+      <Route path="/leaves"         component={() => <ProtectedRoute component={LeavesPage}          roles={opOrAbove} />} />
+      <Route path="/ai-attendance"  component={() => <ProtectedRoute component={AiAttendancePage}    roles={opOrAbove} />} />
       <Route path="/ai-usage"       component={() => <ProtectedRoute component={AiUsagePage}        roles={adminOnly} />} />
       <Route path="/mock"           component={() => <ProtectedRoute component={MockPage}           roles={adminOnly} />} />
 

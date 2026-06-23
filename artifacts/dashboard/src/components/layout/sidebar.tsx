@@ -42,12 +42,12 @@ export function Sidebar() {
 
   const adminItems: NavItem[] = [
     { href: "/users",          label: t("nav.users"),        icon: Users,    roles: ["admin"] },
-    { href: "/workers",        label: t("nav.workers"),      icon: HardHat,   roles: ["admin", "operator"] },
-    { href: "/departments",    label: t("nav.departments"),  icon: Building2,    roles: ["admin"] },
-    { href: "/shifts",         label: t("nav.shifts"),       icon: Clock,        roles: ["admin"] },
-    { href: "/leaves",         label: t("nav.leaves"),       icon: CalendarDays,  roles: ["admin"] },
-    { href: "/ai-attendance",  label: t("nav.aiAttendance"), icon: BrainCircuit,  roles: ["admin"] },
-    { href: "/access-matrix",  label: t("nav.accessMatrix"), icon: Grid3X3,  roles: ["admin"] },
+    { href: "/workers",        label: t("nav.workers"),      icon: HardHat,      roles: ["admin", "operator"] },
+    { href: "/departments",    label: t("nav.departments"),  icon: Building2,    roles: ["admin", "operator"] },
+    { href: "/shifts",         label: t("nav.shifts"),       icon: Clock,        roles: ["admin", "operator"] },
+    { href: "/leaves",         label: t("nav.leaves"),       icon: CalendarDays, roles: ["admin", "operator"] },
+    { href: "/ai-attendance",  label: t("nav.aiAttendance"), icon: BrainCircuit, roles: ["admin", "operator"] },
+    { href: "/access-matrix",  label: t("nav.accessMatrix"), icon: Grid3X3,      roles: ["admin", "operator"] },
   ];
 
   const toolItems: NavItem[] = [

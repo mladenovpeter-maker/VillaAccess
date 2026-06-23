@@ -10,6 +10,7 @@ import {
 import {
   CalendarDays, Car, KeyRound, Lock, Camera, LayoutDashboard, Zap, Building2,
   DoorOpen, Activity, Users, Settings2, Stethoscope, Sparkles, HeartPulse, Download,
+  HardHat, Clock, Grid3X3, BrainCircuit,
 } from "lucide-react";
 
 type Role = "admin" | "operator";
@@ -33,6 +34,12 @@ const PAGES: PageDef[] = [
   { href: "/entrances",       labelKey: "nav.entrances",       icon: DoorOpen,        roles: ["admin"] },
   { href: "/events",          labelKey: "nav.events",          icon: Activity,        roles: ["admin", "operator"] },
   { href: "/temp-credentials",labelKey: "nav.tempCredentials", icon: KeyRound,        roles: ["admin", "operator"] },
+  { href: "/workers",         labelKey: "nav.workers",         icon: HardHat,         roles: ["admin", "operator"] },
+  { href: "/departments",     labelKey: "nav.departments",     icon: Building2,       roles: ["admin", "operator"] },
+  { href: "/shifts",          labelKey: "nav.shifts",          icon: Clock,           roles: ["admin", "operator"] },
+  { href: "/leaves",          labelKey: "nav.leaves",          icon: CalendarDays,    roles: ["admin", "operator"] },
+  { href: "/ai-attendance",   labelKey: "nav.aiAttendance",    icon: BrainCircuit,    roles: ["admin", "operator"] },
+  { href: "/access-matrix",   labelKey: "nav.accessMatrix",    icon: Grid3X3,         roles: ["admin", "operator"] },
   { href: "/users",           labelKey: "nav.users",           icon: Users,           roles: ["admin"] },
   { href: "/diagnostics",     labelKey: "nav.diagnostics",     icon: Stethoscope,     roles: ["admin"] },
   { href: "/ai-usage",        labelKey: "nav.aiUsage",         icon: Sparkles,        roles: ["admin"] },
