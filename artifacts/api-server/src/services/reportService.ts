@@ -7,7 +7,7 @@ import {
   accessEventsTable,
   leavesTable,
 } from "@workspace/db";
-import { eq, isNull, and, gte, lte, inArray, asc, desc, or } from "drizzle-orm";
+import { eq, and, gte, lte, inArray, asc, desc } from "drizzle-orm";
 import { getSettingValue } from "./emailService";
 
 export interface WorkerReportEntry {
@@ -69,7 +69,7 @@ async function getActiveWorkersWithShifts() {
     .from(workersTable)
     .leftJoin(departmentsTable, eq(workersTable.department_id, departmentsTable.id))
     .leftJoin(shiftsTable, eq(departmentsTable.default_shift_id, shiftsTable.id))
-    .where(isNull(workersTable.archived_at));
+    .where(eq(workersTable.active, true));
 
   return rows.filter((r) => r.shift_id && r.start_time && r.end_time);
 }
