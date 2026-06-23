@@ -2,8 +2,6 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { AppLayout } from "@/components/layout/app-layout";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -11,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
 import {
-  Grid3X3, Loader2, Check, X, Clock, ChevronsUpDown, Search,
+  Grid3X3, Loader2, Check, X, Clock, Search,
   CheckSquare, XSquare,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -395,16 +393,6 @@ export default function AccessMatrixPage() {
                     return (
                       <th key={e.id} className="px-3 py-3 font-medium text-muted-foreground text-center min-w-32">
                         <div className="text-xs leading-tight">{e.name}</div>
-                        <Badge
-                          className={cn(
-                            "mt-1 text-[9px] px-1.5 py-0",
-                            e.access_level === "public" && "bg-blue-500/15 text-blue-400 border-blue-500/20",
-                            e.access_level === "restricted" && "bg-orange-500/15 text-orange-400 border-orange-500/20",
-                            e.access_level === "admin_only" && "bg-red-500/15 text-red-400 border-red-500/20",
-                          )}
-                        >
-                          {e.access_level}
-                        </Badge>
                         {/* Column bulk buttons */}
                         <div className="flex justify-center gap-1 mt-1.5">
                           <button
