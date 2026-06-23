@@ -54,6 +54,7 @@ router.get("/:id", requireAuth, async (req, res) => {
 
 const upsertSchema = z.object({
   name:         z.string().min(1),
+  zone:         z.string().optional().nullable(),
   description:  z.string().optional().nullable(),
   access_level: z.enum(["public", "restricted", "admin_only"]).optional(),
   active:       z.boolean().optional(),
@@ -67,6 +68,7 @@ router.post("/", requireAuth, async (req, res) => {
 
   const [e] = await db.insert(entrancesTable).values({
     name:         body.data.name,
+    zone:         body.data.zone ?? null,
     description:  body.data.description ?? null,
     access_level: body.data.access_level ?? "public",
     active:       body.data.active ?? true,
@@ -86,6 +88,7 @@ router.put("/:id", requireAuth, async (req, res) => {
 
   const [updated] = await db.update(entrancesTable).set({
     name:         body.data.name,
+    zone:         body.data.zone ?? rows[0].zone,
     description:  body.data.description ?? null,
     access_level: body.data.access_level ?? rows[0].access_level,
     active:       body.data.active ?? rows[0].active,

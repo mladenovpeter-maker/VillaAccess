@@ -44,13 +44,14 @@ interface EntranceEvent {
 
 interface EntranceForm {
   name: string;
+  zone: string;
   access_level: AccessLevel;
   description: string;
   active: boolean;
 }
 
 const defaultForm: EntranceForm = {
-  name: "", access_level: "public", description: "", active: true,
+  name: "", zone: "", access_level: "public", description: "", active: true,
 };
 
 // ─── Status badges ────────────────────────────────────────────────────────────
@@ -107,6 +108,7 @@ function EntranceDialog({ open, onClose, entrance }: {
     if (!open) return;
     setForm(entrance ? {
       name:         entrance.name,
+      zone:         entrance.zone ?? "",
       access_level: entrance.access_level ?? "public",
       description:  entrance.description ?? "",
       active:       entrance.active,
@@ -120,6 +122,7 @@ function EntranceDialog({ open, onClose, entrance }: {
     mutationFn: async () => {
       const body = {
         name:         form.name,
+        zone:         form.zone || null,
         access_level: form.access_level,
         description:  form.description || null,
         active:       form.active,
@@ -152,6 +155,16 @@ function EntranceDialog({ open, onClose, entrance }: {
           <div className="space-y-1.5">
             <Label>{t("entrances.entranceName")}</Label>
             <Input placeholder="e.g. Main Gate" value={form.name} onChange={(e) => set("name", e.target.value)} />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>{t("entrances.zone")}</Label>
+            <Input
+              placeholder={t("entrances.zonePlaceholder")}
+              value={form.zone}
+              onChange={(e) => set("zone", e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground">{t("entrances.zoneHint")}</p>
           </div>
 
           <div className="space-y-1.5">

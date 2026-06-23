@@ -20,6 +20,7 @@ export const entrancesTable = pgTable(
   {
     id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
     name: text("name").notNull(),
+    zone: text("zone"),
     description: text("description"),
     access_level: entranceAccessLevelEnum("access_level").notNull().default("public"),
     active: boolean("active").notNull().default(true),

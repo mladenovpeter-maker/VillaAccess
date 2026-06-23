@@ -1,0 +1,1 @@
+ALTER TABLE entrances ADD COLUMN IF NOT EXISTS zone text;

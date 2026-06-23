@@ -307,6 +307,7 @@ export interface DashboardStats {
 export interface Entrance {
   id: string;
   name: string;
+  zone: string | null;
   access_level: "public" | "restricted" | "admin_only";
   description: string | null;
   active: boolean;

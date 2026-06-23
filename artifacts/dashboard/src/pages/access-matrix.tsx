@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { AppLayout } from "@/components/layout/app-layout";
@@ -15,6 +15,7 @@ import { useTranslation } from "react-i18next";
 import {
   Grid3X3, Loader2, Check, X, Clock, Search,
   CheckSquare, XSquare, Upload, AlertCircle, ShieldCheck, ShieldOff, Shield,
+  Rows3, AlignJustify,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Entrance } from "@/lib/api";
@@ -71,15 +72,49 @@ function MatrixCell({
   onToggle,
   onShiftChange,
   loading,
+  compact,
 }: {
   rule: AccessRule | undefined;
   shifts: Shift[];
   onToggle: () => void;
   onShiftChange: (shiftId: string | null) => void;
   loading: boolean;
+  compact?: boolean;
 }) {
   const { t } = useTranslation();
   const hasAccess = !!rule && rule.active;
+  const shiftName = hasAccess && rule.shift_id
+    ? shifts.find((s) => s.id === rule.shift_id)?.name
+    : null;
+
+  if (compact) {
+    return (
+      <td className="px-1 py-1 text-center align-middle">
+        <button
+          onClick={onToggle}
+          disabled={loading}
+          className={cn(
+            "w-6 h-6 rounded border transition-colors flex items-center justify-center relative",
+            hasAccess
+              ? "bg-green-500/20 border-green-500/40 text-green-400 hover:bg-red-500/20 hover:border-red-500/40 hover:text-red-400"
+              : "bg-muted/20 border-border/50 text-muted-foreground hover:bg-green-500/10 hover:border-green-500/30 hover:text-green-400"
+          )}
+          title={hasAccess
+            ? (shiftName ? `${t("matrix.clickToRevoke")} (${shiftName})` : t("matrix.clickToRevoke"))
+            : t("matrix.clickToGrant")}
+        >
+          {loading
+            ? <Loader2 className="w-2.5 h-2.5 animate-spin" />
+            : hasAccess
+              ? shiftName
+                ? <Clock className="w-2.5 h-2.5" />
+                : <Check className="w-2.5 h-2.5" />
+              : <X className="w-2.5 h-2.5 opacity-30" />
+          }
+        </button>
+      </td>
+    );
+  }
 
   return (
     <td className="px-2 py-2 text-center align-middle">
@@ -146,6 +181,7 @@ export default function AccessMatrixPage() {
   // anti-passback mode per entrance: undefined=unknown, "double"|"single"|"none"
   const [apMode, setApMode] = useState<Record<string, APMode>>({});
   const [apLoading, setApLoading] = useState<Set<string>>(new Set());
+  const [compact, setCompact] = useState(false);
 
   const { data: workers = [], isLoading: loadingWorkers } = useQuery<Worker[]>({
     queryKey: ["workers"],
@@ -210,6 +246,19 @@ export default function AccessMatrixPage() {
     });
 
   const activeEntrances = entrances.filter((e) => e.active);
+
+  // Group entrances by zone (preserving insertion order)
+  const zoneGroups = useMemo(() => {
+    const map = new Map<string, Entrance[]>();
+    for (const e of entrances.filter((e) => e.active)) {
+      const zone = e.zone ?? "";
+      if (!map.has(zone)) map.set(zone, []);
+      map.get(zone)!.push(e);
+    }
+    return Array.from(map.entries()).map(([zone, ents]) => ({ zone, ents }));
+  }, [entrances]);
+
+  const hasZones = zoneGroups.some(g => g.zone !== "");
 
   // ── Stats (only active rules) ─────────────────────────────────────────────
   const activeRules = rules.filter((r) => r.active);
@@ -441,6 +490,23 @@ export default function AccessMatrixPage() {
               </button>
             ))}
           </div>
+
+          {/* Compact toggle */}
+          <div className="ml-auto">
+            <button
+              onClick={() => setCompact((v) => !v)}
+              title={compact ? t("matrix.normalView") : t("matrix.compact")}
+              className={cn(
+                "flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-colors",
+                compact
+                  ? "bg-primary/20 border-primary/40 text-primary"
+                  : "bg-muted/30 border-border text-muted-foreground hover:bg-muted/60"
+              )}
+            >
+              {compact ? <AlignJustify className="w-3.5 h-3.5" /> : <Rows3 className="w-3.5 h-3.5" />}
+              {compact ? t("matrix.normalView") : t("matrix.compact")}
+            </button>
+          </div>
         </div>
 
         {/* Legend */}
@@ -481,11 +547,33 @@ export default function AccessMatrixPage() {
             {filteredWorkers.length === 0 ? t("workers.noWorkers") : t("matrix.noEntrances")}
           </div>
         ) : (
-          <div className="bg-card border border-border rounded-xl overflow-auto">
+          <div className="bg-card border border-border rounded-xl overflow-auto max-h-[calc(100vh-22rem)]">
             <table className="text-sm min-w-max">
               <thead>
-                <tr className="border-b border-border bg-muted/30">
-                  <th className="text-left px-4 py-3 font-medium text-muted-foreground sticky left-0 bg-muted/30 z-10 min-w-52">
+                {/* Zone grouping row — only shown when at least one entrance has a zone */}
+                {hasZones && (
+                  <tr className="border-b border-border/40 sticky top-0 z-20 h-7">
+                    <th className="sticky left-0 top-0 z-30 bg-muted/20 border-r border-border/20" />
+                    {zoneGroups.map(({ zone, ents }) => (
+                      <th
+                        key={zone}
+                        colSpan={ents.length}
+                        className="bg-muted/20 px-2 text-[10px] font-semibold text-center uppercase tracking-wide border-r border-border/20 last:border-r-0"
+                      >
+                        <span className={zone ? "text-primary/70" : "text-muted-foreground/40"}>
+                          {zone || t("matrix.noZone")}
+                        </span>
+                      </th>
+                    ))}
+                    {/* extra for row bulk column */}
+                    <th className="bg-muted/20" />
+                  </tr>
+                )}
+                <tr className={cn("border-b border-border bg-muted/30 sticky z-20", hasZones ? "top-7" : "top-0")}>
+                  <th className={cn(
+                    "text-left px-4 py-3 font-medium text-muted-foreground sticky left-0 bg-muted/30 z-30 border-r border-border/20",
+                    compact ? "min-w-40" : "min-w-52"
+                  )}>
                     {t("workers.name")}
                     <span className="ml-1 text-muted-foreground/50 font-normal text-[10px]">
                       ({filteredWorkers.length})
@@ -495,8 +583,12 @@ export default function AccessMatrixPage() {
                     const allGranted = filteredWorkers.every((w) => ruleMap.get(cellKey(w.id, e.id))?.active);
                     const colLoading = loadingCols.has(e.id);
                     return (
-                      <th key={e.id} className="px-3 py-3 font-medium text-muted-foreground text-center min-w-32">
-                        <div className="text-xs leading-tight">{e.name}</div>
+                      <th key={e.id} className={cn(
+                        "px-3 py-3 font-medium text-muted-foreground text-center sticky bg-muted/30",
+                        hasZones ? "top-7" : "top-0",
+                        compact ? "min-w-16" : "min-w-32"
+                      )}>
+                        <div className={cn("leading-tight", compact ? "text-[10px]" : "text-xs")}>{e.name}</div>
                         {/* Column bulk buttons */}
                         <div className="flex justify-center gap-1 mt-1.5">
                           <button
@@ -594,9 +686,12 @@ export default function AccessMatrixPage() {
                   const allGrantedRow = activeEntrances.every((e) => ruleMap.get(cellKey(w.id, e.id))?.active);
                   return (
                     <tr key={w.id} className="border-b border-border/50 hover:bg-muted/10">
-                      <td className="px-4 py-2 sticky left-0 bg-card z-10">
-                        <div className="font-medium leading-tight">{fullName(w)}</div>
-                        {w.department && (
+                      <td className={cn(
+                        "sticky left-0 bg-card z-10 border-r border-border/20",
+                        compact ? "px-3 py-1" : "px-4 py-2"
+                      )}>
+                        <div className={cn("font-medium leading-tight", compact ? "text-xs" : "text-sm")}>{fullName(w)}</div>
+                        {!compact && w.department && (
                           <div className="text-[10px] text-muted-foreground">{w.department}</div>
                         )}
                       </td>
@@ -610,6 +705,7 @@ export default function AccessMatrixPage() {
                             onToggle={() => handleToggle(w.id, e.id)}
                             onShiftChange={(shiftId) => handleShiftChange(w.id, e.id, shiftId)}
                             loading={loadingCells.has(key) || rowLoading}
+                            compact={compact}
                           />
                         );
                       })}
