@@ -23,6 +23,7 @@ import {
   HardHat, Plus, Pencil, Trash2, Loader2, Search,
   Car, UserCheck, UserX, Link2, Unlink,
 } from "lucide-react";
+import { CardScanInput } from "@/components/card-scan-input";
 import { cn } from "@/lib/utils";
 import type { Vehicle } from "@/lib/api";
 
@@ -147,7 +148,11 @@ function WorkerDialog({ open, onClose, worker }: { open: boolean; onClose: () =>
             </div>
             <div className="space-y-1.5">
               <Label>{t("workers.badgeNo")}</Label>
-              <Input value={form.badge_no} onChange={(e) => set("badge_no", e.target.value)} />
+              <CardScanInput
+                value={form.badge_no}
+                onChange={(v) => set("badge_no", v)}
+                placeholder={t("workers.badgeNoPlaceholder")}
+              />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
