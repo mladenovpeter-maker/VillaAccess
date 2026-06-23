@@ -8,6 +8,20 @@ import {
   index,
   unique,
 } from "drizzle-orm/pg-core";
+// ─── Departments ──────────────────────────────────────────────────────────────
+// Each department can have a default shift that auto-fills access rules.
+
+export const departmentsTable = pgTable("departments", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  name: text("name").notNull().unique(),
+  default_shift_id: text("default_shift_id"),   // FK set after shiftsTable is defined
+  notes: text("notes"),
+  active: boolean("active").notNull().default(true),
+  created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updated_at: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export type Department = typeof departmentsTable.$inferSelect;
 
 // ─── Workers ──────────────────────────────────────────────────────────────────
 
@@ -29,6 +43,8 @@ export const workersTable = pgTable(
     email: text("email"),
     active: boolean("active").notNull().default(true),
     notes: text("notes"),
+    /** FK → departments.id */
+    department_id: text("department_id"),
 
     created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updated_at: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),

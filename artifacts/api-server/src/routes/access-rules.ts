@@ -4,6 +4,7 @@ import {
   accessRulesTable,
   workersTable,
   shiftsTable,
+  departmentsTable,
 } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import { z } from "zod/v4";
@@ -69,14 +70,34 @@ accessRulesRouter.post("/", async (req, res) => {
     const parse = createSchema.safeParse(req.body);
     if (!parse.success) return res.status(400).json({ detail: parse.error.issues[0]?.message });
 
-    const { worker_id, entrance_id, shift_id } = parse.data;
+    const { worker_id, entrance_id } = parse.data;
+    let shift_id = parse.data.shift_id ?? null;
+
+    // Auto-fill shift from worker's department default if not explicitly provided
+    if (!shift_id) {
+      const [worker] = await db
+        .select({ department_id: workersTable.department_id })
+        .from(workersTable)
+        .where(eq(workersTable.id, worker_id))
+        .limit(1);
+
+      if (worker?.department_id) {
+        const [dept] = await db
+          .select({ default_shift_id: departmentsTable.default_shift_id })
+          .from(departmentsTable)
+          .where(eq(departmentsTable.id, worker.department_id))
+          .limit(1);
+
+        if (dept?.default_shift_id) shift_id = dept.default_shift_id;
+      }
+    }
 
     const [row] = await db
       .insert(accessRulesTable)
-      .values({ worker_id, entrance_id, shift_id: shift_id ?? null, active: true })
+      .values({ worker_id, entrance_id, shift_id, active: true })
       .onConflictDoUpdate({
         target: [accessRulesTable.worker_id, accessRulesTable.entrance_id],
-        set: { shift_id: shift_id ?? null, active: true },
+        set: { shift_id, active: true },
       })
       .returning();
 

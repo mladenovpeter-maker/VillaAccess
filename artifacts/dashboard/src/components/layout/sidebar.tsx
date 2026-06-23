@@ -6,7 +6,7 @@ import {
   Activity, LogOut, Menu, X, DoorOpen, FlaskConical,
   Stethoscope, Settings2, HeartPulse, GitCommitHorizontal,
   Download, Users, KeyRound, Phone, Zap, Sparkles,
-  Factory, HardHat, Clock, Grid3X3,
+  Factory, HardHat, Clock, Grid3X3, Building2,
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -42,8 +42,9 @@ export function Sidebar() {
 
   const adminItems: NavItem[] = [
     { href: "/users",          label: t("nav.users"),        icon: Users,    roles: ["admin"] },
-    { href: "/workers",        label: t("nav.workers"),      icon: HardHat,  roles: ["admin", "operator"] },
-    { href: "/shifts",         label: t("nav.shifts"),       icon: Clock,    roles: ["admin"] },
+    { href: "/workers",        label: t("nav.workers"),      icon: HardHat,   roles: ["admin", "operator"] },
+    { href: "/departments",    label: t("nav.departments"),  icon: Building2, roles: ["admin"] },
+    { href: "/shifts",         label: t("nav.shifts"),       icon: Clock,     roles: ["admin"] },
     { href: "/access-matrix",  label: t("nav.accessMatrix"), icon: Grid3X3,  roles: ["admin"] },
   ];
 

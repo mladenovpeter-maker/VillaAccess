@@ -24,6 +24,7 @@ import ExportPage from "@/pages/export";
 import UsersPage from "@/pages/users";
 import AiUsagePage from "@/pages/ai-usage";
 import WorkersPage from "@/pages/workers";
+import DepartmentsPage from "@/pages/departments";
 import ShiftsPage from "@/pages/shifts";
 import AccessMatrixPage from "@/pages/access-matrix";
 
@@ -89,6 +90,7 @@ function Router() {
       <Route path="/settings"       component={() => <ProtectedRoute component={SettingsPage}       roles={adminOnly} />} />
       <Route path="/users"          component={() => <ProtectedRoute component={UsersPage}          roles={adminOnly} />} />
       <Route path="/workers"        component={() => <ProtectedRoute component={WorkersPage}        roles={opOrAbove} />} />
+      <Route path="/departments"    component={() => <ProtectedRoute component={DepartmentsPage}    roles={adminOnly} />} />
       <Route path="/shifts"         component={() => <ProtectedRoute component={ShiftsPage}         roles={adminOnly} />} />
       <Route path="/access-matrix"  component={() => <ProtectedRoute component={AccessMatrixPage}   roles={adminOnly} />} />
       <Route path="/ai-usage"       component={() => <ProtectedRoute component={AiUsagePage}        roles={adminOnly} />} />

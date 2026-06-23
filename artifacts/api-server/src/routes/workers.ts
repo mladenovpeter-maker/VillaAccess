@@ -21,6 +21,7 @@ const workerBodySchema = z.object({
   last_name: z.string().min(1),
   position: z.string().optional().nullable(),
   department: z.string().optional().nullable(),
+  department_id: z.string().optional().nullable(),
   phone: z.string().optional().nullable(),
   email: z.string().optional().nullable(),
   active: z.boolean().optional(),

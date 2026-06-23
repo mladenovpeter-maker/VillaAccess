@@ -29,6 +29,13 @@ import type { Vehicle } from "@/lib/api";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
+interface Department {
+  id: string;
+  name: string;
+  default_shift_id: string | null;
+  active: boolean;
+}
+
 interface Worker {
   id: string;
   employee_number: string | null;
@@ -38,6 +45,7 @@ interface Worker {
   last_name: string;
   position: string | null;
   department: string | null;
+  department_id: string | null;
   phone: string | null;
   email: string | null;
   active: boolean;
@@ -53,7 +61,7 @@ interface WorkerForm {
   first_name: string;
   last_name: string;
   position: string;
-  department: string;
+  department_id: string;
   phone: string;
   email: string;
   active: boolean;
@@ -63,7 +71,7 @@ interface WorkerForm {
 const defaultForm: WorkerForm = {
   employee_number: "", badge_no: "", photo_url: "",
   first_name: "", last_name: "",
-  position: "", department: "", phone: "", email: "",
+  position: "", department_id: "", phone: "", email: "",
   active: true, notes: "",
 };
 
@@ -77,6 +85,14 @@ function WorkerDialog({ open, onClose, worker }: { open: boolean; onClose: () =>
   const { t } = useTranslation();
   const [form, setForm] = useState<WorkerForm>(defaultForm);
 
+  const { data: departments = [] } = useQuery<Department[]>({
+    queryKey: ["departments"],
+    queryFn: () => api.get("/departments"),
+    enabled: open,
+  });
+
+  const activeDepts = departments.filter((d) => d.active);
+
   useEffect(() => {
     if (!open) return;
     setForm(worker ? {
@@ -86,7 +102,7 @@ function WorkerDialog({ open, onClose, worker }: { open: boolean; onClose: () =>
       first_name: worker.first_name,
       last_name: worker.last_name,
       position: worker.position ?? "",
-      department: worker.department ?? "",
+      department_id: worker.department_id ?? "",
       phone: worker.phone ?? "",
       email: worker.email ?? "",
       active: worker.active,
@@ -98,6 +114,7 @@ function WorkerDialog({ open, onClose, worker }: { open: boolean; onClose: () =>
 
   const mut = useMutation({
     mutationFn: async () => {
+      const selectedDept = departments.find((d) => d.id === form.department_id);
       const body = {
         employee_number: form.employee_number || null,
         badge_no: form.badge_no || null,
@@ -105,7 +122,8 @@ function WorkerDialog({ open, onClose, worker }: { open: boolean; onClose: () =>
         first_name: form.first_name,
         last_name: form.last_name,
         position: form.position || null,
-        department: form.department || null,
+        department: selectedDept?.name ?? null,
+        department_id: form.department_id || null,
         phone: form.phone || null,
         email: form.email || null,
         active: form.active,
@@ -158,7 +176,20 @@ function WorkerDialog({ open, onClose, worker }: { open: boolean; onClose: () =>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label>{t("workers.department")}</Label>
-              <Input value={form.department} onChange={(e) => set("department", e.target.value)} />
+              <Select
+                value={form.department_id || "__none__"}
+                onValueChange={(v) => set("department_id", v === "__none__" ? "" : v)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={t("workers.noDepartment")} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">{t("workers.noDepartment")}</SelectItem>
+                  {activeDepts.map((d) => (
+                    <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-1.5">
               <Label>{t("workers.position")}</Label>
