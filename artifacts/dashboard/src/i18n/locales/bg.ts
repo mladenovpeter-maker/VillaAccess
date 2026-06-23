@@ -609,7 +609,7 @@ const bg = {
   matrix: {
     title: "Матрица на достъпа",
     subtitle: "Кой работник има достъп до кой вход — кликнете клетка за разрешаване/отказ",
-    totalRules: "Общо правила",
+    totalRules: "Активни правила",
     workersWithAccess: "Работници с достъп",
     entrancesConfigured: "Активни входове",
     accessGranted: "Разрешен достъп",
@@ -619,6 +619,14 @@ const bg = {
     clickToGrant: "Клик за разрешаване",
     clickToRevoke: "Клик за отказ",
     noEntrances: "Няма активни входове.",
+    grantAll: "Разреши на всички",
+    revokeAll: "Откажи на всички",
+    bulkGranted: "Достъпът е даден",
+    bulkRevoked: "Достъпът е отнет",
+    workers: "работника",
+    allEntrances: "Всички входове",
+    bulkHint: "Иконите в заглавията дават/отнемат масово",
+    showing: "Показани",
   },
 };
 

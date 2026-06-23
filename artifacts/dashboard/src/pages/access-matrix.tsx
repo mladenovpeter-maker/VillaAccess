@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Button } from "@/components/ui/button";
@@ -7,10 +7,12 @@ import { Badge } from "@/components/ui/badge";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
 import {
-  Grid3X3, Loader2, Check, X, Clock,
+  Grid3X3, Loader2, Check, X, Clock, ChevronsUpDown, Search,
+  CheckSquare, XSquare,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Entrance } from "@/lib/api";
@@ -44,21 +46,17 @@ interface AccessRule {
   shift?: Shift | null;
 }
 
-function fullName(w: Worker) { return `${w.first_name} ${w.last_name}`; }
+function fullName(w: Worker) { return `${w.last_name} ${w.first_name}`; }
 
 // ─── Cell Component ────────────────────────────────────────────────────────────
 
 function MatrixCell({
-  workerId,
-  entranceId,
   rule,
   shifts,
   onToggle,
   onShiftChange,
   loading,
 }: {
-  workerId: string;
-  entranceId: string;
   rule: AccessRule | undefined;
   shifts: Shift[];
   onToggle: () => void;
@@ -125,7 +123,10 @@ export default function AccessMatrixPage() {
   const { toast } = useToast();
   const { t } = useTranslation();
   const [deptFilter, setDeptFilter] = useState("all");
+  const [search, setSearch] = useState("");
   const [loadingCells, setLoadingCells] = useState<Set<string>>(new Set());
+  const [loadingCols, setLoadingCols] = useState<Set<string>>(new Set());
+  const [loadingRows, setLoadingRows] = useState<Set<string>>(new Set());
 
   const { data: workers = [], isLoading: loadingWorkers } = useQuery<Worker[]>({
     queryKey: ["workers"],
@@ -154,11 +155,21 @@ export default function AccessMatrixPage() {
   // Departments
   const departments = ["all", ...new Set(workers.map((w) => w.department).filter(Boolean) as string[])];
 
-  const filteredWorkers = deptFilter === "all"
-    ? workers.filter((w) => w.active)
-    : workers.filter((w) => w.active && w.department === deptFilter);
+  const filteredWorkers = workers
+    .filter((w) => w.active)
+    .filter((w) => deptFilter === "all" || w.department === deptFilter)
+    .filter((w) => {
+      if (!search.trim()) return true;
+      const q = search.trim().toLowerCase();
+      return fullName(w).toLowerCase().includes(q) || (w.employee_number ?? "").toLowerCase().includes(q);
+    });
 
   const activeEntrances = entrances.filter((e) => e.active);
+
+  // ── Stats (only active rules) ─────────────────────────────────────────────
+  const activeRules = rules.filter((r) => r.active);
+  const totalRules = activeRules.length;
+  const workersWithAccess = new Set(activeRules.map((r) => r.worker_id)).size;
 
   function cellKey(workerId: string, entranceId: string) { return `${workerId}|${entranceId}`; }
 
@@ -170,6 +181,8 @@ export default function AccessMatrixPage() {
     });
   }
 
+  // ── Individual cell toggle ────────────────────────────────────────────────
+
   async function handleToggle(workerId: string, entranceId: string) {
     const key = cellKey(workerId, entranceId);
     const existing = ruleMap.get(key);
@@ -177,7 +190,6 @@ export default function AccessMatrixPage() {
     setLoading(key, true);
     try {
       if (existing) {
-        // Non-destructive: flip active flag instead of deleting the rule
         await api.patch(`/access-rules/${existing.id}`, { active: !existing.active });
       } else {
         await api.post("/access-rules", { worker_id: workerId, entrance_id: entranceId, shift_id: null });
@@ -190,11 +202,18 @@ export default function AccessMatrixPage() {
     }
   }
 
+  // ── Shift change (PATCH existing rule) ────────────────────────────────────
+
   async function handleShiftChange(workerId: string, entranceId: string, shiftId: string | null) {
     const key = cellKey(workerId, entranceId);
+    const existing = ruleMap.get(key);
     setLoading(key, true);
     try {
-      await api.post("/access-rules", { worker_id: workerId, entrance_id: entranceId, shift_id: shiftId });
+      if (existing) {
+        await api.patch(`/access-rules/${existing.id}`, { shift_id: shiftId });
+      } else {
+        await api.post("/access-rules", { worker_id: workerId, entrance_id: entranceId, shift_id: shiftId });
+      }
       await qc.invalidateQueries({ queryKey: ["access-rules-matrix"] });
     } catch (e: any) {
       toast({ title: t("common.error"), description: e.message, variant: "destructive" });
@@ -203,11 +222,69 @@ export default function AccessMatrixPage() {
     }
   }
 
-  const isLoading = loadingWorkers || loadingEntrances || loadingRules;
+  // ── Bulk: column (all visible workers ↔ one entrance) ────────────────────
 
-  // Stats
-  const totalRules = rules.length;
-  const workersWithAccess = new Set(rules.map((r) => r.worker_id)).size;
+  async function handleColumnBulk(entranceId: string, grant: boolean) {
+    setLoadingCols((prev) => new Set(prev).add(entranceId));
+    try {
+      await Promise.all(
+        filteredWorkers.map(async (w) => {
+          const existing = ruleMap.get(cellKey(w.id, entranceId));
+          if (grant) {
+            if (!existing) {
+              await api.post("/access-rules", { worker_id: w.id, entrance_id: entranceId, shift_id: null });
+            } else if (!existing.active) {
+              await api.patch(`/access-rules/${existing.id}`, { active: true });
+            }
+          } else {
+            if (existing?.active) {
+              await api.patch(`/access-rules/${existing.id}`, { active: false });
+            }
+          }
+        })
+      );
+      await qc.invalidateQueries({ queryKey: ["access-rules-matrix"] });
+      toast({
+        title: grant ? t("matrix.bulkGranted") : t("matrix.bulkRevoked"),
+        description: `${filteredWorkers.length} ${t("matrix.workers")}`,
+      });
+    } catch (e: any) {
+      toast({ title: t("common.error"), description: e.message, variant: "destructive" });
+    } finally {
+      setLoadingCols((prev) => { const next = new Set(prev); next.delete(entranceId); return next; });
+    }
+  }
+
+  // ── Bulk: row (one worker ↔ all entrances) ───────────────────────────────
+
+  async function handleRowBulk(workerId: string, grant: boolean) {
+    setLoadingRows((prev) => new Set(prev).add(workerId));
+    try {
+      await Promise.all(
+        activeEntrances.map(async (e) => {
+          const existing = ruleMap.get(cellKey(workerId, e.id));
+          if (grant) {
+            if (!existing) {
+              await api.post("/access-rules", { worker_id: workerId, entrance_id: e.id, shift_id: null });
+            } else if (!existing.active) {
+              await api.patch(`/access-rules/${existing.id}`, { active: true });
+            }
+          } else {
+            if (existing?.active) {
+              await api.patch(`/access-rules/${existing.id}`, { active: false });
+            }
+          }
+        })
+      );
+      await qc.invalidateQueries({ queryKey: ["access-rules-matrix"] });
+    } catch (e: any) {
+      toast({ title: t("common.error"), description: e.message, variant: "destructive" });
+    } finally {
+      setLoadingRows((prev) => { const next = new Set(prev); next.delete(workerId); return next; });
+    }
+  }
+
+  const isLoading = loadingWorkers || loadingEntrances || loadingRules;
 
   return (
     <AppLayout>
@@ -235,8 +312,20 @@ export default function AccessMatrixPage() {
           ))}
         </div>
 
-        {/* Department filter */}
-        <div className="flex gap-3 items-center">
+        {/* Filters row */}
+        <div className="flex flex-wrap gap-3 items-center">
+          {/* Search */}
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+            <Input
+              className="pl-8 h-8 w-52 text-sm"
+              placeholder={t("common.search")}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+
+          {/* Department filter */}
           <span className="text-sm text-muted-foreground">{t("workers.department")}:</span>
           <div className="flex gap-2 flex-wrap">
             {departments.map((dept) => (
@@ -274,6 +363,10 @@ export default function AccessMatrixPage() {
               {t("matrix.shiftRestricted")}
             </span>
           )}
+          <span className="flex items-center gap-1.5 ml-2 text-blue-400">
+            <CheckSquare className="w-3.5 h-3.5" />
+            {t("matrix.bulkHint")}
+          </span>
         </div>
 
         {/* Matrix table */}
@@ -290,55 +383,115 @@ export default function AccessMatrixPage() {
             <table className="text-sm min-w-max">
               <thead>
                 <tr className="border-b border-border bg-muted/30">
-                  <th className="text-left px-4 py-3 font-medium text-muted-foreground sticky left-0 bg-muted/30 z-10 min-w-48">
+                  <th className="text-left px-4 py-3 font-medium text-muted-foreground sticky left-0 bg-muted/30 z-10 min-w-52">
                     {t("workers.name")}
+                    <span className="ml-1 text-muted-foreground/50 font-normal text-[10px]">
+                      ({filteredWorkers.length})
+                    </span>
                   </th>
-                  {activeEntrances.map((e) => (
-                    <th key={e.id} className="px-3 py-3 font-medium text-muted-foreground text-center min-w-28">
-                      <div className="text-xs leading-tight">{e.name}</div>
-                      <Badge
-                        className={cn(
-                          "mt-1 text-[9px] px-1.5 py-0",
-                          e.access_level === "public" && "bg-blue-500/15 text-blue-400 border-blue-500/20",
-                          e.access_level === "restricted" && "bg-orange-500/15 text-orange-400 border-orange-500/20",
-                          e.access_level === "admin_only" && "bg-red-500/15 text-red-400 border-red-500/20",
-                        )}
-                      >
-                        {e.access_level}
-                      </Badge>
-                    </th>
-                  ))}
+                  {activeEntrances.map((e) => {
+                    const allGranted = filteredWorkers.every((w) => ruleMap.get(cellKey(w.id, e.id))?.active);
+                    const colLoading = loadingCols.has(e.id);
+                    return (
+                      <th key={e.id} className="px-3 py-3 font-medium text-muted-foreground text-center min-w-32">
+                        <div className="text-xs leading-tight">{e.name}</div>
+                        <Badge
+                          className={cn(
+                            "mt-1 text-[9px] px-1.5 py-0",
+                            e.access_level === "public" && "bg-blue-500/15 text-blue-400 border-blue-500/20",
+                            e.access_level === "restricted" && "bg-orange-500/15 text-orange-400 border-orange-500/20",
+                            e.access_level === "admin_only" && "bg-red-500/15 text-red-400 border-red-500/20",
+                          )}
+                        >
+                          {e.access_level}
+                        </Badge>
+                        {/* Column bulk buttons */}
+                        <div className="flex justify-center gap-1 mt-1.5">
+                          <button
+                            onClick={() => handleColumnBulk(e.id, true)}
+                            disabled={colLoading || allGranted}
+                            title={t("matrix.grantAll")}
+                            className="p-0.5 rounded text-green-400/70 hover:text-green-400 hover:bg-green-500/10 disabled:opacity-30 transition-colors"
+                          >
+                            {colLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckSquare className="w-3.5 h-3.5" />}
+                          </button>
+                          <button
+                            onClick={() => handleColumnBulk(e.id, false)}
+                            disabled={colLoading || !filteredWorkers.some((w) => ruleMap.get(cellKey(w.id, e.id))?.active)}
+                            title={t("matrix.revokeAll")}
+                            className="p-0.5 rounded text-red-400/70 hover:text-red-400 hover:bg-red-500/10 disabled:opacity-30 transition-colors"
+                          >
+                            <XSquare className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </th>
+                    );
+                  })}
+                  {/* Extra column header for row bulk */}
+                  <th className="px-3 py-3 text-center min-w-20">
+                    <span className="text-[10px] text-muted-foreground/50">{t("matrix.allEntrances")}</span>
+                  </th>
                 </tr>
               </thead>
               <tbody>
-                {filteredWorkers.map((w) => (
-                  <tr key={w.id} className="border-b border-border/50 hover:bg-muted/10">
-                    <td className="px-4 py-2 sticky left-0 bg-card z-10">
-                      <div className="font-medium leading-tight">{fullName(w)}</div>
-                      {w.department && (
-                        <div className="text-[10px] text-muted-foreground">{w.department}</div>
-                      )}
-                    </td>
-                    {activeEntrances.map((e) => {
-                      const key = cellKey(w.id, e.id);
-                      return (
-                        <MatrixCell
-                          key={e.id}
-                          workerId={w.id}
-                          entranceId={e.id}
-                          rule={ruleMap.get(key)}
-                          shifts={shifts}
-                          onToggle={() => handleToggle(w.id, e.id)}
-                          onShiftChange={(shiftId) => handleShiftChange(w.id, e.id, shiftId)}
-                          loading={loadingCells.has(key)}
-                        />
-                      );
-                    })}
-                  </tr>
-                ))}
+                {filteredWorkers.map((w) => {
+                  const rowLoading = loadingRows.has(w.id);
+                  const allGrantedRow = activeEntrances.every((e) => ruleMap.get(cellKey(w.id, e.id))?.active);
+                  return (
+                    <tr key={w.id} className="border-b border-border/50 hover:bg-muted/10">
+                      <td className="px-4 py-2 sticky left-0 bg-card z-10">
+                        <div className="font-medium leading-tight">{fullName(w)}</div>
+                        {w.department && (
+                          <div className="text-[10px] text-muted-foreground">{w.department}</div>
+                        )}
+                      </td>
+                      {activeEntrances.map((e) => {
+                        const key = cellKey(w.id, e.id);
+                        return (
+                          <MatrixCell
+                            key={e.id}
+                            rule={ruleMap.get(key)}
+                            shifts={shifts}
+                            onToggle={() => handleToggle(w.id, e.id)}
+                            onShiftChange={(shiftId) => handleShiftChange(w.id, e.id, shiftId)}
+                            loading={loadingCells.has(key) || rowLoading}
+                          />
+                        );
+                      })}
+                      {/* Row bulk buttons */}
+                      <td className="px-3 py-2 text-center">
+                        <div className="flex justify-center gap-1">
+                          <button
+                            onClick={() => handleRowBulk(w.id, true)}
+                            disabled={rowLoading || allGrantedRow}
+                            title={t("matrix.grantAll")}
+                            className="p-0.5 rounded text-green-400/70 hover:text-green-400 hover:bg-green-500/10 disabled:opacity-30 transition-colors"
+                          >
+                            {rowLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckSquare className="w-3.5 h-3.5" />}
+                          </button>
+                          <button
+                            onClick={() => handleRowBulk(w.id, false)}
+                            disabled={rowLoading || !activeEntrances.some((e) => ruleMap.get(cellKey(w.id, e.id))?.active)}
+                            title={t("matrix.revokeAll")}
+                            className="p-0.5 rounded text-red-400/70 hover:text-red-400 hover:bg-red-500/10 disabled:opacity-30 transition-colors"
+                          >
+                            <XSquare className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
+        )}
+
+        {/* Filtered count hint */}
+        {filteredWorkers.length > 0 && (
+          <p className="text-xs text-muted-foreground text-right">
+            {t("matrix.showing")} {filteredWorkers.length} / {workers.filter(w => w.active).length} {t("matrix.workers")}
+          </p>
         )}
       </div>
     </AppLayout>
