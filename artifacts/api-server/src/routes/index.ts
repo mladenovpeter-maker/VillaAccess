@@ -34,7 +34,7 @@ const writeAccess = requireWriteAccess();
 router.use(healthRouter);
 router.use("/auth", authRouter);
 
-// All authenticated — read-only viewers, write blocked for viewer
+// All authenticated users
 router.use("/dashboard",     requireAuth,                  dashboardRouter);
 router.use("/access",        requireAuth,  writeAccess,    accessRouter);
 // NOTE: no blanket requireAuth here. The SSE endpoint /events/stream
@@ -46,7 +46,7 @@ router.use("/events",                                      eventsRouter);
 router.use("/logs",          requireAuth,                  logsRouter);
 router.use("/snapshots",     requireAuth,                  snapshotsRouter);
 
-// All authenticated — viewer read-only (GET allowed, writes blocked)
+// Operator + admin
 router.use("/vehicles",      requireAuth,  writeAccess,    vehiclesRouter);
 
 // Admin only

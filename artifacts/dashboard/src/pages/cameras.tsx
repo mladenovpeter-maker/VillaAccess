@@ -770,7 +770,7 @@ export default function CamerasPage() {
   const { t } = useTranslation();
   const qc = useQueryClient();
   const { user } = useAuth();
-  const canWrite = user?.role !== "viewer";
+  const canWrite = true;
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<Camera | null>(null);

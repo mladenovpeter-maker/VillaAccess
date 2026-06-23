@@ -93,7 +93,7 @@ async function rotateRefreshToken(
   return { userId: stored.user_id, newRaw };
 }
 
-export function requireRole(...roles: Array<"admin" | "operator" | "viewer">) {
+export function requireRole(...roles: Array<"admin" | "operator">) {
   return (req: any, res: any, next: any) => {
     if (!roles.includes(req.user?.role)) {
       res.status(403).json({ detail: "Forbidden" });
@@ -104,14 +104,7 @@ export function requireRole(...roles: Array<"admin" | "operator" | "viewer">) {
 }
 
 export function requireWriteAccess() {
-  return (req: any, res: any, next: any) => {
-    const isReadOnly = ["GET", "HEAD", "OPTIONS"].includes(req.method);
-    if (!isReadOnly && req.user?.role === "viewer") {
-      res.status(403).json({ detail: "Forbidden" });
-      return;
-    }
-    next();
-  };
+  return (_req: any, _res: any, next: any) => { next(); };
 }
 
 export async function requireAuth(req: any, res: any, next: any) {

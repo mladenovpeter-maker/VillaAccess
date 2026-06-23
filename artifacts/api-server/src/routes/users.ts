@@ -37,7 +37,7 @@ router.get("/:id", requireAuth, async (req, res) => {
 const createSchema = z.object({
   username: z.string().min(3).max(50),
   password: z.string().min(6),
-  role: z.enum(["admin", "operator", "viewer"]).optional(),
+  role: z.enum(["admin", "operator"]).optional(),
   full_name: z.string().optional(),
 });
 
@@ -62,7 +62,7 @@ router.post("/", requireAuth, async (req, res) => {
 // PUT /users/:id
 const updateSchema = z.object({
   username: z.string().min(3).max(50).optional(),
-  role: z.enum(["admin", "operator", "viewer"]).optional(),
+  role: z.enum(["admin", "operator"]).optional(),
   full_name: z.string().optional().nullable(),
 });
 

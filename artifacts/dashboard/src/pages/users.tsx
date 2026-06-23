@@ -29,7 +29,7 @@ import { cn } from "@/lib/utils";
 interface SystemUser {
   id: string;
   username: string;
-  role: "admin" | "operator" | "viewer";
+  role: "admin" | "operator";
   full_name: string | null;
   is_active: boolean;
   created_at: string;
@@ -39,7 +39,7 @@ interface SystemUser {
 interface UserForm {
   username: string;
   full_name: string;
-  role: "admin" | "operator" | "viewer";
+  role: "admin" | "operator";
   password: string;
 }
 
@@ -131,7 +131,6 @@ function UserDialog({ open, onClose, user }: { open: boolean; onClose: () => voi
                 <SelectContent>
                   <SelectItem value="admin">Admin</SelectItem>
                   <SelectItem value="operator">Operator</SelectItem>
-                  <SelectItem value="viewer">Viewer</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -335,7 +334,6 @@ export default function UsersPage() {
               <SelectItem value="all">{t("common.all")}</SelectItem>
               <SelectItem value="admin">Admin</SelectItem>
               <SelectItem value="operator">Operator</SelectItem>
-              <SelectItem value="viewer">Viewer</SelectItem>
             </SelectContent>
           </Select>
         </div>

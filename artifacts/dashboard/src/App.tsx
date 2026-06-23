@@ -30,7 +30,7 @@ import AccessMatrixPage from "@/pages/access-matrix";
 import LeavesPage from "@/pages/leaves";
 import AiAttendancePage from "@/pages/ai-attendance";
 
-type Role = "admin" | "operator" | "viewer";
+type Role = "admin" | "operator";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -71,8 +71,8 @@ function Router() {
     <Switch>
       <Route path="/login" component={() => <PublicRoute component={LoginPage} />} />
 
-      {/* Dashboard — admin + viewer only (operators land on /controls instead) */}
-      <Route path="/"         component={() => <ProtectedRoute component={DashboardPage} roles={["admin", "viewer"]} />} />
+      {/* Dashboard — admin only (operators land on /controls instead) */}
+      <Route path="/"         component={() => <ProtectedRoute component={DashboardPage} roles={["admin"]} />} />
       <Route path="/timeline" component={() => <ProtectedRoute component={TimelinePage} />} />
       <Route path="/events"   component={() => <ProtectedRoute component={EventsPage} />} />
 

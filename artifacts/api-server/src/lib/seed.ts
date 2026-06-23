@@ -25,12 +25,11 @@ function bootstrapPassword(envVar: string): string | null {
 const DEFAULT_USERS: Array<{
   username: string;
   envVar: string;
-  role: "admin" | "operator" | "viewer";
+  role: "admin" | "operator";
   full_name: string;
 }> = [
   { username: "admin",    envVar: "ADMIN_PASSWORD",    role: "admin",    full_name: "System Administrator" },
   { username: "operator", envVar: "OPERATOR_PASSWORD", role: "operator", full_name: "Default Operator" },
-  { username: "viewer",   envVar: "VIEWER_PASSWORD",   role: "viewer",   full_name: "Default Viewer" },
 ];
 
 export async function seedDefaultUsers(): Promise<void> {

@@ -721,7 +721,7 @@ export default function VehiclesPage() {
   const { toast } = useToast();
   const { t } = useTranslation();
   const { user } = useAuth();
-  const isViewer = user?.role === "viewer";
+  const isViewer = false;
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [formOpen, setFormOpen] = useState(false);

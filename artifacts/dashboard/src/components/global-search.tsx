@@ -12,7 +12,7 @@ import {
   DoorOpen, Activity, Users, Settings2, Stethoscope, Sparkles, HeartPulse, Download,
 } from "lucide-react";
 
-type Role = "admin" | "operator" | "viewer";
+type Role = "admin" | "operator";
 
 interface PageDef {
   href: string;
@@ -22,16 +22,16 @@ interface PageDef {
 }
 
 const PAGES: PageDef[] = [
-  { href: "/",                labelKey: "nav.dashboard",       icon: LayoutDashboard, roles: ["admin", "viewer"] },
+  { href: "/",                labelKey: "nav.dashboard",       icon: LayoutDashboard, roles: ["admin"] },
   { href: "/controls",        labelKey: "nav.controls",        icon: Zap,             roles: ["admin", "operator"] },
-  { href: "/reservations",    labelKey: "nav.reservations",    icon: CalendarDays,    roles: ["admin", "operator", "viewer"] },
-  { href: "/vehicles",        labelKey: "nav.vehicles",        icon: Car,             roles: ["admin", "operator", "viewer"] },
+  { href: "/reservations",    labelKey: "nav.reservations",    icon: CalendarDays,    roles: ["admin", "operator"] },
+  { href: "/vehicles",        labelKey: "nav.vehicles",        icon: Car,             roles: ["admin", "operator"] },
   { href: "/villas",          labelKey: "nav.villas",          icon: Building2,       roles: ["admin"] },
   { href: "/cameras",         labelKey: "nav.cameras",         icon: Camera,          roles: ["admin"] },
   { href: "/access-control",  labelKey: "nav.intercoms",       icon: KeyRound,        roles: ["admin"] },
   { href: "/locks",           labelKey: "nav.locks",           icon: Lock,            roles: ["admin"] },
   { href: "/entrances",       labelKey: "nav.entrances",       icon: DoorOpen,        roles: ["admin"] },
-  { href: "/events",          labelKey: "nav.events",          icon: Activity,        roles: ["admin", "operator", "viewer"] },
+  { href: "/events",          labelKey: "nav.events",          icon: Activity,        roles: ["admin", "operator"] },
   { href: "/temp-credentials",labelKey: "nav.tempCredentials", icon: KeyRound,        roles: ["admin", "operator"] },
   { href: "/users",           labelKey: "nav.users",           icon: Users,           roles: ["admin"] },
   { href: "/diagnostics",     labelKey: "nav.diagnostics",     icon: Stethoscope,     roles: ["admin"] },

@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { useTranslation } from "react-i18next";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 
-type Role = "admin" | "operator" | "viewer";
+type Role = "admin" | "operator";
 
 type NavItem = {
   href: string;
@@ -28,16 +28,16 @@ export function Sidebar() {
   const [open, setOpen] = useState(false);
   const { t } = useTranslation();
 
-  const role = (user?.role ?? "viewer") as Role;
+  const role = (user?.role ?? "operator") as Role;
 
   const mainItems: NavItem[] = [
-    { href: "/",             label: t("nav.dashboard"),  icon: LayoutDashboard, roles: ["admin", "viewer"] },
+    { href: "/",             label: t("nav.dashboard"),  icon: LayoutDashboard, roles: ["admin"] },
     { href: "/controls",     label: t("nav.controls"),   icon: Zap,             roles: ["admin", "operator"] },
-    { href: "/vehicles",     label: t("nav.vehicles"),   icon: Car,             roles: ["admin", "operator", "viewer"] },
+    { href: "/vehicles",     label: t("nav.vehicles"),   icon: Car,             roles: ["admin", "operator"] },
     { href: "/entrances",    label: t("nav.entrances"),  icon: DoorOpen,        roles: ["admin"] },
     { href: "/cameras",      label: t("nav.cameras"),    icon: Camera,          roles: ["admin"] },
     { href: "/access-control", label: t("nav.intercoms"), icon: KeyRound,       roles: ["admin"] },
-    { href: "/events",       label: t("nav.events"),     icon: Activity,        roles: ["admin", "operator", "viewer"] },
+    { href: "/events",       label: t("nav.events"),     icon: Activity,        roles: ["admin", "operator"] },
   ];
 
   const adminItems: NavItem[] = [
