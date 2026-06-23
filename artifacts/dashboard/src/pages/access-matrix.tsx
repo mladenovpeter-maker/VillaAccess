@@ -10,10 +10,21 @@ import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
 import {
   Grid3X3, Loader2, Check, X, Clock, Search,
-  CheckSquare, XSquare,
+  CheckSquare, XSquare, Upload, AlertCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Entrance } from "@/lib/api";
+
+interface ACSDeviceStatus {
+  id: string;
+  name: string;
+  entrance_id: string | null;
+  entrance_name: string | null;
+  ip_address: string;
+  last_sync_at: string | null;
+  last_sync_status: string | null;
+  status: string;
+}
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -125,6 +136,7 @@ export default function AccessMatrixPage() {
   const [loadingCells, setLoadingCells] = useState<Set<string>>(new Set());
   const [loadingCols, setLoadingCols] = useState<Set<string>>(new Set());
   const [loadingRows, setLoadingRows] = useState<Set<string>>(new Set());
+  const [syncing, setSyncing] = useState(false);
 
   const { data: workers = [], isLoading: loadingWorkers } = useQuery<Worker[]>({
     queryKey: ["workers"],
@@ -145,6 +157,32 @@ export default function AccessMatrixPage() {
     queryKey: ["shifts"],
     queryFn: () => api.get("/shifts"),
   });
+
+  const { data: acsStatus = [], refetch: refetchACS } = useQuery<ACSDeviceStatus[]>({
+    queryKey: ["acs-status"],
+    queryFn: () => api.get("/acs/status"),
+    refetchInterval: 60_000,
+  });
+
+  async function handleSync(entranceId?: string) {
+    setSyncing(true);
+    try {
+      const url = entranceId ? `/acs/sync/${entranceId}` : "/acs/sync";
+      const result = await api.post(url, {});
+      await refetchACS();
+      const total = result.results?.reduce((s: number, r: any) => s + (r.synced ?? 0), 0) ?? 0;
+      const failed = result.results?.reduce((s: number, r: any) => s + (r.failed?.length ?? 0), 0) ?? 0;
+      toast({
+        title: failed === 0 ? t("matrix.syncSuccess") : t("matrix.syncPartial"),
+        description: `${total} ${t("matrix.syncCards")}${failed > 0 ? `, ${failed} ${t("matrix.syncFailed")}` : ""}`,
+        variant: failed === 0 ? "default" : "destructive",
+      });
+    } catch (e: any) {
+      toast({ title: t("common.error"), description: e.message, variant: "destructive" });
+    } finally {
+      setSyncing(false);
+    }
+  }
 
   // Build rule lookup: `workerId|entranceId` → AccessRule
   const ruleMap = new Map<string, AccessRule>();
@@ -288,12 +326,41 @@ export default function AccessMatrixPage() {
     <AppLayout>
       <div className="p-6 space-y-6">
         {/* Header */}
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Grid3X3 className="w-6 h-6" />
-            {t("matrix.title")}
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">{t("matrix.subtitle")}</p>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold flex items-center gap-2">
+              <Grid3X3 className="w-6 h-6" />
+              {t("matrix.title")}
+            </h1>
+            <p className="text-sm text-muted-foreground mt-1">{t("matrix.subtitle")}</p>
+          </div>
+          {/* Sync panel */}
+          <div className="flex flex-col items-end gap-1.5 shrink-0">
+            <button
+              onClick={() => handleSync()}
+              disabled={syncing}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 disabled:opacity-60 transition-colors"
+            >
+              {syncing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+              {t("matrix.syncAll")}
+            </button>
+            {acsStatus.length > 0 && (
+              <div className="flex flex-col items-end gap-0.5">
+                {acsStatus.map((d) => (
+                  <span key={d.id} className={cn(
+                    "text-[10px] flex items-center gap-1",
+                    d.last_sync_status?.startsWith("OK") ? "text-green-400" : d.last_sync_at ? "text-yellow-400" : "text-muted-foreground"
+                  )}>
+                    {d.last_sync_status && !d.last_sync_status.startsWith("OK") && <AlertCircle className="w-2.5 h-2.5" />}
+                    <span className="font-medium">{d.entrance_name ?? d.name}:</span>
+                    {d.last_sync_at
+                      ? new Date(d.last_sync_at).toLocaleString("bg-BG", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })
+                      : t("matrix.neverSynced")}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Stats */}

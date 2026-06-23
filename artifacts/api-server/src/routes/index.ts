@@ -20,6 +20,7 @@ import { aiUsageRouter } from "./ai-usage";
 import { workersRouter } from "./workers";
 import { shiftsRouter } from "./shifts";
 import { accessRulesRouter } from "./access-rules";
+import { acsRouter } from "./acs";
 
 const router: IRouter = Router();
 
@@ -63,6 +64,7 @@ router.use("/mock",             requireAuth, adminOnly,   mockRouter);
 router.use("/workers",          requireAuth, writeAccess, workersRouter);
 router.use("/shifts",           requireAuth, adminOnly,   shiftsRouter);
 router.use("/access-rules",     requireAuth, adminOnly,   accessRulesRouter);
+router.use("/acs",              requireAuth, adminOnly,   acsRouter);
 
 // ANPR — worker-token-authed (no user session). Mounted last to avoid
 // any accidental requireAuth middleware inheritance.

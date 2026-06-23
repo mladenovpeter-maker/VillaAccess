@@ -4,6 +4,7 @@ import {
   timestamp,
   boolean,
   jsonb,
+  integer,
   index,
   unique,
 } from "drizzle-orm/pg-core";
@@ -56,6 +57,8 @@ export const shiftsTable = pgTable("shifts", {
     .default([0, 1, 2, 3, 4, 5, 6]),
   active: boolean("active").notNull().default(true),
   notes: text("notes"),
+  /** Hikvision time-template slot (1 = always/device default; 2..N = custom). */
+  hik_template_no: integer("hik_template_no").unique(),
 
   created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updated_at: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
