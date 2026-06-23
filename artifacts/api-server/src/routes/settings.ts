@@ -4,6 +4,8 @@ import { systemSettingsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { requireAuth } from "./auth";
 import { sendEmail, emailWrap, getReportRecipients } from "../services/emailService";
+import { getLateArrivals, getEarlyDepartures } from "../services/reportService";
+import { runMorningReport, runEveningReport } from "../cron/reports";
 
 const router = Router();
 
@@ -132,6 +134,73 @@ router.patch("/", requireAuth, async (req: any, res) => {
   }
 
   res.json({ updated: results.length, settings: results });
+});
+
+// POST /settings/trigger-morning — immediately fires the morning late-arrivals report (ignores reports_enabled)
+router.post("/trigger-morning", requireAuth, async (_req, res) => {
+  try {
+    const recipients = await getReportRecipients();
+    if (!recipients.length) {
+      res.status(400).json({ detail: "Няма конфигурирани получатели (report_recipients)" });
+      return;
+    }
+    const today = new Date();
+    const entries = await getLateArrivals(today);
+    const rows = entries.map((e) => {
+      const badge = e.status === "absent"
+        ? `<span style="background:#f1f5f9;color:#64748b;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600">Отсъстващ</span>`
+        : `<span style="background:#fee2e2;color:#dc2626;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600">Закъснял с ${e.minutesDiff} мин</span>`;
+      const t = e.eventTime ? `${String(e.eventTime.getHours()).padStart(2,"0")}:${String(e.eventTime.getMinutes()).padStart(2,"0")}` : "—";
+      return `<tr><td><strong>${e.fullName}</strong><br/><span style="color:#64748b;font-size:12px">${e.position??""}</span></td><td>${e.department??""}</td><td>${e.shiftStart}</td><td>${t}</td><td>${badge}</td></tr>`;
+    }).join("");
+    const table = entries.length
+      ? `<table style="width:100%;border-collapse:collapse;font-size:14px"><thead><tr style="background:#f1f5f9"><th style="padding:10px 12px;text-align:left">Работник</th><th style="padding:10px 12px;text-align:left">Отдел</th><th style="padding:10px 12px;text-align:left">Начало</th><th style="padding:10px 12px;text-align:left">Влизане</th><th style="padding:10px 12px;text-align:left">Статус</th></tr></thead><tbody>${rows}</tbody></table>`
+      : `<p style="text-align:center;color:#94a3b8;padding:32px 0">✅ Няма закъснели или отсъстващи.</p>`;
+    const body = `<h2 style="margin-top:0;color:#1e3a5f">🕐 Тест — Закъснели работници</h2><p style="color:#64748b;font-size:13px">Ръчно задействан тест — ${new Date().toLocaleDateString("bg-BG")}</p>${table}`;
+    await sendEmail(recipients, `🕐 [ТЕСТ] Закъснели — ${new Date().toLocaleDateString("bg-BG")}`, emailWrap("Тест: Закъснели", body));
+    res.json({ message: `Изпратен до: ${recipients.join(", ")} — ${entries.length} записа`, count: entries.length });
+  } catch (err: any) {
+    res.status(500).json({ detail: err?.message ?? "Грешка" });
+  }
+});
+
+// POST /settings/trigger-evening — immediately fires the evening summary report
+router.post("/trigger-evening", requireAuth, async (_req, res) => {
+  try {
+    const recipients = await getReportRecipients();
+    if (!recipients.length) {
+      res.status(400).json({ detail: "Няма конфигурирани получатели (report_recipients)" });
+      return;
+    }
+    const today = new Date();
+    const [lateEntries, earlyEntries] = await Promise.all([getLateArrivals(today), getEarlyDepartures(today)]);
+
+    function badge(color: string, bg: string, text: string) {
+      return `<span style="background:${bg};color:${color};padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600">${text}</span>`;
+    }
+    function fmt(d: Date) { return `${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`; }
+
+    const lateRows = lateEntries.map((e) => {
+      const b = e.status === "absent" ? badge("#64748b","#f1f5f9","Отсъстващ") : badge("#dc2626","#fee2e2",`Закъснял ${e.minutesDiff} мин`);
+      return `<tr><td><strong>${e.fullName}</strong></td><td>${e.department??""}</td><td>${e.shiftStart}</td><td>${e.eventTime?fmt(e.eventTime):"—"}</td><td>${b}</td></tr>`;
+    }).join("");
+    const earlyRows = earlyEntries.map((e) => {
+      const b = badge("#d97706","#fef3c7",`Излязъл ${e.minutesDiff} мин рано`);
+      return `<tr><td><strong>${e.fullName}</strong></td><td>${e.department??""}</td><td>${e.shiftEnd}</td><td>${e.eventTime?fmt(e.eventTime):"—"}</td><td>${b}</td></tr>`;
+    }).join("");
+
+    const thStyle = `style="padding:10px 12px;text-align:left;background:#f1f5f9"`;
+    const tdStyle = `style="padding:10px 12px;border-bottom:1px solid #f1f5f9"`;
+    const thead = `<thead><tr><th ${thStyle}>Работник</th><th ${thStyle}>Отдел</th><th ${thStyle}>Смяна</th><th ${thStyle}>Час</th><th ${thStyle}>Статус</th></tr></thead>`;
+    const lateTable = lateEntries.length ? `<table style="width:100%;border-collapse:collapse;font-size:14px">${thead}<tbody>${lateRows}</tbody></table>` : `<p style="text-align:center;color:#94a3b8;padding:24px 0">✅ Няма закъснели.</p>`;
+    const earlyTable = earlyEntries.length ? `<table style="width:100%;border-collapse:collapse;font-size:14px">${thead}<tbody>${earlyRows}</tbody></table>` : `<p style="text-align:center;color:#94a3b8;padding:24px 0">✅ Няма напуснали рано.</p>`;
+
+    const body = `<h2 style="margin-top:0;color:#1e3a5f">📊 Тест — Дневно резюме</h2><p style="color:#64748b;font-size:13px">Ръчно задействан тест — ${new Date().toLocaleDateString("bg-BG")}</p><h3 style="color:#dc2626">🕐 Закъснели / Отсъстващи</h3>${lateTable}<h3 style="color:#d97706;margin-top:28px">🚪 Напуснали преди края на смяната</h3>${earlyTable}`;
+    await sendEmail(recipients, `📊 [ТЕСТ] Дневен отчет — ${new Date().toLocaleDateString("bg-BG")}`, emailWrap("Тест: Дневен отчет", body));
+    res.json({ message: `Изпратен до: ${recipients.join(", ")}`, late: lateEntries.length, early: earlyEntries.length });
+  } catch (err: any) {
+    res.status(500).json({ detail: err?.message ?? "Грешка" });
+  }
 });
 
 // POST /settings/test-email — sends a test email using current SMTP settings

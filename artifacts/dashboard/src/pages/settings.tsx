@@ -145,6 +145,8 @@ export default function SettingsPage() {
   const [draft, setDraft] = useState<Record<string, string>>({});
   const [dirty, setDirty] = useState<Set<string>>(new Set());
   const [testingEmail, setTestingEmail] = useState(false);
+  const [triggeringMorning, setTriggeringMorning] = useState(false);
+  const [triggeringEvening, setTriggeringEvening] = useState(false);
 
   const { data, isLoading } = useQuery<SettingsResponse>({
     queryKey: ["settings"],
@@ -205,6 +207,30 @@ export default function SettingsPage() {
     }
   }
 
+  async function handleTriggerMorning() {
+    setTriggeringMorning(true);
+    try {
+      const res = await api.post<{ message: string; count: number }>("/settings/trigger-morning", {});
+      toast({ title: "✅ Сутрешен отчет изпратен", description: `${res.message}` });
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Грешка", description: err?.detail ?? err?.message });
+    } finally {
+      setTriggeringMorning(false);
+    }
+  }
+
+  async function handleTriggerEvening() {
+    setTriggeringEvening(true);
+    try {
+      const res = await api.post<{ message: string; late: number; early: number }>("/settings/trigger-evening", {});
+      toast({ title: "✅ Вечерен отчет изпратен", description: `${res.message} — закъснели: ${res.late}, рано: ${res.early}` });
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Грешка", description: err?.detail ?? err?.message });
+    } finally {
+      setTriggeringEvening(false);
+    }
+  }
+
   const orderedCategories = [
     ...CATEGORY_ORDER.filter((c) => data?.grouped[c]),
     ...Object.keys(data?.grouped ?? {}).filter((c) => !CATEGORY_ORDER.includes(c)),
@@ -257,16 +283,39 @@ export default function SettingsPage() {
                       {t(`settings.categories.${category}`, { defaultValue: category })}
                     </CardTitle>
                     {category === "email" && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={handleTestEmail}
-                        disabled={testingEmail}
-                        className="text-xs h-7"
-                      >
-                        <Send className="w-3 h-3 mr-1.5" />
-                        {testingEmail ? "Изпращане..." : "Тест имейл"}
-                      </Button>
+                      <div className="flex gap-1.5">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={handleTriggerMorning}
+                          disabled={triggeringMorning}
+                          className="text-xs h-7"
+                          title="Изпраща сутрешния отчет за закъснели сега"
+                        >
+                          {triggeringMorning ? "..." : "🕐 Закъснели"}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={handleTriggerEvening}
+                          disabled={triggeringEvening}
+                          className="text-xs h-7"
+                          title="Изпраща вечерния дневен отчет сега"
+                        >
+                          {triggeringEvening ? "..." : "📊 Дневен"}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={handleTestEmail}
+                          disabled={testingEmail}
+                          className="text-xs h-7"
+                          title="Тест на SMTP връзката"
+                        >
+                          <Send className="w-3 h-3 mr-1" />
+                          {testingEmail ? "..." : "Тест"}
+                        </Button>
+                      </div>
                     )}
                   </div>
                 </CardHeader>

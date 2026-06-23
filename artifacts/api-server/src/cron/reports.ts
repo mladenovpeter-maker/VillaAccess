@@ -75,7 +75,7 @@ function buildEarlyTable(entries: WorkerReportEntry[]): string {
   </table>`;
 }
 
-async function runMorningReport() {
+export async function runMorningReport() {
   try {
     const enabled = await isReportsEnabled();
     if (!enabled) return;
@@ -112,7 +112,7 @@ async function runMorningReport() {
   }
 }
 
-async function runEveningReport() {
+export async function runEveningReport() {
   try {
     const enabled = await isReportsEnabled();
     if (!enabled) return;
