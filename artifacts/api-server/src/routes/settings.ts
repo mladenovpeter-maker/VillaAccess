@@ -3,6 +3,7 @@ import { db } from "@workspace/db";
 import { systemSettingsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { requireAuth } from "./auth";
+import { sendEmail, emailWrap, getReportRecipients } from "../services/emailService";
 
 const router = Router();
 
@@ -22,6 +23,18 @@ const DEFAULT_SETTINGS = [
   { key: "auto_blacklist_threshold",   value: "5",    value_type: "number",  label: "Auto-Blacklist Threshold",    description: "Number of consecutive denied attempts before flagging a vehicle",  category: "access" },
   { key: "ocr_max_candidates",         value: "3",    value_type: "number",  label: "OCR Max Candidates",          description: "Number of top OCR candidates to store per recognition event",      category: "ai" },
   { key: "site_name",                  value: "Villa Access Control", value_type: "string", label: "Site Name", description: "Name shown in the dashboard header and notifications", category: "general" },
+  { key: "reports_enabled",            value: "false",  value_type: "boolean",  label: "Активирай имейл отчети",         description: "Изпраща ежедневни отчети за закъснели и напуснали рано",              category: "email" },
+  { key: "smtp_host",                  value: "",       value_type: "string",   label: "SMTP Хост",                      description: "Напр. smtp.zoho.com или smtp.gmail.com",                            category: "email" },
+  { key: "smtp_port",                  value: "587",    value_type: "number",   label: "SMTP Порт",                      description: "465 за SSL, 587 за STARTTLS",                                       category: "email" },
+  { key: "smtp_secure",                value: "false",  value_type: "boolean",  label: "SSL/TLS (порт 465)",             description: "Включи за порт 465; изключи за STARTTLS (587)",                     category: "email" },
+  { key: "smtp_user",                  value: "",       value_type: "string",   label: "SMTP Потребител",                description: "Имейл адресът от който се изпраща",                                 category: "email" },
+  { key: "smtp_pass",                  value: "",       value_type: "password", label: "SMTP Парола",                    description: "Паролата за SMTP автентикация",                                     category: "email" },
+  { key: "smtp_from",                  value: "",       value_type: "string",   label: "Изпращач (From)",               description: "Напр. MakmetalAccess <reports@nexaraz.net>",                        category: "email" },
+  { key: "report_recipients",          value: "",       value_type: "string",   label: "Получатели (CSV)",               description: "Имейли разделени със запетая: hr@firm.bg,boss@firm.bg",            category: "email" },
+  { key: "report_morning_time",        value: "09:30",  value_type: "string",   label: "Час сутрешен отчет (HH:MM)",    description: "Кога да се изпрати отчетът за закъснели — по сървърно локално време", category: "email" },
+  { key: "report_evening_time",        value: "18:30",  value_type: "string",   label: "Час вечерен отчет (HH:MM)",     description: "Кога да се изпрати дневното резюме — по сървърно локално време",      category: "email" },
+  { key: "report_late_grace_minutes",  value: "15",     value_type: "number",   label: "Толеранс закъснение (мин)",     description: "Минути след началото на смяната преди да се счита за закъснение",   category: "email" },
+  { key: "report_early_grace_minutes", value: "15",     value_type: "number",   label: "Толеранс ранно напускане (мин)","description": "Минути преди края на смяната преди да се счита за ранно напускане", category: "email" },
 ];
 
 async function ensureDefaults() {
@@ -119,6 +132,34 @@ router.patch("/", requireAuth, async (req: any, res) => {
   }
 
   res.json({ updated: results.length, settings: results });
+});
+
+// POST /settings/test-email — sends a test email using current SMTP settings
+router.post("/test-email", requireAuth, async (_req, res) => {
+  try {
+    const recipients = await getReportRecipients();
+    if (!recipients.length) {
+      res.status(400).json({ detail: "Няма конфигурирани получатели (report_recipients)" });
+      return;
+    }
+
+    const body = `
+      <h2 style="margin-top:0;color:#1e3a5f">Тест имейл</h2>
+      <p>Това е тестово съобщение от <strong>MakmetalAccess</strong>.</p>
+      <p>SMTP конфигурацията е успешна! ✅</p>
+      <p style="color:#64748b;font-size:13px">Изпратено: ${new Date().toLocaleString("bg-BG")}</p>
+    `;
+
+    await sendEmail(
+      recipients,
+      "✅ MakmetalAccess — тест на SMTP конфигурацията",
+      emailWrap("Тест имейл", body),
+    );
+
+    res.json({ message: `Тест имейл изпратен до: ${recipients.join(", ")}` });
+  } catch (err: any) {
+    res.status(500).json({ detail: err?.message ?? "Неуспешно изпращане" });
+  }
 });
 
 export { router as settingsRouter };

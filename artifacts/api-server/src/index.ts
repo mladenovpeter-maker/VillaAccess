@@ -3,6 +3,7 @@ import { logger } from "./lib/logger";
 import { seedDefaultUsers } from "./lib/seed";
 import { startVehicleArchiveSweep } from "./services/vehicle-archive";
 import { startSnapshotRetentionSweep } from "./services/snapshot-retention";
+import { startReportCron } from "./cron/reports";
 
 const rawPort = process.env["PORT"];
 
@@ -35,5 +36,7 @@ seedDefaultUsers()
       // disk from camera/AI snapshots that have no DB row. Runs daily.
       startSnapshotRetentionSweep();
       logger.info("Snapshot retention sweep started (daily)");
+      startReportCron();
+      logger.info("Daily attendance report cron started");
     });
   });

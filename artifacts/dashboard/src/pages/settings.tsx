@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
-import { Save, RotateCcw, Brain, HardDrive, Shield, Settings2, Database, Globe } from "lucide-react";
+import { Save, RotateCcw, Brain, HardDrive, Shield, Settings2, Database, Globe, Mail, Send } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface SystemSetting {
@@ -37,9 +37,10 @@ const CATEGORY_ICONS: Record<string, React.ElementType> = {
   storage: Database,
   system: Settings2,
   general: Globe,
+  email: Mail,
 };
 
-const CATEGORY_ORDER = ["general", "access", "ai", "hardware", "storage", "system"];
+const CATEGORY_ORDER = ["general", "email", "access", "ai", "hardware", "storage", "system"];
 
 function SettingField({
   setting,
@@ -51,9 +52,6 @@ function SettingField({
   onChange: (key: string, val: string) => void;
 }) {
   const { t } = useTranslation();
-  // Labels + descriptions are seeded in English in the DB. We translate
-  // on the frontend keyed by setting.key — falls back to the English DB
-  // value if no translation exists (e.g. settings added later).
   const label = t(`settings.labels.${setting.key}`, { defaultValue: setting.label });
   const description = t(`settings.descriptions.${setting.key}`, {
     defaultValue: setting.description ?? "",
@@ -98,6 +96,29 @@ function SettingField({
     );
   }
 
+  if (setting.value_type === "password") {
+    return (
+      <div className="py-3 border-b border-border/40 last:border-0">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex-1">
+            <Label className="text-sm font-medium text-foreground">{label}</Label>
+            {description && (
+              <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
+            )}
+          </div>
+          <Input
+            type="password"
+            value={value}
+            onChange={(e) => onChange(setting.key, e.target.value)}
+            placeholder="••••••••"
+            autoComplete="new-password"
+            className="w-48"
+          />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="py-3 border-b border-border/40 last:border-0">
       <div className="flex items-start justify-between gap-4">
@@ -123,13 +144,13 @@ export default function SettingsPage() {
   const qc = useQueryClient();
   const [draft, setDraft] = useState<Record<string, string>>({});
   const [dirty, setDirty] = useState<Set<string>>(new Set());
+  const [testingEmail, setTestingEmail] = useState(false);
 
   const { data, isLoading } = useQuery<SettingsResponse>({
     queryKey: ["settings"],
     queryFn: () => api.get("/settings"),
   });
 
-  // Seed draft from loaded settings
   useEffect(() => {
     if (data?.settings) {
       const initial: Record<string, string> = {};
@@ -157,7 +178,9 @@ export default function SettingsPage() {
 
   function handleSave() {
     const updates: Record<string, string> = {};
-    for (const key of dirty) updates[key] = draft[key];
+    for (const key of dirty) {
+      if (draft[key] !== undefined) updates[key] = draft[key];
+    }
     saveMut.mutate(updates);
   }
 
@@ -167,6 +190,18 @@ export default function SettingsPage() {
       for (const s of data.settings) initial[s.key] = s.value;
       setDraft(initial);
       setDirty(new Set());
+    }
+  }
+
+  async function handleTestEmail() {
+    setTestingEmail(true);
+    try {
+      const res = await api.post<{ message: string }>("/settings/test-email", {});
+      toast({ title: "✅ Тест изпратен", description: res.message });
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Грешка при изпращане", description: err?.detail ?? err?.message });
+    } finally {
+      setTestingEmail(false);
     }
   }
 
@@ -216,10 +251,24 @@ export default function SettingsPage() {
             return (
               <Card key={category}>
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-semibold flex items-center gap-2 capitalize">
-                    <Icon className="w-4 h-4 text-primary" />
-                    {t(`settings.categories.${category}`, { defaultValue: category })}
-                  </CardTitle>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-sm font-semibold flex items-center gap-2 capitalize">
+                      <Icon className="w-4 h-4 text-primary" />
+                      {t(`settings.categories.${category}`, { defaultValue: category })}
+                    </CardTitle>
+                    {category === "email" && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleTestEmail}
+                        disabled={testingEmail}
+                        className="text-xs h-7"
+                      >
+                        <Send className="w-3 h-3 mr-1.5" />
+                        {testingEmail ? "Изпращане..." : "Тест имейл"}
+                      </Button>
+                    )}
+                  </div>
                 </CardHeader>
                 <CardContent>
                   {settings.map((s) => (
