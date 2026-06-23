@@ -89,6 +89,9 @@ function WorkerDialog({ open, onClose, worker }: { open: boolean; onClose: () =>
   const { toast } = useToast();
   const { t } = useTranslation();
   const [form, setForm] = useState<WorkerForm>(defaultForm);
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const photoFileRef = useRef<HTMLInputElement>(null);
 
   const { data: departments = [] } = useQuery<Department[]>({
     queryKey: ["departments"],
@@ -100,6 +103,8 @@ function WorkerDialog({ open, onClose, worker }: { open: boolean; onClose: () =>
 
   useEffect(() => {
     if (!open) return;
+    setPhotoFile(null);
+    setPhotoPreview(null);
     setForm(worker ? {
       employee_number: worker.employee_number ?? "",
       badge_no: worker.badge_no ?? "",
@@ -116,6 +121,17 @@ function WorkerDialog({ open, onClose, worker }: { open: boolean; onClose: () =>
   }, [open, worker]);
 
   const set = (k: keyof WorkerForm, v: string | boolean) => setForm((f) => ({ ...f, [k]: v }));
+
+  function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ title: "Снимката е твърде голяма", description: "Максимум 5 MB", variant: "destructive" });
+      return;
+    }
+    setPhotoFile(file);
+    setPhotoPreview(URL.createObjectURL(file));
+  }
 
   const mut = useMutation({
     mutationFn: async () => {
@@ -134,8 +150,21 @@ function WorkerDialog({ open, onClose, worker }: { open: boolean; onClose: () =>
         active: form.active,
         notes: form.notes || null,
       };
-      if (worker) return api.put(`/workers/${worker.id}`, body);
-      return api.post("/workers", body);
+      const saved: Worker = worker
+        ? await api.put(`/workers/${worker.id}`, body)
+        : await api.post("/workers", body);
+
+      if (photoFile) {
+        const fd = new FormData();
+        fd.append("photo", photoFile);
+        const token = localStorage.getItem("access_token") ?? "";
+        await fetch(`/api/workers/${saved.id}/photo`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+          body: fd,
+        });
+      }
+      return saved;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["workers"] });
@@ -146,6 +175,8 @@ function WorkerDialog({ open, onClose, worker }: { open: boolean; onClose: () =>
   });
 
   const isValid = form.first_name.trim().length > 0 && form.last_name.trim().length > 0;
+  const initials = `${form.first_name.charAt(0)}${form.last_name.charAt(0)}`.toUpperCase() || "?";
+  const currentPhoto = photoPreview ?? (worker?.photo_url || null);
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
@@ -211,9 +242,56 @@ function WorkerDialog({ open, onClose, worker }: { open: boolean; onClose: () =>
               <Input type="email" value={form.email} onChange={(e) => set("email", e.target.value)} />
             </div>
           </div>
+          {/* Photo upload */}
           <div className="space-y-1.5">
-            <Label>{t("workers.photoUrl")}</Label>
-            <Input value={form.photo_url} placeholder="https://…" onChange={(e) => set("photo_url", e.target.value)} />
+            <Label>{t("workerCard.photo")}</Label>
+            <div className="flex items-center gap-4">
+              {/* Preview */}
+              <div className="w-16 h-16 rounded-xl overflow-hidden border border-border bg-muted flex items-center justify-center shrink-0">
+                {currentPhoto ? (
+                  <img src={currentPhoto} alt="preview" className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-lg font-bold text-muted-foreground">{initials}</span>
+                )}
+              </div>
+              {/* Buttons */}
+              <div className="flex flex-col gap-2 flex-1">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="gap-2 w-full justify-start"
+                  onClick={() => photoFileRef.current?.click()}
+                >
+                  <Upload className="w-3.5 h-3.5" />
+                  {photoFile ? photoFile.name : t("workerCard.uploadPhoto")}
+                </Button>
+                {!photoFile && (
+                  <Input
+                    value={form.photo_url}
+                    placeholder="или URL (https://…)"
+                    className="text-xs h-8"
+                    onChange={(e) => { set("photo_url", e.target.value); setPhotoPreview(null); }}
+                  />
+                )}
+                {photoFile && (
+                  <button
+                    type="button"
+                    className="text-xs text-muted-foreground hover:text-foreground text-left"
+                    onClick={() => { setPhotoFile(null); setPhotoPreview(null); if (photoFileRef.current) photoFileRef.current.value = ""; }}
+                  >
+                    ✕ премахни избраната снимка
+                  </button>
+                )}
+              </div>
+            </div>
+            <input
+              ref={photoFileRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handlePhotoChange}
+            />
           </div>
           <div className="space-y-1.5">
             <Label>{t("common.notes")}</Label>

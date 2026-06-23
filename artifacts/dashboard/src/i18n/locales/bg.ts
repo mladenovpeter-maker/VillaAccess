@@ -564,6 +564,7 @@ const bg = {
   },
   workerCard: {
     photoAlt: "Снимка на работника",
+    photo: "Снимка",
     uploadPhoto: "Качи снимка",
     changePhoto: "Смени снимка",
     onLeave: "В отпуска",
