@@ -10,7 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
 import {
   Grid3X3, Loader2, Check, X, Clock, Search,
-  CheckSquare, XSquare, Upload, AlertCircle,
+  CheckSquare, XSquare, Upload, AlertCircle, ShieldCheck, ShieldOff,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Entrance } from "@/lib/api";
@@ -137,6 +137,9 @@ export default function AccessMatrixPage() {
   const [loadingCols, setLoadingCols] = useState<Set<string>>(new Set());
   const [loadingRows, setLoadingRows] = useState<Set<string>>(new Set());
   const [syncing, setSyncing] = useState(false);
+  // anti-passback: null=unknown, true=enabled, false=disabled
+  const [apState, setApState] = useState<Record<string, boolean>>({});
+  const [apLoading, setApLoading] = useState<Set<string>>(new Set());
 
   const { data: workers = [], isLoading: loadingWorkers } = useQuery<Worker[]>({
     queryKey: ["workers"],
@@ -320,6 +323,23 @@ export default function AccessMatrixPage() {
     }
   }
 
+  async function handleAntiPassback(entranceId: string) {
+    const enable = !(apState[entranceId] ?? false);
+    setApLoading((prev) => new Set(prev).add(entranceId));
+    try {
+      await api.post("/acs/anti-passback", { entrance_id: entranceId, enable, mode: "double" });
+      setApState((prev) => ({ ...prev, [entranceId]: enable }));
+      toast({
+        title: enable ? t("matrix.antiPassbackEnabled") : t("matrix.antiPassbackDisabled"),
+        description: t("matrix.antiPassbackHint"),
+      });
+    } catch (e: any) {
+      toast({ title: t("common.error"), description: e.message, variant: "destructive" });
+    } finally {
+      setApLoading((prev) => { const n = new Set(prev); n.delete(entranceId); return n; });
+    }
+  }
+
   const isLoading = loadingWorkers || loadingEntrances || loadingRules;
 
   return (
@@ -432,6 +452,10 @@ export default function AccessMatrixPage() {
             <CheckSquare className="w-3.5 h-3.5" />
             {t("matrix.bulkHint")}
           </span>
+          <span className="flex items-center gap-1.5 ml-2 text-blue-400/70">
+            <ShieldCheck className="w-3.5 h-3.5" />
+            {t("matrix.antiPassbackHint")}
+          </span>
         </div>
 
         {/* Matrix table */}
@@ -477,6 +501,26 @@ export default function AccessMatrixPage() {
                             className="p-0.5 rounded text-red-400/70 hover:text-red-400 hover:bg-red-500/10 disabled:opacity-30 transition-colors"
                           >
                             <XSquare className="w-3.5 h-3.5" />
+                          </button>
+                          {/* Anti-passback toggle */}
+                          <button
+                            onClick={() => handleAntiPassback(e.id)}
+                            disabled={apLoading.has(e.id)}
+                            title={apState[e.id]
+                              ? t("matrix.antiPassbackDisable")
+                              : t("matrix.antiPassbackEnable")}
+                            className={cn(
+                              "p-0.5 rounded transition-colors",
+                              apState[e.id]
+                                ? "text-blue-400 hover:text-blue-300 hover:bg-blue-500/10"
+                                : "text-muted-foreground/40 hover:text-blue-400 hover:bg-blue-500/10"
+                            )}
+                          >
+                            {apLoading.has(e.id)
+                              ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              : apState[e.id]
+                                ? <ShieldCheck className="w-3.5 h-3.5" />
+                                : <ShieldOff className="w-3.5 h-3.5" />}
                           </button>
                         </div>
                       </th>

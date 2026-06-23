@@ -655,6 +655,13 @@ const bg = {
     syncCards: "карти синхронизирани",
     syncFailed: "неуспешни",
     neverSynced: "никога",
+    antiPassbackEnable: "Включи Anti-passback",
+    antiPassbackDisable: "Изключи Anti-passback",
+    antiPassbackOn: "Anti-passback: Вкл",
+    antiPassbackOff: "Anti-passback: Изкл",
+    antiPassbackEnabled: "Anti-passback е включен",
+    antiPassbackDisabled: "Anti-passback е изключен",
+    antiPassbackHint: "Предотвратява повторно влизане без изход",
   },
 };
 
