@@ -306,7 +306,17 @@ function VehiclesTab({ worker }: { worker: Worker }) {
 
 // ─── Worker Detail Dialog ───────────────────────────────────────────────────────
 
-function WorkerDetailDialog({ worker, onClose }: { worker: Worker | null; onClose: () => void }) {
+function WorkerDetailDialog({
+  worker,
+  onClose,
+  onEdit,
+  onDeactivate,
+}: {
+  worker: Worker | null;
+  onClose: () => void;
+  onEdit: (w: Worker) => void;
+  onDeactivate: (w: Worker) => void;
+}) {
   const { t } = useTranslation();
   return (
     <Dialog open={!!worker} onOpenChange={(o) => !o && onClose()}>
@@ -315,43 +325,75 @@ function WorkerDetailDialog({ worker, onClose }: { worker: Worker | null; onClos
           <DialogTitle className="flex items-center gap-2">
             <HardHat className="w-4 h-4" />
             {worker ? fullName(worker) : ""}
+            {worker && (
+              <span className="ml-2">
+                {worker.active
+                  ? <Badge className="bg-green-500/15 text-green-400 border-green-500/20 text-xs"><UserCheck className="w-3 h-3 mr-1" />{t("workers.active")}</Badge>
+                  : <Badge className="bg-zinc-500/15 text-zinc-400 border-zinc-500/20 text-xs"><UserX className="w-3 h-3 mr-1" />{t("workers.inactive")}</Badge>
+                }
+              </span>
+            )}
           </DialogTitle>
         </DialogHeader>
         {worker && (
-          <Tabs defaultValue="info">
-            <TabsList className="mb-4">
-              <TabsTrigger value="info">{t("workers.info")}</TabsTrigger>
-              <TabsTrigger value="vehicles">{t("nav.vehicles")}</TabsTrigger>
-            </TabsList>
-            <TabsContent value="info">
-              <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-                {[
-                  [t("workers.employeeNumber"), worker.employee_number],
-                  [t("workers.badgeNo"), worker.badge_no],
-                  [t("workers.department"), worker.department],
-                  [t("workers.position"), worker.position],
-                  [t("workers.phone"), worker.phone],
-                  [t("workers.email"), worker.email],
-                ].map(([label, value]) =>
-                  value ? (
-                    <div key={label as string}>
-                      <dt className="text-xs text-muted-foreground">{label}</dt>
-                      <dd className="font-medium">{value}</dd>
+          <>
+            <Tabs defaultValue="info">
+              <TabsList className="mb-4">
+                <TabsTrigger value="info">{t("workers.info")}</TabsTrigger>
+                <TabsTrigger value="vehicles">{t("nav.vehicles")}</TabsTrigger>
+              </TabsList>
+              <TabsContent value="info">
+                <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                  {[
+                    [t("workers.employeeNumber"), worker.employee_number],
+                    [t("workers.badgeNo"), worker.badge_no],
+                    [t("workers.department"), worker.department],
+                    [t("workers.position"), worker.position],
+                    [t("workers.phone"), worker.phone],
+                    [t("workers.email"), worker.email],
+                  ].map(([label, value]) =>
+                    value ? (
+                      <div key={label as string}>
+                        <dt className="text-xs text-muted-foreground">{label}</dt>
+                        <dd className="font-medium">{value}</dd>
+                      </div>
+                    ) : null
+                  )}
+                  {worker.notes && (
+                    <div className="col-span-2">
+                      <dt className="text-xs text-muted-foreground">{t("common.notes")}</dt>
+                      <dd className="font-medium">{worker.notes}</dd>
                     </div>
-                  ) : null
+                  )}
+                </dl>
+              </TabsContent>
+              <TabsContent value="vehicles">
+                <VehiclesTab worker={worker} />
+              </TabsContent>
+            </Tabs>
+            <DialogFooter className="gap-2 sm:gap-0 mt-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className={cn(
+                  worker.active
+                    ? "text-amber-600 border-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/30"
+                    : "text-green-600 border-green-300 hover:bg-green-50 dark:hover:bg-green-950/30"
                 )}
-                {worker.notes && (
-                  <div className="col-span-2">
-                    <dt className="text-xs text-muted-foreground">{t("common.notes")}</dt>
-                    <dd className="font-medium">{worker.notes}</dd>
-                  </div>
-                )}
-              </dl>
-            </TabsContent>
-            <TabsContent value="vehicles">
-              <VehiclesTab worker={worker} />
-            </TabsContent>
-          </Tabs>
+                onClick={() => { onDeactivate(worker); onClose(); }}
+              >
+                {worker.active ? <UserX className="w-4 h-4 mr-1.5" /> : <UserCheck className="w-4 h-4 mr-1.5" />}
+                {worker.active ? t("workers.deactivate") : t("workers.reactivate")}
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => { onEdit(worker); onClose(); }}
+              >
+                <Pencil className="w-4 h-4 mr-1.5" />
+                {t("common.edit")}
+              </Button>
+            </DialogFooter>
+          </>
         )}
       </DialogContent>
     </Dialog>
@@ -382,6 +424,15 @@ export default function WorkersPage() {
       qc.invalidateQueries({ queryKey: ["workers"] });
       toast({ title: t("workers.deleted") });
       setDeleteTarget(null);
+    },
+    onError: (e: Error) => toast({ title: t("common.error"), description: e.message, variant: "destructive" }),
+  });
+
+  const toggleActiveMut = useMutation({
+    mutationFn: (w: Worker) => api.put(`/workers/${w.id}`, { active: !w.active }),
+    onSuccess: (_data, w) => {
+      qc.invalidateQueries({ queryKey: ["workers"] });
+      toast({ title: w.active ? t("workers.deactivated") : t("workers.reactivated") });
     },
     onError: (e: Error) => toast({ title: t("common.error"), description: e.message, variant: "destructive" }),
   });
@@ -497,15 +548,29 @@ export default function WorkersPage() {
                         <Button
                           variant="ghost"
                           size="sm"
+                          className="gap-1"
                           onClick={() => { setEditTarget(w); setDialogOpen(true); }}
                         >
                           <Pencil className="w-3.5 h-3.5" />
+                          <span className="hidden md:inline text-xs">{t("common.edit")}</span>
                         </Button>
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="text-destructive hover:text-destructive"
+                          className={cn("gap-1", w.active ? "text-amber-500 hover:text-amber-600" : "text-green-500 hover:text-green-600")}
+                          onClick={() => toggleActiveMut.mutate(w)}
+                          disabled={toggleActiveMut.isPending}
+                          title={w.active ? t("workers.deactivate") : t("workers.reactivate")}
+                        >
+                          {w.active ? <UserX className="w-3.5 h-3.5" /> : <UserCheck className="w-3.5 h-3.5" />}
+                          <span className="hidden md:inline text-xs">{w.active ? t("workers.deactivate") : t("workers.reactivate")}</span>
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-destructive hover:text-destructive gap-1"
                           onClick={() => setDeleteTarget(w)}
+                          title={t("workers.hardDelete")}
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </Button>
@@ -528,6 +593,8 @@ export default function WorkersPage() {
       <WorkerDetailDialog
         worker={detailTarget}
         onClose={() => setDetailTarget(null)}
+        onEdit={(w) => { setEditTarget(w); setDialogOpen(true); }}
+        onDeactivate={(w) => toggleActiveMut.mutate(w)}
       />
 
       <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
