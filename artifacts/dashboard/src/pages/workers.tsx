@@ -22,7 +22,12 @@ import { useTranslation } from "react-i18next";
 import {
   HardHat, Plus, Pencil, Trash2, Loader2, Search,
   Car, UserCheck, UserX, Link2, Unlink,
+  Camera, CalendarDays, LogIn, LogOut, ShieldX, Upload,
 } from "lucide-react";
+import {
+  Sheet, SheetContent, SheetHeader, SheetTitle,
+} from "@/components/ui/sheet";
+import { useRef } from "react";
 import { CardScanInput } from "@/components/card-scan-input";
 import { cn } from "@/lib/utils";
 import type { Vehicle } from "@/lib/api";
@@ -335,9 +340,88 @@ function VehiclesTab({ worker }: { worker: Worker }) {
   );
 }
 
-// ─── Worker Detail Dialog ───────────────────────────────────────────────────────
+// ─── Worker Detail Sheet (Profile Card) ────────────────────────────────────────
 
-function WorkerDetailDialog({
+interface Leave {
+  id: string;
+  type: "vacation" | "sick" | "business_trip" | "other";
+  start_date: string;
+  end_date: string;
+  note: string | null;
+}
+
+interface AccessEvent {
+  id: string;
+  timestamp: string;
+  event_type: "entry" | "exit" | "denied" | "manual_open" | "override";
+  status: "allowed" | "denied" | "manual" | "pending";
+  license_plate: string | null;
+  entrance_id: string | null;
+}
+
+const LEAVE_LABELS = {
+  vacation: "Платен отпуск",
+  sick: "Болничен",
+  business_trip: "Командировка",
+  other: "Друго",
+} as const;
+
+function WorkerAvatar({
+  worker,
+  size = "lg",
+  onUpload,
+}: {
+  worker: Worker;
+  size?: "sm" | "lg";
+  onUpload?: (file: File) => void;
+}) {
+  const fileRef = useRef<HTMLInputElement>(null);
+  const dim = size === "lg" ? "w-24 h-24" : "w-10 h-10";
+  const text = size === "lg" ? "text-3xl" : "text-sm";
+  const initials = `${worker.first_name[0] ?? ""}${worker.last_name[0] ?? ""}`.toUpperCase();
+
+  return (
+    <div className={cn("relative shrink-0 group", dim)}>
+      {worker.photo_url ? (
+        <img
+          src={worker.photo_url}
+          alt={fullName(worker)}
+          className={cn("rounded-full object-cover border-2 border-border", dim)}
+          onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+        />
+      ) : (
+        <div className={cn(
+          "rounded-full flex items-center justify-center font-bold bg-primary/20 text-primary border-2 border-border",
+          dim, text
+        )}>
+          {initials}
+        </div>
+      )}
+      {onUpload && (
+        <>
+          <button
+            className="absolute inset-0 rounded-full bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+            onClick={() => fileRef.current?.click()}
+          >
+            <Camera className="w-5 h-5 text-white" />
+          </button>
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) { onUpload(f); e.target.value = ""; }
+            }}
+          />
+        </>
+      )}
+    </div>
+  );
+}
+
+function WorkerDetailSheet({
   worker,
   onClose,
   onEdit,
@@ -349,85 +433,218 @@ function WorkerDetailDialog({
   onDeactivate: (w: Worker) => void;
 }) {
   const { t } = useTranslation();
+  const { toast } = useToast();
+  const qc = useQueryClient();
+  const today = new Date().toISOString().slice(0, 10);
+
+  const { data: leaves = [] } = useQuery<Leave[]>({
+    queryKey: ["worker-leaves", worker?.id],
+    queryFn: () => api.get(`/workers/${worker!.id}/leaves`),
+    enabled: !!worker,
+  });
+
+  const { data: events = [], isLoading: eventsLoading } = useQuery<AccessEvent[]>({
+    queryKey: ["worker-events", worker?.id],
+    queryFn: () => api.get(`/workers/${worker!.id}/events`),
+    enabled: !!worker,
+  });
+
+  const photoMut = useMutation({
+    mutationFn: async (file: File) => {
+      const fd = new FormData();
+      fd.append("photo", file);
+      const res = await fetch(`/api/workers/${worker!.id}/photo`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${localStorage.getItem("access_token") ?? ""}` },
+        body: fd,
+      });
+      if (!res.ok) throw new Error("Upload failed");
+      return res.json() as Promise<{ photo_url: string }>;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["workers"] });
+      toast({ title: t("workerCard.changePhoto") });
+    },
+    onError: () => toast({ title: t("common.error"), variant: "destructive" }),
+  });
+
+  const activeLeave = leaves.find(l => l.start_date <= today && l.end_date >= today);
+
+  if (!worker) return null;
+
   return (
-    <Dialog open={!!worker} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <HardHat className="w-4 h-4" />
-            {worker ? fullName(worker) : ""}
-            {worker && (
-              <span className="ml-2">
-                {worker.active
-                  ? <Badge className="bg-green-500/15 text-green-400 border-green-500/20 text-xs"><UserCheck className="w-3 h-3 mr-1" />{t("workers.active")}</Badge>
-                  : <Badge className="bg-zinc-500/15 text-zinc-400 border-zinc-500/20 text-xs"><UserX className="w-3 h-3 mr-1" />{t("workers.inactive")}</Badge>
-                }
-              </span>
-            )}
-          </DialogTitle>
-        </DialogHeader>
-        {worker && (
-          <>
-            <Tabs defaultValue="info">
-              <TabsList className="mb-4">
-                <TabsTrigger value="info">{t("workers.info")}</TabsTrigger>
-                <TabsTrigger value="vehicles">{t("nav.vehicles")}</TabsTrigger>
-              </TabsList>
-              <TabsContent value="info">
-                <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-                  {[
-                    [t("workers.employeeNumber"), worker.employee_number],
-                    [t("workers.badgeNo"), worker.badge_no],
-                    [t("workers.department"), worker.department],
-                    [t("workers.position"), worker.position],
-                    [t("workers.phone"), worker.phone],
-                    [t("workers.email"), worker.email],
-                  ].map(([label, value]) =>
-                    value ? (
-                      <div key={label as string}>
-                        <dt className="text-xs text-muted-foreground">{label}</dt>
-                        <dd className="font-medium">{value}</dd>
-                      </div>
-                    ) : null
+    <Sheet open={!!worker} onOpenChange={(o) => !o && onClose()}>
+      <SheetContent side="right" className="w-full sm:max-w-lg overflow-y-auto p-0">
+        {/* Hero header */}
+        <div className="p-6 pb-4 border-b border-border bg-muted/20">
+          <div className="flex items-start gap-4">
+            <WorkerAvatar
+              worker={worker}
+              size="lg"
+              onUpload={(f) => photoMut.mutate(f)}
+            />
+            <div className="flex-1 min-w-0">
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <h2 className="text-xl font-bold leading-tight">{fullName(worker)}</h2>
+                  {worker.position && (
+                    <p className="text-sm text-muted-foreground mt-0.5">{worker.position}</p>
                   )}
-                  {worker.notes && (
-                    <div className="col-span-2">
-                      <dt className="text-xs text-muted-foreground">{t("common.notes")}</dt>
-                      <dd className="font-medium">{worker.notes}</dd>
-                    </div>
+                  {worker.department && (
+                    <p className="text-xs text-muted-foreground">{worker.department}</p>
                   )}
-                </dl>
-              </TabsContent>
-              <TabsContent value="vehicles">
-                <VehiclesTab worker={worker} />
-              </TabsContent>
-            </Tabs>
-            <DialogFooter className="gap-2 sm:gap-0 mt-2">
-              <Button
-                variant="outline"
-                size="sm"
-                className={cn(
-                  worker.active
-                    ? "text-amber-600 border-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/30"
-                    : "text-green-600 border-green-300 hover:bg-green-50 dark:hover:bg-green-950/30"
+                </div>
+                <div>
+                  {worker.active
+                    ? <Badge className="bg-green-500/15 text-green-400 border-green-500/20 text-xs shrink-0"><UserCheck className="w-3 h-3 mr-1" />{t("workers.active")}</Badge>
+                    : <Badge className="bg-zinc-500/15 text-zinc-400 border-zinc-500/20 text-xs shrink-0"><UserX className="w-3 h-3 mr-1" />{t("workers.inactive")}</Badge>
+                  }
+                </div>
+              </div>
+
+              {/* Active leave banner */}
+              {activeLeave && (
+                <div className="mt-2 flex items-center gap-1.5 bg-yellow-500/10 border border-yellow-500/30 rounded-lg px-2.5 py-1.5 text-xs text-yellow-400">
+                  <CalendarDays className="w-3.5 h-3.5 shrink-0" />
+                  <span>
+                    {LEAVE_LABELS[activeLeave.type]} — {t("workerCard.onLeaveUntil")}{" "}
+                    {new Date(activeLeave.end_date + "T00:00:00").toLocaleDateString("bg-BG", { day: "2-digit", month: "short" })}
+                  </span>
+                </div>
+              )}
+
+              {/* Action buttons */}
+              <div className="flex gap-2 mt-3">
+                <Button size="sm" variant="outline" onClick={() => { onEdit(worker); onClose(); }}>
+                  <Pencil className="w-3.5 h-3.5 mr-1.5" />{t("common.edit")}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className={cn(
+                    worker.active
+                      ? "text-amber-500 border-amber-300/50 hover:bg-amber-50 dark:hover:bg-amber-950/30"
+                      : "text-green-500 border-green-300/50 hover:bg-green-50 dark:hover:bg-green-950/30"
+                  )}
+                  onClick={() => { onDeactivate(worker); onClose(); }}
+                >
+                  {worker.active ? <UserX className="w-3.5 h-3.5 mr-1.5" /> : <UserCheck className="w-3.5 h-3.5 mr-1.5" />}
+                  {worker.active ? t("workers.deactivate") : t("workers.reactivate")}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Tabs */}
+        <div className="p-6">
+          <Tabs defaultValue="info">
+            <TabsList className="mb-4 w-full">
+              <TabsTrigger value="info" className="flex-1">{t("workers.info")}</TabsTrigger>
+              <TabsTrigger value="vehicles" className="flex-1">{t("nav.vehicles")}</TabsTrigger>
+              <TabsTrigger value="events" className="flex-1">{t("workerCard.eventsTab")}</TabsTrigger>
+            </TabsList>
+
+            {/* Info tab */}
+            <TabsContent value="info">
+              <dl className="space-y-3 text-sm">
+                {([
+                  [t("workers.employeeNumber"), worker.employee_number],
+                  [t("workers.badgeNo"), worker.badge_no],
+                  [t("workers.phone"), worker.phone],
+                  [t("workers.email"), worker.email],
+                ] as [string, string | null][]).filter(([, v]) => v).map(([label, value]) => (
+                  <div key={label} className="flex justify-between border-b border-border/40 pb-2">
+                    <dt className="text-muted-foreground">{label}</dt>
+                    <dd className="font-medium font-mono text-xs">{value}</dd>
+                  </div>
+                ))}
+                {worker.notes && (
+                  <div>
+                    <dt className="text-xs text-muted-foreground mb-1">{t("common.notes")}</dt>
+                    <dd className="text-sm bg-muted/30 rounded-lg px-3 py-2">{worker.notes}</dd>
+                  </div>
                 )}
-                onClick={() => { onDeactivate(worker); onClose(); }}
-              >
-                {worker.active ? <UserX className="w-4 h-4 mr-1.5" /> : <UserCheck className="w-4 h-4 mr-1.5" />}
-                {worker.active ? t("workers.deactivate") : t("workers.reactivate")}
-              </Button>
-              <Button
-                size="sm"
-                onClick={() => { onEdit(worker); onClose(); }}
-              >
-                <Pencil className="w-4 h-4 mr-1.5" />
-                {t("common.edit")}
-              </Button>
-            </DialogFooter>
-          </>
-        )}
-      </DialogContent>
-    </Dialog>
+
+                {/* Recent leaves */}
+                {leaves.length > 0 && (
+                  <div className="pt-2">
+                    <dt className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
+                      <CalendarDays className="w-3 h-3" />{t("nav.leaves")}
+                    </dt>
+                    <div className="space-y-1.5">
+                      {leaves.slice(0, 3).map((l) => (
+                        <div key={l.id} className={cn(
+                          "flex items-center justify-between text-xs rounded-lg px-2.5 py-1.5 border",
+                          l.start_date <= today && l.end_date >= today
+                            ? "bg-yellow-500/10 border-yellow-500/30 text-yellow-400"
+                            : "bg-muted/20 border-border/40 text-muted-foreground"
+                        )}>
+                          <span>{LEAVE_LABELS[l.type]}</span>
+                          <span>{l.start_date} → {l.end_date}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </dl>
+            </TabsContent>
+
+            {/* Vehicles tab */}
+            <TabsContent value="vehicles">
+              <VehiclesTab worker={worker} />
+            </TabsContent>
+
+            {/* Events tab */}
+            <TabsContent value="events">
+              {eventsLoading ? (
+                <div className="flex items-center justify-center py-10 text-muted-foreground">
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />{t("common.loading")}
+                </div>
+              ) : events.length === 0 ? (
+                <div className="text-center py-10 text-muted-foreground text-sm">
+                  <LogIn className="w-8 h-8 mx-auto mb-2 opacity-20" />
+                  {t("workerCard.noEvents")}
+                </div>
+              ) : (
+                <div className="space-y-1.5">
+                  {events.map((ev) => {
+                    const allowed = ev.status === "allowed" || ev.status === "manual";
+                    const isEntry = ev.event_type === "entry" || ev.event_type === "manual_open";
+                    return (
+                      <div key={ev.id} className="flex items-center gap-3 text-sm border border-border/40 rounded-lg px-3 py-2">
+                        <div className={cn(
+                          "shrink-0 w-7 h-7 rounded-full flex items-center justify-center",
+                          allowed ? "bg-green-500/15 text-green-400" : "bg-red-500/15 text-red-400"
+                        )}>
+                          {allowed
+                            ? (isEntry ? <LogIn className="w-3.5 h-3.5" /> : <LogOut className="w-3.5 h-3.5" />)
+                            : <ShieldX className="w-3.5 h-3.5" />}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-mono text-xs font-medium">{ev.license_plate ?? "—"}</div>
+                          <div className="text-[10px] text-muted-foreground">
+                            {new Date(ev.timestamp).toLocaleString("bg-BG", {
+                              day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit"
+                            })}
+                          </div>
+                        </div>
+                        <span className={cn(
+                          "text-[10px] font-medium",
+                          allowed ? "text-green-400" : "text-red-400"
+                        )}>
+                          {allowed ? t("workerCard.allowed") : t("workerCard.denied")}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 }
 
@@ -621,7 +838,7 @@ export default function WorkersPage() {
         worker={editTarget}
       />
 
-      <WorkerDetailDialog
+      <WorkerDetailSheet
         worker={detailTarget}
         onClose={() => setDetailTarget(null)}
         onEdit={(w) => { setEditTarget(w); setDialogOpen(true); }}

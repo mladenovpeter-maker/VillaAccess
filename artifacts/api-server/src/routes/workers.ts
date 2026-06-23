@@ -1,13 +1,40 @@
 import { Router } from "express";
+import multer from "multer";
+import path from "path";
+import fs from "fs";
 import { db } from "@workspace/db";
 import {
   workersTable,
   workerVehiclesTable,
   vehiclesTable,
   accessRulesTable,
+  accessEventsTable,
+  leavesTable,
 } from "@workspace/db";
-import { eq, and, ilike, or } from "drizzle-orm";
+import { eq, and, or, desc } from "drizzle-orm";
 import { z } from "zod/v4";
+
+// ─── Multer photo upload ──────────────────────────────────────────────────────
+
+const photosDir = path.resolve(process.cwd(), "uploads", "photos");
+fs.mkdirSync(photosDir, { recursive: true });
+
+const photoStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, photosDir),
+  filename: (_req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase() || ".jpg";
+    cb(null, `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`);
+  },
+});
+
+const photoUpload = multer({
+  storage: photoStorage,
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    if (file.mimetype.startsWith("image/")) cb(null, true);
+    else cb(new Error("Само изображения са позволени"));
+  },
+});
 
 export const workersRouter = Router();
 
@@ -239,6 +266,63 @@ workersRouter.delete("/:id/vehicles/:vehicleId", async (req, res) => {
   } catch (err) {
     console.error("[workers] DELETE /:id/vehicles/:vehicleId", err);
     res.status(500).json({ detail: "Failed to unlink vehicle" });
+  }
+});
+
+// ─── POST /workers/:id/photo ──────────────────────────────────────────────────
+
+workersRouter.post("/:id/photo", photoUpload.single("photo"), async (req, res) => {
+  try {
+    if (!req.file) { res.status(400).json({ detail: "No file uploaded" }); return; }
+    const photo_url = `/api/uploads/photos/${req.file.filename}`;
+    const [row] = await db.update(workersTable)
+      .set({ photo_url, updated_at: new Date() })
+      .where(eq(workersTable.id, req.params.id))
+      .returning();
+    if (!row) { res.status(404).json({ detail: "Worker not found" }); return; }
+    res.json({ photo_url });
+  } catch (err) {
+    console.error("[workers] POST /:id/photo", err);
+    res.status(500).json({ detail: "Failed to upload photo" });
+  }
+});
+
+// ─── GET /workers/:id/events ──────────────────────────────────────────────────
+// Returns recent access events for all vehicles linked to this worker.
+
+workersRouter.get("/:id/events", async (req, res) => {
+  try {
+    const links = await db.select().from(workerVehiclesTable)
+      .where(eq(workerVehiclesTable.worker_id, req.params.id));
+
+    if (!links.length) { res.json([]); return; }
+
+    const vehicleIds = links.map((l) => l.vehicle_id);
+    const events = await db.select().from(accessEventsTable)
+      .where(or(...vehicleIds.map((id) => eq(accessEventsTable.vehicle_id, id))))
+      .orderBy(desc(accessEventsTable.timestamp))
+      .limit(30);
+
+    res.json(events);
+  } catch (err) {
+    console.error("[workers] GET /:id/events", err);
+    res.status(500).json({ detail: "Failed to fetch worker events" });
+  }
+});
+
+// ─── GET /workers/:id/leaves ──────────────────────────────────────────────────
+// Returns all leaves for this worker, most recent first.
+
+workersRouter.get("/:id/leaves", async (req, res) => {
+  try {
+    const rows = await db.select().from(leavesTable)
+      .where(eq(leavesTable.worker_id, req.params.id))
+      .orderBy(desc(leavesTable.start_date))
+      .limit(10);
+    res.json(rows);
+  } catch (err) {
+    console.error("[workers] GET /:id/leaves", err);
+    res.status(500).json({ detail: "Failed to fetch worker leaves" });
   }
 });
 
