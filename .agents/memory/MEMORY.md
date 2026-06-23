@@ -16,4 +16,5 @@
 - [Self-hosted notifications](self-hosted-notifications.md) — guest email/outbound uses self-hosted SMTP via .env.docker (nodemailer), NOT Replit integrations; app runs on user's Docker, not Replit.
 - [Tuya PIN verification](tuya-pin-verification.md) — reconcile adapter.listTempPasswords() (device) vs smart_lock_passwords ledger; active-in-ledger-but-absent-on-device = guest locked out.
 - [Phase 2 worker access schema](phase2-worker-access.md) — workers/shifts/access_rules/worker_vehicles tables added in migration 0022; "reservation" access_type = worker-based (check access_rules), "permanent" = bypass; shift check handles overnight.
+- [Workers active flag](workers-active-flag.md) — workers use active: boolean (not archived_at); filter active workers with eq(workersTable.active, true); vehicles use archived_at for soft-delete — don't mix them.
 - [Migration FK ordering](migration-fk-ordering.md) — always drop FK columns on referencing tables BEFORE dropping the referenced table; 0021 had villas dropped before entrances.villa_id → fixed by adding ALTER TABLE DROP COLUMN before DROP TABLE.
