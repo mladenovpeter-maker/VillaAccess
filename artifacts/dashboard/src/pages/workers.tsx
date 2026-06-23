@@ -180,11 +180,11 @@ function WorkerDialog({ open, onClose, worker }: { open: boolean; onClose: () =>
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
+      <DialogContent className="max-w-lg flex flex-col max-h-[90vh]">
+        <DialogHeader className="shrink-0">
           <DialogTitle>{worker ? t("workers.editWorker") : t("workers.addWorker")}</DialogTitle>
         </DialogHeader>
-        <div className="space-y-4 py-2">
+        <div className="space-y-4 py-2 overflow-y-auto flex-1 pr-1">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label>{t("workers.firstName")} *</Label>
@@ -308,7 +308,7 @@ function WorkerDialog({ open, onClose, worker }: { open: boolean; onClose: () =>
             <Label htmlFor="worker-active">{t("workers.active")}</Label>
           </div>
         </div>
-        <DialogFooter>
+        <DialogFooter className="shrink-0 pt-2">
           <Button variant="outline" onClick={onClose}>{t("common.cancel")}</Button>
           <Button onClick={() => mut.mutate()} disabled={!isValid || mut.isPending}>
             {mut.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}

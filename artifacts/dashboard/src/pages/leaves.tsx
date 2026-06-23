@@ -148,7 +148,11 @@ function WorkerCombobox({
       <PopoverContent className="w-[340px] p-0" align="start">
         <Command>
           <CommandInput placeholder="Търси по име или отдел…" />
-          <CommandList className="max-h-60">
+          <CommandList
+            className="max-h-60 overflow-y-auto"
+            onWheel={(e) => e.stopPropagation()}
+            onTouchMove={(e) => e.stopPropagation()}
+          >
             <CommandEmpty>Няма намерени работници</CommandEmpty>
             <CommandGroup>
               {workers
@@ -231,14 +235,14 @@ function LeaveDialog({ open, onClose, leave, workers }: {
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); else resetForm(); }}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
+      <DialogContent className="max-w-md flex flex-col max-h-[90vh]">
+        <DialogHeader className="shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <CalendarDays className="w-4 h-4" />
             {leave ? t("leaves.editLeave") : t("leaves.addLeave")}
           </DialogTitle>
         </DialogHeader>
-        <div className="space-y-4 py-1">
+        <div className="space-y-4 py-1 overflow-y-auto flex-1 pr-1">
           {/* Worker — searchable combobox */}
           <div className="space-y-1.5">
             <Label>{t("leaves.worker")}</Label>
@@ -295,7 +299,7 @@ function LeaveDialog({ open, onClose, leave, workers }: {
             <Input placeholder={t("leaves.notePlaceholder")} value={form.note} onChange={(e) => set("note", e.target.value)} />
           </div>
         </div>
-        <DialogFooter>
+        <DialogFooter className="shrink-0 pt-2">
           <Button variant="outline" onClick={onClose}>{t("common.cancel")}</Button>
           <Button onClick={() => mutation.mutate()} disabled={!valid || mutation.isPending}>
             {mutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
